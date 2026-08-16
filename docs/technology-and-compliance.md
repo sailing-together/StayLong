@@ -31,12 +31,14 @@
 
 Production uses Google ADK with `gemini-3.6-flash`. Before constructing either
 agent wrapper, the process must set `GOOGLE_CLOUD_PROJECT`,
-`GOOGLE_CLOUD_LOCATION` (the Cloud Run region is `australia-southeast1`), and
+`GOOGLE_CLOUD_LOCATION=global` for model inference, and
 `GOOGLE_GENAI_USE_VERTEXAI=true`. The agent factory validates all three values;
 it does not fall back to the Gemini Developer API or infer a project/location
 from the model identifier. Application code supplies the ADK Runner bridge to
 the intake wrapper, so deterministic emergency routing and structured-output
 validation run around every response rather than relying on prompt text.
+Cloud Run remains deployed in `australia-southeast1`; its service region is not
+the Vertex Gemini inference endpoint.
 
 The detailed training-informed architecture choices are recorded in [official training guidance](official-training-guidance.md).
 

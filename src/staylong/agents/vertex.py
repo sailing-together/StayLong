@@ -1,7 +1,7 @@
 """Validated Vertex AI configuration and bounded adapters for Google ADK."""
 
 import os
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -19,6 +19,15 @@ class VertexRuntimeConfig:
     project_id: str
     location: str
     model_id: str = VERTEX_GEMINI_MODEL
+
+    def __post_init__(self) -> None:
+        """Keep direct construction as strict as environment-derived configuration."""
+        if not self.project_id.strip():
+            raise VertexConfigurationError("GOOGLE_CLOUD_PROJECT must be configured for Vertex AI.")
+        if self.location != "global":
+            raise VertexConfigurationError(
+                "GOOGLE_CLOUD_LOCATION must be global for gemini-3.6-flash inference."
+            )
 
     @classmethod
     def from_environment(
@@ -41,6 +50,16 @@ class VertexRuntimeConfig:
 
         return cls(project_id=project_id, location=location)
 
+    def bind_to_adk_environment(self, environment: MutableMapping[str, str]) -> None:
+        """Bind validated Vertex values to the environment consumed by Google ADK."""
+        environment.update(
+            {
+                "GOOGLE_CLOUD_PROJECT": self.project_id,
+                "GOOGLE_CLOUD_LOCATION": self.location,
+                "GOOGLE_GENAI_USE_VERTEXAI": "true",
+            }
+        )
+
 
 class AdkAgentFactory(Protocol):
     """Creates an ADK agent after the Vertex environment has been validated."""
@@ -62,7 +81,7 @@ class AdkJsonExecutor(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
-class AdkJsonProvider:
+class _AdkJsonProvider:
     """Makes a supplied ADK runner available through the local provider contract."""
 
     agent: object
@@ -72,6 +91,16 @@ class AdkJsonProvider:
         """Run the preconfigured agent; policy validation remains in its caller."""
         del system_instruction
         return self.executor.generate_json(agent=self.agent, prompt=prompt)
+
+
+def _load_adk_types() -> tuple[type[object], type[object]]:
+    """Load ADK lazily so local contract tests need no Google installation."""
+    try:
+        from google.adk.agents import Agent
+        from google.adk.models import Gemini
+    except ImportError as error:  # pragma: no cover - production dependency only
+        raise RuntimeError("Install staylong[agents] to construct the Google ADK agent.") from error
+    return Agent, Gemini
 
 
 def build_google_adk_agent(
@@ -89,15 +118,12 @@ def build_google_adk_agent(
     through ``AdkJsonExecutor`` so application code can keep the policy boundary
     around every response.
     """
-    del vertex_config
-    try:
-        from google.adk.agents import Agent
-        from google.adk.models import Gemini
-    except ImportError as error:  # pragma: no cover - production dependency only
-        raise RuntimeError("Install staylong[agents] to construct the Google ADK agent.") from error
+    vertex_config.bind_to_adk_environment(os.environ)
+    agent_type, gemini_type = _load_adk_types()
 
-    return Agent(
+    return agent_type(
         name=name,
-        model=Gemini(model=model_id),
+        model=gemini_type(model=model_id),
         instruction=instruction,
+        tools=[],
     )
