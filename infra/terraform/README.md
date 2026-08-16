@@ -1,22 +1,49 @@
-# Terraform
+# StayLong Terraform
 
-Terraform will provision the StayLong Google Cloud foundation and GitHub OIDC Workload Identity Federation configuration.
+Terraform is the sole provisioning authority for StayLong's Google Cloud
+resources. GitHub Actions authenticates through GitHub OIDC Workload Identity
+Federation (WIF); Google service-account keys must never be stored in GitHub.
 
-## Required variables
+## Layout
 
-- `project_id`: target Google Cloud project ID
-- `region`: Google Cloud region, for example `australia-southeast1`
-- `github_repository`: `sailing-together/StayLong`
-- `github_branch`: protected deployment branch, initially `main`
+```text
+modules/
+  base/          # atomic capabilities; no StayLong, repository, or environment values
+  foundations/   # reusable compositions of base modules
+projects/staylong/sandbox/
+  bootstrap-state/     # GCS state bucket; local state for the first apply
+  bootstrap-identity/  # WIF and least-privilege GitHub identities
+  platform/            # APIs, Artifact Registry, and runtime identity
+  app/                 # Cloud Run service configuration
+```
 
-## Safety
+Only `projects/staylong/sandbox` contains StayLong-specific names, the GitHub
+repository, environment, region, image, service name, or secret references.
 
-Pull requests use a read-only Terraform planner identity. An approved manual apply runs only from the protected deployment branch and uses the deployer identity. Never add Google service-account JSON keys as repository secrets; deployment uses GitHub OIDC/WIF.
+## Lifecycle
 
-After the first apply, copy the Terraform outputs into the GitHub `production` environment variables:
+1. A human with authorised local Google Cloud credentials creates
+   `bootstrap-state` using local Terraform state. It does not use the bucket it
+   is creating as its own backend.
+2. Terraform state is migrated to that GCS bucket. Then a human performs the
+   initial local `bootstrap-identity` apply: WIF cannot create its own identity.
+3. GitHub Actions can then run component-scoped plan/apply for `platform` and
+   `app` using WIF. The manual `terraform.yml` workflow is sandbox-only.
 
-- `GCP_WIF_PROVIDER`
-- `GCP_TERRAFORM_SERVICE_ACCOUNT` (the planner output)
-- `GCP_DEPLOY_SERVICE_ACCOUNT` (the deployer output)
-- `GCP_RUNTIME_SERVICE_ACCOUNT` (the Cloud Run runtime identity, created in the next application delivery task)
-- `GCP_PROJECT_ID` and `GCP_REGION`
+`bootstrap-state` and `bootstrap-identity` are long-lived roots. They have no
+normal workflow destroy path. Their exceptional teardown is deliberately kept
+out of automation and documented in the break-glass runbook.
+
+## GitHub sandbox configuration
+
+Configure these GitHub Environment variables for `sandbox` after the human
+bootstrap:
+
+- `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`
+- `GCP_TERRAFORM_PLANNER_SERVICE_ACCOUNT`, `GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT`
+- `GCP_DEPLOY_SERVICE_ACCOUNT`, `GCP_RUNTIME_SERVICE_ACCOUNT`
+- `GCP_REGION`, `TF_STATE_BUCKET`, `STAYLONG_APP_IMAGE`
+
+Set the `sandbox` GitHub Environment to require approval for changes. A
+`platform` or `app` destroy additionally requires the exact workflow input
+`DESTROY_SANDBOX`.
