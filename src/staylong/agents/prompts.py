@@ -21,10 +21,19 @@ INTAKE_PROMPT = """Convert the supplied concern into this JSON-compatible struct
   \"plain_language_summary\": \"string\",
   \"home_area\": \"bathroom|entry|bedroom|kitchen|other\",
   \"reported_difficulty\": \"string\",
-  \"missing_facts\": [\"string\"],
+  \"missing_facts\": [
+    {
+      \"key\": \"permitted_non_clinical_fact_key\",
+      \"question\": \"string\",
+      \"reason\": \"string\"
+    }
+  ],
   \"assessment_preparation_topics\": [\"string\"],
   \"proposed_next_step\": \"prepare_assessment_pack|request_family_confirmation|other\"
 }
+
+The only permitted missing-fact keys are assessment_status, housing_tenure,
+support_contacts, household_availability, home_access and information_sharing_consent.
 
 Do not infer medical facts or recommend a specific modification. A photo can describe
 visible features only; it cannot prove safety, eligibility or clinical need."""

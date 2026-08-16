@@ -22,6 +22,12 @@ HomeArea = Literal["bathroom", "entry", "bedroom", "kitchen", "other"]
 NextStep = Literal[
     "prepare_assessment_pack", "request_family_confirmation", "other"
 ]
+MissingFactKey = Literal[
+    "assessment_status", "housing_tenure", "support_contacts", "household_availability",
+    "home_access", "information_sharing_consent",
+]
+
+_MISSING_FACT_KEYS = set(MissingFactKey.__args__)
 
 
 class StructuredModelProvider(Protocol):
@@ -58,13 +64,43 @@ def _string_list(value: object, field_name: str) -> tuple[str, ...]:
 
 
 @dataclass(frozen=True, slots=True)
+class MissingFact:
+    """A permitted non-clinical question needed to prepare household coordination."""
+
+    key: MissingFactKey
+    question: str
+    reason: str
+
+    @classmethod
+    def from_model_response(cls, value: object) -> "MissingFact":
+        if not isinstance(value, Mapping) or set(value) != {"key", "question", "reason"}:
+            raise IntakeSchemaError(
+                "Each missing_facts item must contain exactly key, question and reason."
+            )
+        key = value["key"]
+        if key not in _MISSING_FACT_KEYS:
+            raise IntakeSchemaError("missing_facts key is not permitted by the intake contract.")
+        return cls(
+            key=key,
+            question=_required_string(value["question"], "missing_facts question"),
+            reason=_required_string(value["reason"], "missing_facts reason"),
+        )
+
+
+def _missing_facts(value: object) -> tuple[MissingFact, ...]:
+    if not isinstance(value, list):
+        raise IntakeSchemaError("missing_facts must be a list.")
+    return tuple(MissingFact.from_model_response(item) for item in value)
+
+
+@dataclass(frozen=True, slots=True)
 class IntakeOutput:
     """The validated, non-clinical output contract for a reported concern."""
 
     plain_language_summary: str
     home_area: HomeArea
     reported_difficulty: str
-    missing_facts: tuple[str, ...]
+    missing_facts: tuple[MissingFact, ...]
     assessment_preparation_topics: tuple[str, ...]
     proposed_next_step: NextStep
 
@@ -105,12 +141,40 @@ class IntakeOutput:
             reported_difficulty=_required_string(
                 response["reported_difficulty"], "reported_difficulty"
             ),
-            missing_facts=_string_list(response["missing_facts"], "missing_facts"),
+            missing_facts=_missing_facts(response["missing_facts"]),
             assessment_preparation_topics=_string_list(
                 response["assessment_preparation_topics"], "assessment_preparation_topics"
             ),
             proposed_next_step=next_step,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class AssessmentPreparationPack:
+    """A shareable, non-clinical preparation pack for a future aged-care assessment."""
+
+    concern_summary: str
+    reported_difficulty: str
+    information_to_confirm: tuple[MissingFact, ...]
+    assessment_discussion_topics: tuple[str, ...]
+    official_pathways: tuple[str, ...]
+    proposed_next_step: NextStep
+    boundary_note: str
+
+
+def _assessment_pack(output: IntakeOutput) -> AssessmentPreparationPack:
+    return AssessmentPreparationPack(
+        concern_summary=output.plain_language_summary,
+        reported_difficulty=output.reported_difficulty,
+        information_to_confirm=output.missing_facts,
+        assessment_discussion_topics=output.assessment_preparation_topics,
+        official_pathways=("https://www.myagedcare.gov.au/",),
+        proposed_next_step=output.proposed_next_step,
+        boundary_note=(
+            "StayLong prepares and coordinates information only; it does not determine "
+            "eligibility, diagnose needs, submit applications or choose providers."
+        ),
+    )
 
 
 class IntakeAgent:
@@ -138,6 +202,10 @@ class IntakeAgent:
             prompt=f"Supplied concern:\n{concern}",
         )
         return IntakeOutput.from_model_response(response)
+
+    def prepare_assessment_pack(self, concern: str) -> AssessmentPreparationPack:
+        """Turn validated intake into a non-clinical pack without another model call."""
+        return _assessment_pack(self.intake(concern))
 
 
 def build_vertex_adk_intake_agent(
