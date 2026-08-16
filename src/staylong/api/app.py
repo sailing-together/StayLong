@@ -2,11 +2,13 @@
 
 import secrets
 from collections.abc import Callable
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.staticfiles import StaticFiles
 
 from staylong.services.cases import CaseRepository, InMemoryCaseRepository
 
@@ -85,5 +87,11 @@ def create_app(
             )
             for concern in cases.list_concerns(case_id=case_id)
         ]
+
+    app.mount(
+        "/",
+        StaticFiles(directory=Path(__file__).parent / "static", html=True),
+        name="family-ui",
+    )
 
     return app
