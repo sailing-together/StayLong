@@ -73,3 +73,65 @@ existing service tests cannot import their `tests.services` helper.
 - `tests/agents/test_intake.py`
 - `tests/agents/test_coordinator.py`
 - `pyproject.toml`
+
+## Review-finding remediation
+
+### Changes
+
+- Replaced the unavailable `gemini-3.5-pro` identifier with the current
+  competition-compatible Flash default, `gemini-3.6-flash`.
+- Added `VertexRuntimeConfig`, which requires and validates
+  `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, and
+  `GOOGLE_GENAI_USE_VERTEXAI=true` before ADK construction. The runtime
+  requirements are documented in `docs/technology-and-compliance.md`.
+- Replaced the prompt-only ADK factory returns with bounded application
+  wrappers. The intake factory requires an injected ADK Runner JSON executor,
+  then routes every request through deterministic emergency routing and
+  `IntakeOutput` schema validation. The coordinator factory returns only the
+  policy-bounded coordinator, so absent/stale approval remains a draft and no
+  raw ADK object is exposed as an action bypass.
+- Updated the optional dependency to `google-adk[gcp]>=2.0.0,<3.0.0`, matching
+  the Google ADK Vertex runtime extra.
+
+### TDD evidence
+
+1. Added factory-contract tests before the Vertex configuration module and
+   wrapper factory interfaces existed. RED:
+
+   ```text
+   .venv/bin/python -m pytest tests/agents/test_vertex_factories.py -q
+   3 failed: missing staylong.agents.vertex and unexpected factory arguments
+   ```
+
+2. Added validated runtime configuration, injectable ADK constructor/executor
+   boundaries, and wrapper factories. GREEN:
+
+   ```text
+   9 passed in 0.01s (factory, intake, and coordinator contracts)
+   ```
+
+3. Changed the factory expectation to the current valid Flash model identifier
+   before changing production configuration. RED:
+
+   ```text
+   2 failed: gemini-3-flash-preview != gemini-3.6-flash
+   ```
+
+4. Set `VERTEX_GEMINI_MODEL` to `gemini-3.6-flash`, then reran the focused,
+   full, lint, and whitespace checks.
+
+### Final remediation verification
+
+```text
+.venv/bin/python -m pytest tests/agents/test_vertex_factories.py tests/agents/test_intake.py tests/agents/test_coordinator.py -q
+9 passed in 0.01s
+
+.venv/bin/python -m pytest -q
+35 passed in 0.02s
+
+.venv/bin/python -m ruff check src tests
+All checks passed!
+
+git diff --check
+exit 0 (no whitespace errors)
+```

@@ -1,14 +1,19 @@
 """Approval-aware coordination planning with no tool execution capability."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
 from staylong.agents.prompts import COORDINATION_SYSTEM_INSTRUCTION
+from staylong.agents.vertex import (
+    AdkAgentFactory,
+    VertexRuntimeConfig,
+    build_google_adk_agent,
+)
 from staylong.domain.models import ActionApproval
 from staylong.policy.approvals import has_matching_approval
 
-VERTEX_GEMINI_MODEL = "gemini-3.5-pro"
 CoordinationStatus = Literal["draft", "approved_action"]
 
 
@@ -48,6 +53,10 @@ class CoordinationResult:
 class CoordinationAgent:
     """Derives an approval-bounded action proposal from already supplied facts."""
 
+    def __init__(self, *, adk_agent: object | None = None) -> None:
+        """Retain the configured ADK agent without exposing it as a bypass surface."""
+        self._adk_agent = adk_agent
+
     def coordinate(
         self,
         *,
@@ -82,15 +91,22 @@ class CoordinationAgent:
         )
 
 
-def build_vertex_adk_coordination_agent() -> object:
-    """Build the production Google ADK configuration without executing a model call."""
-    try:
-        from google.adk.agents import Agent
-    except ImportError as error:  # pragma: no cover - exercised only in production setup
-        raise RuntimeError("Install staylong[agents] to construct the Google ADK agent.") from error
+def build_vertex_adk_coordination_agent(
+    *,
+    agent_factory: AdkAgentFactory = build_google_adk_agent,
+    environment: Mapping[str, str] | None = None,
+) -> CoordinationAgent:
+    """Build a coordinator wrapper rather than returning a prompt-only ADK agent.
 
-    return Agent(
+    The configured ADK object is deliberately private. ``coordinate`` continues
+    to run the durable approval predicate and only returns an action draft when
+    approval is absent or stale; it provides no external tool capability.
+    """
+    vertex_config = VertexRuntimeConfig.from_environment(environment)
+    adk_agent = agent_factory(
         name="staylong_coordinator",
-        model=VERTEX_GEMINI_MODEL,
+        model_id=vertex_config.model_id,
         instruction=COORDINATION_SYSTEM_INSTRUCTION,
+        vertex_config=vertex_config,
     )
+    return CoordinationAgent(adk_agent=adk_agent)
