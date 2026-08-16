@@ -27,6 +27,8 @@
 3. **Coordinator Agent** selects the next approved workflow step, prepares action drafts, and uses Cloud Tasks/Pub/Sub to continue autonomously after events or deadlines.
 4. **Approval Gate** is enforced in application code before any disclosure or external tool call. The Calendar event is created only after explicit human approval.
 
+The detailed training-informed architecture choices are recorded in [official training guidance](official-training-guidance.md).
+
 ## Rules compliance matrix
 
 | Rule requirement | StayLong implementation evidence |

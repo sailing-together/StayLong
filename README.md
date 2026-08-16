@@ -15,6 +15,7 @@ StayLong is designed for the **Taskmaster** track of the All Things Agentic Hack
 See [competition references](docs/competition-references.md) and the public [architecture](docs/architecture.md).
 The locked stack and live-submission compliance checklist are in [technology and compliance](docs/technology-and-compliance.md).
 Task documentation, human-action gates and pull-request practice follow the [delivery standards](docs/delivery-standards.md).
+Official Google training and the implementation choices it drives are in [official training guidance](docs/official-training-guidance.md).
 
 ## Repository layout
 
