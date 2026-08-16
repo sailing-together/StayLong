@@ -12,7 +12,7 @@ StayLong helps families prepare, coordinate and track. It does **not** diagnose 
 
 StayLong is designed for the **Taskmaster** track of the All Things Agentic Hackathon. It will use Gemini 3.5+ through Vertex AI, Google ADK, and Google Cloud services (Cloud Run, Firestore, Cloud Tasks and Pub/Sub).
 
-See [competition references](docs/competition-references.md), the [product design](docs/superpowers/specs/2026-08-16-staylong-design.md), and the [implementation plan](docs/superpowers/plans/2026-08-16-staylong-mvp.md).
+See [competition references](docs/competition-references.md) and the public [architecture](docs/architecture.md).
 The locked stack and live-submission compliance checklist are in [technology and compliance](docs/technology-and-compliance.md).
 Task documentation, human-action gates and pull-request practice follow the [delivery standards](docs/delivery-standards.md).
 
@@ -26,4 +26,4 @@ Task documentation, human-action gates and pull-request practice follow the [del
 
 ## Development status
 
-This initial commit establishes the delivery plan and secure deployment foundation. Product code begins only after the design and implementation plan are reviewed.
+This repository contains the public project materials and secure deployment foundation. Product code begins task-by-task through the linked Linear plan.

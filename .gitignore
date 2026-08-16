@@ -14,3 +14,4 @@ src/*.egg-info/
 *.tfstate
 *.tfstate.*
 tfplan
+_private/

@@ -17,7 +17,7 @@ Repository documentation is English-first. Chinese clarifications may be added f
 
 ## Human action required
 
-Codex will identify any step that requires the project owner to act using this exact heading:
+The delivery agent will identify any step that requires the project owner to act using this exact heading:
 
 ```md
 ## Human action required
@@ -28,11 +28,11 @@ Codex will identify any step that requires the project owner to act using this e
 - **Safe to continue after:** the observable confirmation state.
 ```
 
-Examples include signing in, granting OAuth consent, creating or billing a Google Cloud project, approving a protected GitHub environment, adding secrets/variables, authorising a Calendar account, paying fees, or submitting the final Devpost entry. Codex will not silently make those decisions.
+Examples include signing in, granting OAuth consent, creating or billing a Google Cloud project, approving a protected GitHub environment, adding secrets/variables, authorising a Calendar account, paying fees, or submitting the final Devpost entry. Those decisions will never be made silently.
 
 ## Autonomous engineering work
 
-Unless a human-action gate applies, Codex is authorised to:
+Unless a human-action gate applies, the delivery agent is authorised to:
 
 - create task-scoped branches and commits;
 - update code, tests, Terraform, GitHub Actions and project documentation;
