@@ -12,8 +12,10 @@ SCHEMA_VERSION = "v1"
 SUPPORTED_EVENT_TYPES = frozenset(
     {
         "concern.created",
+        "assessment.pack.prepared",
         "approval.granted",
         "reminder.due",
+        "coordination.completed",
     }
 )
 
