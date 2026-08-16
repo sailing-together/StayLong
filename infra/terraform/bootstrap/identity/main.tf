@@ -2,8 +2,8 @@ terraform {
   backend "gcs" {}
 }
 
-module "bootstrap_identity" {
-  source = "../../../../modules/foundations/bootstrap_identity"
+module "github_federation" {
+  source = "../../modules/foundations/github_federation"
 
   project_id        = var.project_id
   github_repository = var.github_repository

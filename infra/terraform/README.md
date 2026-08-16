@@ -7,32 +7,36 @@ Federation (WIF); Google service-account keys must never be stored in GitHub.
 ## Layout
 
 ```text
+bootstrap/                 # one-time, human-authorised local setup only
+  state/                   # creates the GCS Terraform state backend
+  identity/                # creates GitHub WIF and service identities
 modules/
-  base/          # atomic capabilities; no StayLong, repository, or environment values
-  foundations/   # reusable compositions of base modules
+  base/                    # atomic capabilities with no product semantics
+  foundations/             # reusable capability compositions
 projects/staylong/sandbox/
-  bootstrap-state/     # GCS state bucket; local state for the first apply
-  bootstrap-identity/  # WIF and least-privilege GitHub identities
-  platform/            # APIs, Artifact Registry, and runtime identity
-  app/                 # Cloud Run service configuration
+  platform/                # APIs, Artifact Registry, runtime identity
+  app/                     # Cloud Run service configuration
 ```
 
-Only `projects/staylong/sandbox` contains StayLong-specific names, the GitHub
-repository, environment, region, image, service name, or secret references.
+`bootstrap` is deliberately separate from `projects`: it is a one-time
+initialisation process, not a deployable application component. Only
+`projects/staylong/sandbox` knows StayLong-specific names, the GitHub
+repository, sandbox region, image, service name, and secret references.
 
-## Lifecycle
+## One-time bootstrap
 
-1. A human with authorised local Google Cloud credentials creates
-   `bootstrap-state` using local Terraform state. It does not use the bucket it
-   is creating as its own backend.
-2. Terraform state is migrated to that GCS bucket. Then a human performs the
-   initial local `bootstrap-identity` apply: WIF cannot create its own identity.
-3. GitHub Actions can then run component-scoped plan/apply for `platform` and
-   `app` using WIF. The manual `terraform.yml` workflow is sandbox-only.
+1. A human with authorised local Google Cloud credentials applies
+   `bootstrap/state` using local Terraform state. This root does not use the
+   bucket it creates as its own backend.
+2. State for `bootstrap/identity`, `platform`, and `app` is then migrated to
+   that GCS bucket. A human applies `bootstrap/identity` locally because WIF
+   cannot create its own trusted identity.
+3. Only after these two local operations are complete may GitHub Actions run
+   component-scoped plan/apply/destroy for `platform` and `app`.
 
-`bootstrap-state` and `bootstrap-identity` are long-lived roots. They have no
-normal workflow destroy path. Their exceptional teardown is deliberately kept
-out of automation and documented in the break-glass runbook.
+The bootstrap roots are long-lived and have no GitHub Actions lifecycle or
+ordinary destroy path. Their exceptional teardown remains a separate,
+human-authorised break-glass procedure.
 
 ## GitHub sandbox configuration
 

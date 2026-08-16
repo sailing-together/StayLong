@@ -1,5 +1,5 @@
-module "bootstrap_state" {
-  source = "../../../../modules/foundations/bootstrap_state"
+module "state_backend" {
+  source = "../../modules/foundations/state_backend"
 
   project_id           = var.project_id
   location             = var.location
