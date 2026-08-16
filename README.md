@@ -1,5 +1,7 @@
 # StayLong
 
+See the [product brief](docs/product-brief.md) for policy context, MVP workflow and safety boundaries.
+
 > Help older Australians live independently at home for longer.
 
 StayLong is a family-side, event-driven coordination agent for ageing in place. It turns a home-living concern into an accountable plan: prepare for the right formal assessment, coordinate authorised family members and providers, and follow up until every approved action is complete.
