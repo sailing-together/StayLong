@@ -39,6 +39,13 @@ and authenticated case-flow checks against the deployed URL. Configure
 `STAYLONG_API_TOKEN` as a masked `sandbox` GitHub Environment secret before
 using the deployment workflow.
 
+The repeatable UI/API workflow contract lives in
+[`tests/api/test_ui_workflow.py`](tests/api/test_ui_workflow.py). It loads the
+served HTML, verifies the browser form controls and JavaScript entry point,
+then submits the same authenticated request and reads the resulting concern
+trail through the API. It runs with the normal `pytest` command and does not
+require a live Cloud Run service.
+
 ## Development status
 
 This repository contains the public project materials and secure deployment foundation. Product code begins task-by-task through the linked Linear plan.
