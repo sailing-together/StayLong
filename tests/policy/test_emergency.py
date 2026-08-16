@@ -29,3 +29,20 @@ def test_non_emergency_concerns_route_normally(message: str) -> None:
 
 def test_router_accepts_only_the_message_and_exposes_no_callback_boundary() -> None:
     assert tuple(signature(route_concern).parameters) == ("message",)
+
+
+def test_emergency_concern_has_a_user_visible_triple_zero_response() -> None:
+    from staylong.policy.emergency import emergency_response
+
+    response = emergency_response("My parent is unconscious.")
+
+    assert response is not None
+    assert response.call_number == "000"
+    assert response.heading == "Call Triple Zero (000) now"
+    assert "cannot assess" in response.message
+
+
+def test_non_emergency_concern_has_no_emergency_response() -> None:
+    from staylong.policy.emergency import emergency_response
+
+    assert emergency_response("Mum would like a handrail installed.") is None
