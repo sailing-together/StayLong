@@ -23,6 +23,8 @@ jobs:
         run: ruff check .
       - name: Test
         run: pytest
+      - name: Run policy evaluation fixtures
+        run: PYTHONPATH=src python tools/policy_evaluations.py
 
   terraform:
     name: Terraform static validation
