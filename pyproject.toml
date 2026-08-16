@@ -8,10 +8,10 @@ version = "0.1.0"
 description = "An event-driven ageing-in-place coordination agent"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["google-cloud-firestore>=2.16"]
+dependencies = ["fastapi>=0.115", "google-cloud-firestore>=2.16"]
 
 [project.optional-dependencies]
-dev = ["jsonschema>=4.23", "pytest>=8.3", "ruff>=0.8"]
+dev = ["httpx2>=0.1", "jsonschema>=4.23", "pytest>=8.3", "ruff>=0.8"]
 agents = ["google-adk[gcp]>=2.0.0,<3.0.0"]
 async_dispatch = ["google-cloud-pubsub>=2.28", "google-cloud-tasks>=2.19"]
 
