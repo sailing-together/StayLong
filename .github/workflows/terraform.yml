@@ -1,0 +1,51 @@
+name: Terraform
+
+on:
+  pull_request:
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply reviewed Terraform changes to the selected environment"
+        required: true
+        default: false
+        type: boolean
+      environment:
+        description: "GitHub environment holding GCP configuration"
+        required: true
+        default: production
+        type: choice
+        options: [production]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  plan:
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'production' }}
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ github.event_name == 'workflow_dispatch' && inputs.apply && vars.GCP_DEPLOY_SERVICE_ACCOUNT || vars.GCP_TERRAFORM_SERVICE_ACCOUNT }}
+      - name: Format check
+        run: terraform fmt -check -recursive
+      - name: Initialise
+        run: terraform init -input=false
+      - name: Validate
+        run: terraform validate
+      - name: Plan
+        run: terraform plan -input=false -out=tfplan -var="project_id=${{ vars.GCP_PROJECT_ID }}"
+      - name: Apply reviewed plan
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply }}
+        run: terraform apply -input=false tfplan
