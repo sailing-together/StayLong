@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "An event-driven ageing-in-place coordination agent"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["google-cloud-firestore>=2.16"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3", "ruff>=0.8"]

@@ -43,14 +43,14 @@ class IdempotentEventProcessor:
 
 
 class FirestoreEventRepository:
-    """Firestore event adapter with atomic document-identity deduplication."""
+    """Firestore event adapter with atomic global event-identity deduplication."""
 
     def __init__(self, client: Any | None = None) -> None:
         self._client = client or _new_firestore_client()
 
     def append_if_new(self, event: TimelineEvent) -> bool:
         try:
-            self._events(event.case_id).document(event.event_id).create(_event_document(event))
+            self._event_documents().document(event.event_id).create(_event_document(event))
         except Exception as error:
             if _is_already_exists(error):
                 return False
@@ -59,11 +59,12 @@ class FirestoreEventRepository:
 
     def list_events(self, *, case_id: str) -> tuple[TimelineEvent, ...]:
         return tuple(
-            _event_from_document(document.to_dict()) for document in self._events(case_id).stream()
+            _event_from_document(document.to_dict())
+            for document in self._event_documents().where("case_id", "==", case_id).stream()
         )
 
-    def _events(self, case_id: str) -> Any:
-        return self._client.collection("cases").document(case_id).collection("events")
+    def _event_documents(self) -> Any:
+        return self._client.collection("events")
 
 
 def _new_firestore_client() -> Any:
