@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="StayLong family home-support coordination">
+    <title>StayLong | Home support coordination</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <header class="site-header">
+      <div class="brand-mark" aria-hidden="true">SL</div>
+      <div>
+        <p class="eyebrow">STAYLONG</p>
+        <p class="tagline">Home support coordination</p>
+      </div>
+    </header>
+    <main id="main-content" class="shell">
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">For authorised family members</p>
+        <h1 id="page-title">Help someone stay independent at home.</h1>
+        <p>Capture a concern, prepare for an assessment, and keep approved next steps visible.</p>
+      </section>
+
+      <section class="card" aria-labelledby="new-concern-title">
+        <h2 id="new-concern-title">Start with a home concern</h2>
+        <p class="helper">Describe what you have noticed in plain language. StayLong does not diagnose or provide medical advice.</p>
+        <form id="concern-form">
+          <label for="api-token">Access token</label>
+          <input id="api-token" name="api-token" type="password" autocomplete="current-password" required>
+          <label for="concern-summary">What would you like help coordinating?</label>
+          <textarea id="concern-summary" name="concern-summary" rows="5" maxlength="2000" required aria-describedby="summary-help"></textarea>
+          <p id="summary-help" class="helper">Do not include information you are not authorised to share.</p>
+          <button type="submit">Create a case</button>
+        </form>
+        <p id="form-status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="card" aria-labelledby="case-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Your workspace</p>
+            <h2 id="case-title">Current case</h2>
+          </div>
+          <span id="case-status" class="badge">No case yet</span>
+        </div>
+        <p id="case-summary" class="empty-state">Create a case to see its coordination trail here.</p>
+        <ul id="case-concerns" class="concern-list" aria-label="Case concerns"></ul>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <p>StayLong prepares and coordinates information. It does not diagnose, decide eligibility, submit applications, or make payments.</p>
+    </footer>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

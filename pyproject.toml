@@ -28,3 +28,6 @@ select = ["E", "F", "I", "UP"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+staylong = ["api/static/*"]
