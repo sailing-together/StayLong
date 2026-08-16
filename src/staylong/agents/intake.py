@@ -5,13 +5,19 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 
 from staylong.agents.prompts import INTAKE_SYSTEM_INSTRUCTION
+from staylong.agents.vertex import (
+    AdkAgentFactory,
+    AdkJsonExecutor,
+    AdkJsonProvider,
+    VertexRuntimeConfig,
+    build_google_adk_agent,
+)
 from staylong.policy.emergency import EMERGENCY_ROUTE, route_concern
 
 HomeArea = Literal["bathroom", "entry", "bedroom", "kitchen", "other"]
 NextStep = Literal[
     "prepare_assessment_pack", "request_family_confirmation", "other"
 ]
-VERTEX_GEMINI_MODEL = "gemini-3.5-pro"
 
 
 class StructuredModelProvider(Protocol):
@@ -120,19 +126,24 @@ class IntakeAgent:
         return IntakeOutput.from_model_response(response)
 
 
-def build_vertex_adk_intake_agent() -> object:
-    """Build the production Google ADK configuration without executing a model call.
+def build_vertex_adk_intake_agent(
+    *,
+    executor: AdkJsonExecutor,
+    agent_factory: AdkAgentFactory = build_google_adk_agent,
+    environment: Mapping[str, str] | None = None,
+) -> IntakeAgent:
+    """Build an intake wrapper that enforces safety and schema boundaries around ADK.
 
-    Callers run this ADK agent through a JSON provider adapter and then pass its response
-    through :class:`IntakeOutput`; tests inject ``StructuredModelProvider`` instead.
+    ``executor`` is the application-owned ADK Runner bridge. It is intentionally
+    injected because Runner/session lifecycle belongs to the serving application;
+    the wrapper never returns a prompt-only ADK agent that callers could invoke
+    around deterministic emergency routing or schema validation.
     """
-    try:
-        from google.adk.agents import Agent
-    except ImportError as error:  # pragma: no cover - exercised only in production setup
-        raise RuntimeError("Install staylong[agents] to construct the Google ADK agent.") from error
-
-    return Agent(
+    vertex_config = VertexRuntimeConfig.from_environment(environment)
+    adk_agent = agent_factory(
         name="staylong_intake",
-        model=VERTEX_GEMINI_MODEL,
+        model_id=vertex_config.model_id,
         instruction=INTAKE_SYSTEM_INSTRUCTION,
+        vertex_config=vertex_config,
     )
+    return IntakeAgent(provider=AdkJsonProvider(agent=adk_agent, executor=executor))
