@@ -1,0 +1,12 @@
+{
+  "project": "staylong",
+  "github_repository": "sailing-together/StayLong",
+  "github_branch": "main",
+  "artifact_registry_repository_id": "staylong",
+  "runtime_account_id": "staylong-runtime",
+  "cloud_run_service_name": "staylong",
+  "initial_image": "gcr.io/google-samples/hello-app:1.0",
+  "labels": {
+    "product": "staylong"
+  }
+}

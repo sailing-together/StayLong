@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "region", "terraform_state_prefix", "labels"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "region": {"type": "string", "pattern": "^[a-z]+-[a-z]+[0-9]$"},
+    "terraform_state_prefix": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
+    "labels": {"type": "object", "additionalProperties": {"type": "string"}}
+  }
+}

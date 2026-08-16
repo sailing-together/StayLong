@@ -10,5 +10,5 @@ terraform {
 }
 
 provider "google" {
-  project = var.project_id
+  project = local.config.project_id
 }

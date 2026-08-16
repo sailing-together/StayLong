@@ -8,49 +8,59 @@ Federation (WIF); Google service-account keys must never be stored in GitHub.
 
 ```text
 bootstrap/                 # one-time, human-authorised local setup only
-  state/                   # creates the GCS Terraform state backend
-  identity/                # creates GitHub WIF and service identities
+  state/
+  identity/
+components/                # reusable Terraform roots operated by GitHub Actions
+  platform/
+  app/
 modules/
-  base/                    # atomic capabilities with no product semantics
-  foundations/             # reusable capability compositions
-projects/staylong/sandbox/
-  platform/                # APIs, Artifact Registry, runtime identity
-  app/                     # Cloud Run service configuration
+  base/
+  foundations/
+projects/config/           # non-sensitive project and environment selection data
+  common-environment.json
+  sandbox.json
+  staylong.json
+  schemas/
 ```
 
-`bootstrap` is deliberately separate from `projects`: it is a one-time
-initialisation process, not a deployable application component. Only
-`projects/staylong/sandbox` knows StayLong-specific names, the GitHub
-repository, sandbox region, image, service name, and secret references.
+There is no project-specific Terraform root. Every root receives only the
+non-sensitive selection variables `project_config` and `environment_config`.
+It reads the three JSON documents and uses the deterministic merge order:
+`common-environment < environment < project`. JSON Schema validation is a
+mandatory workflow step before Terraform initialisation or planning.
 
 ## One-time bootstrap
 
-1. A human with authorised local Google Cloud credentials applies
-   `bootstrap/state` using local Terraform state. This root does not use the
-   bucket it creates as its own backend.
-2. State for `bootstrap/identity`, `platform`, and `app` is then migrated to
-   that GCS bucket. A human applies `bootstrap/identity` locally because WIF
-   cannot create its own trusted identity.
-3. Only after these two local operations are complete may GitHub Actions run
-   component-scoped plan/apply/destroy for `platform` and `app`.
+1. A human with authorised local Google Cloud credentials validates the JSON
+   selections and applies `bootstrap/state` using local Terraform state.
+2. State for `bootstrap/identity`, `components/platform`, and `components/app`
+   is migrated to the created GCS bucket. A human applies `bootstrap/identity`
+   locally because WIF cannot create its own trusted identity.
+3. GitHub Actions can then operate only `platform` and `app` through the
+   sandbox workflow.
 
-The bootstrap roots are long-lived and have no GitHub Actions lifecycle or
-ordinary destroy path. Their exceptional teardown remains a separate,
-human-authorised break-glass procedure.
+Example local validation:
 
-## GitHub sandbox configuration
+```bash
+PYTHONPATH=src python tools/terraform_config.py \
+  --project-config staylong.json \
+  --environment-config sandbox.json
+terraform -chdir=infra/terraform/bootstrap/state init -backend=false
+terraform -chdir=infra/terraform/bootstrap/state apply \
+  -var='project_config=staylong.json' \
+  -var='environment_config=sandbox.json'
+```
 
-Configure these GitHub Environment variables for `sandbox` after the human
-bootstrap:
+Bootstrap roots are deliberately absent from `terraform.yml`. Their exceptional
+teardown remains a separate, human-authorised break-glass procedure.
 
-- `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`
-- `GCP_TERRAFORM_PLANNER_SERVICE_ACCOUNT`, `GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT`
-- `GCP_DEPLOY_SERVICE_ACCOUNT`, `GCP_RUNTIME_SERVICE_ACCOUNT`
-- `GCP_REGION`, `TF_STATE_BUCKET`, `STAYLONG_APP_IMAGE`
+## Configuration safety
 
-Set the `sandbox` GitHub Environment to require approval for changes. A
-`platform` or `app` destroy additionally requires the exact workflow input
-`DESTROY_SANDBOX`.
+Committed configuration is non-sensitive. The shared validator rejects unknown
+selection filenames, schema-invalid values, unknown properties, and keys that
+look like secrets, passwords, tokens, credentials, private keys, or API keys.
+Secrets belong in the approved Google Cloud and GitHub environment mechanisms,
+not these JSON files.
 
 ## Application delivery
 

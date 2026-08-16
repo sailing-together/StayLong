@@ -1,3 +1,7 @@
+terraform {
+  backend "gcs" {}
+}
+
 locals {
   config_root = "${path.module}/../../projects/config"
   common      = jsondecode(file("${local.config_root}/common-environment.json"))
@@ -8,10 +12,11 @@ locals {
   })
 }
 
-module "state_backend" {
-  source = "../../modules/foundations/state_backend"
+module "sandbox_platform" {
+  source = "../../modules/foundations/sandbox_platform"
 
-  project_id  = local.config.project_id
-  location    = local.config.region
-  bucket_name = local.config.state_bucket_name
+  project_id                      = local.config.project_id
+  region                          = local.config.region
+  artifact_registry_repository_id = local.config.artifact_registry_repository_id
+  runtime_account_id              = local.config.runtime_account_id
 }
