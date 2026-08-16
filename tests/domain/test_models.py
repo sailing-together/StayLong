@@ -7,10 +7,12 @@ def test_authorised_contact_gets_stable_id_and_utc_timestamp() -> None:
     from staylong.domain.models import AuthorisedContact
 
     contact = AuthorisedContact(name="Alex Chen", relationship="daughter")
+    second_contact = AuthorisedContact(name="Sam Chen", relationship="son")
 
     assert contact.contact_id
+    assert second_contact.contact_id
+    assert contact.contact_id != second_contact.contact_id
     assert contact.created_at.tzinfo is UTC
-    assert contact.contact_id == contact.contact_id
 
 
 def test_concern_is_immutable_and_records_its_case() -> None:
@@ -62,6 +64,15 @@ def test_timeline_event_is_an_immutable_audit_record() -> None:
 
     assert event.event_id
     assert event.occurred_at.tzinfo is UTC
+    assert event.details == {"approval_id": "approval-001"}
+
+    try:
+        event.details["approval_id"] = "approval-002"  # type: ignore[index]
+    except TypeError:
+        pass
+    else:
+        raise AssertionError("Timeline event details must be immutable")
+
     assert event.details == {"approval_id": "approval-001"}
 
     try:
