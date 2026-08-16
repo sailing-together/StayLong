@@ -28,6 +28,7 @@ flowchart LR
 | Cloud Tasks | Schedules due-date checks, reminder retries and escalation work. |
 | Pub/Sub | Carries event notifications such as `concern.created`, `approval.granted`, `task.overdue` and `assessment.outcome.recorded`. |
 | Tool adapters | Calendar, email/SMS and provider-directory adapters. Each adapter validates authority and returns a structured result. |
+| Evaluation fixtures | Synthetic cases that test safety routing, approval enforcement, recovery and idempotent actions before deployment. |
 
 ## Core event flow
 
@@ -39,6 +40,16 @@ flowchart LR
 6. The action tool executes once, records an idempotency key, and emits an event.
 7. A scheduled worker detects overdue work and escalates according to household rules.
 8. An assessment outcome moves the case to the next workflow stage; it never creates a clinical prescription or funding decision.
+
+## Workflow integrity
+
+- `CaseStatus` is a closed application-level state machine. Gemini may produce structured facts and drafts within a state but cannot choose a safety, consent or approval transition.
+- Each persisted checkpoint includes the case state/version, workflow version, correlation ID, wake-up time and required approval reference.
+- Before an external call, the service writes an immutable action intent and atomically claims its idempotency key. A retry returns the saved result instead of performing the action again.
+- A Cloud Tasks worker re-reads the latest case before acting. A stale or superseded task exits without a side effect.
+- The model receives a minimum typed context envelope rather than unrestricted household history. Versioned preparation packs are case artifacts visible to the approver.
+
+The design rationale and MVP priorities are recorded in [training-informed improvements](training-informed-improvements.md).
 
 ## Security and privacy boundaries
 
