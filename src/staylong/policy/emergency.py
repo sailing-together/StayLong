@@ -12,6 +12,14 @@ EMERGENCY_TERMS = frozenset(
         "not breathing",
     }
 )
+MEDICAL_TRIAGE_TERMS = frozenset(
+    {
+        "medically safe",
+        "should i see a doctor",
+        "should i wait",
+        "what medical care",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +36,11 @@ def route_concern(message: str) -> str:
     if any(term in message.casefold() for term in EMERGENCY_TERMS):
         return EMERGENCY_ROUTE
     return NORMAL_ROUTE
+
+
+def requires_medical_triage_refusal(message: str) -> bool:
+    """Identify direct medical-triage requests that must not reach a model."""
+    return any(term in message.casefold() for term in MEDICAL_TRIAGE_TERMS)
 
 
 def emergency_response(message: str) -> EmergencyResponse | None:

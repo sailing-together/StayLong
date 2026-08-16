@@ -4,7 +4,7 @@ from inspect import signature
 
 import pytest
 
-from staylong.policy.emergency import EMERGENCY_TERMS, route_concern
+from staylong.policy.emergency import EMERGENCY_TERMS, emergency_response, route_concern
 
 
 @pytest.mark.parametrize(
@@ -43,6 +43,16 @@ def test_emergency_concern_has_a_user_visible_triple_zero_response() -> None:
 
 
 def test_non_emergency_concern_has_no_emergency_response() -> None:
-    from staylong.policy.emergency import emergency_response
-
     assert emergency_response("Mum would like a handrail installed.") is None
+
+
+@pytest.mark.parametrize("term", sorted(EMERGENCY_TERMS))
+def test_every_configured_red_flag_returns_an_immediate_non_triage_instruction(term: str) -> None:
+    response = emergency_response(f"My parent has {term}. Should I wait?")
+
+    assert response is not None
+    assert response.call_number == "000"
+    assert "now" in response.heading.casefold()
+    assert "cannot assess" in response.message.casefold()
+    assert "wait" not in response.message.casefold()
+    assert "diagnos" not in response.message.casefold()
