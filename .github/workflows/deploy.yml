@@ -71,8 +71,47 @@ jobs:
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --tag "${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/staylong/app:${{ steps.revision.outputs.sha }}"
       - name: Publish only the Cloud Run application revision
+        env:
+          STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
         run: |
+          test -n "$STAYLONG_API_TOKEN" || {
+            echo "Configure the sandbox GitHub environment secret STAYLONG_API_TOKEN before deploying." >&2
+            exit 1
+          }
           gcloud run services update staylong \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="${{ vars.GCP_REGION }}" \
-            --image "${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/staylong/app:${{ steps.revision.outputs.sha }}"
+            --image "${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/staylong/app:${{ steps.revision.outputs.sha }}" \
+            --update-env-vars "STAYLONG_API_TOKEN=$STAYLONG_API_TOKEN"
+      - name: Resolve deployed service URL
+        id: service
+        run: |
+          service_url="$(gcloud run services describe staylong \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${{ vars.GCP_REGION }}" \
+            --format='value(status.url)')"
+          test -n "$service_url"
+          echo "url=$service_url" >> "$GITHUB_OUTPUT"
+      - name: Smoke-test deployed revision
+        env:
+          STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
+        run: |
+          test -n "$STAYLONG_API_TOKEN" || {
+            echo "Configure the sandbox GitHub environment secret STAYLONG_API_TOKEN before deploying." >&2
+            exit 1
+          }
+          python3 - <<'PY'
+          import json
+          import urllib.request
+
+          request = urllib.request.Request(
+              "${{ steps.service.outputs.url }}/healthz",
+              headers={"Accept": "application/json"},
+          )
+          with urllib.request.urlopen(request, timeout=15) as response:
+              assert response.status == 200
+              assert json.load(response) == {"status": "ok"}
+          PY
+          python3 tools/cloudrun_smoke.py \
+            --url "${{ steps.service.outputs.url }}" \
+            --token "$STAYLONG_API_TOKEN"
