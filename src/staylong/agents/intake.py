@@ -12,7 +12,11 @@ from staylong.agents.vertex import (
     _AdkJsonProvider,
     build_google_adk_agent,
 )
-from staylong.policy.emergency import EMERGENCY_ROUTE, route_concern
+from staylong.policy.emergency import (
+    EMERGENCY_ROUTE,
+    requires_medical_triage_refusal,
+    route_concern,
+)
 
 HomeArea = Literal["bathroom", "entry", "bedroom", "kitchen", "other"]
 NextStep = Literal[
@@ -32,6 +36,10 @@ class IntakeSchemaError(ValueError):
 
 class EmergencyRouteRequired(RuntimeError):
     """Raised before model use when deterministic emergency policy matches."""
+
+
+class MedicalTriageRefusalRequired(RuntimeError):
+    """Raised before model use for requests requiring clinical judgement."""
 
 
 def _required_string(value: object, field_name: str) -> str:
@@ -118,6 +126,11 @@ class IntakeAgent:
             raise EmergencyRouteRequired(
                 "This concern requires the emergency route. For urgent Australian emergencies, "
                 "call Triple Zero (000)."
+            )
+        if requires_medical_triage_refusal(concern):
+            raise MedicalTriageRefusalRequired(
+                "StayLong cannot provide medical triage. If the person may be in immediate "
+                "danger, call Triple Zero (000); otherwise contact a qualified clinician."
             )
 
         response = self._provider.generate_json(

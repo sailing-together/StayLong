@@ -71,3 +71,21 @@ def test_intake_uses_deterministic_emergency_routing_without_calling_the_model()
         IntakeAgent(provider=provider).intake("My parent is unconscious. Should I wait?")
 
     assert provider.requests == []
+
+
+@pytest.mark.parametrize(
+    "medical_question",
+    [
+        "Should I wait before getting help for this medical problem?",
+        "Can you tell me whether this is medically safe?",
+    ],
+)
+def test_intake_refuses_medical_triage_without_calling_the_model(medical_question: str) -> None:
+    from staylong.agents.intake import IntakeAgent, MedicalTriageRefusalRequired
+
+    provider = StaticProvider({})
+
+    with pytest.raises(MedicalTriageRefusalRequired, match="cannot provide medical triage"):
+        IntakeAgent(provider=provider).intake(medical_question)
+
+    assert provider.requests == []
