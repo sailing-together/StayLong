@@ -27,6 +27,18 @@ Official Google training and the implementation choices it drives are in [offici
 - `.github/workflows/` — CI, Terraform, and Cloud Run deployment automation
 - `docs/` — product, architecture, prompt, competition and delivery documentation
 
+## Runtime container and smoke test
+
+The Cloud Run image is built from [`Dockerfile`](Dockerfile) and starts
+`staylong.api.main:app` on the platform-provided `PORT` (default `8080`). The
+runtime requires the `STAYLONG_API_TOKEN` environment variable; it is never
+checked into the repository or printed by the smoke test. Pull requests build
+the image and run [`tools/cloudrun_smoke.py`](tools/cloudrun_smoke.py)
+against a local container, while the deployment workflow runs the same health
+and authenticated case-flow checks against the deployed URL. Configure
+`STAYLONG_API_TOKEN` as a masked `sandbox` GitHub Environment secret before
+using the deployment workflow.
+
 ## Development status
 
 This repository contains the public project materials and secure deployment foundation. Product code begins task-by-task through the linked Linear plan.
