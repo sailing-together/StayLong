@@ -35,6 +35,11 @@ variable "operator_project_roles" {
   ]
 }
 variable "deployer_project_roles" {
-  type    = list(string)
-  default = ["roles/artifactregistry.writer", "roles/run.admin", "roles/iam.serviceAccountUser"]
+  type = list(string)
+  default = [
+    "roles/artifactregistry.writer",
+    "roles/cloudbuild.builds.editor",
+    "roles/iam.serviceAccountUser",
+    "roles/run.admin",
+  ]
 }

@@ -1,39 +1,78 @@
-name: Deploy Cloud Run
+name: Deploy application revision
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "Dockerfile"
+      - "pyproject.toml"
+      - "uv.lock"
   workflow_dispatch:
     inputs:
-      environment:
-        description: "GitHub environment holding GCP configuration"
+      commit_sha:
+        description: "Commit SHA already reachable from main to deploy"
         required: true
-        default: production
-        type: choice
-        options: [production]
+        type: string
 
 permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: deploy-sandbox
+  cancel-in-progress: false
+
 jobs:
-  deploy:
-    if: github.ref == 'refs/heads/main'
+  terraform_readiness:
+    name: Verify Terraform-managed platform and service
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: sandbox
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_PLANNER_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Verify Terraform-managed prerequisites
+        run: |
+          gcloud artifacts repositories describe staylong \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --location="${{ vars.GCP_REGION }}"
+          gcloud run services describe staylong \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${{ vars.GCP_REGION }}"
+
+  deploy:
+    name: Build and deploy approved application revision
+    needs: terraform_readiness
+    runs-on: ubuntu-latest
+    environment: sandbox
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha || github.sha }}
+      - name: Verify deployment commit belongs to main
+        id: revision
+        run: |
+          deployment_sha="$(git rev-parse HEAD)"
+          git fetch origin main
+          git merge-base --is-ancestor "$deployment_sha" origin/main
+          echo "sha=$deployment_sha" >> "$GITHUB_OUTPUT"
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Build and push image
+      - name: Build and publish immutable image
         run: |
           gcloud builds submit \
-            --tag "${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/staylong/app:${{ github.sha }}"
-      - name: Deploy Cloud Run revision
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --tag "${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/staylong/app:${{ steps.revision.outputs.sha }}"
+      - name: Publish only the Cloud Run application revision
         run: |
-          gcloud run deploy staylong \
-            --image "${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/staylong/app:${{ github.sha }}" \
-            --region "${{ vars.GCP_REGION }}" \
-            --service-account "${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}" \
-            --no-allow-unauthenticated
+          gcloud run services update staylong \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${{ vars.GCP_REGION }}" \
+            --image "${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/staylong/app:${{ steps.revision.outputs.sha }}"

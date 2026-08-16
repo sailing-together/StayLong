@@ -47,3 +47,12 @@ bootstrap:
 Set the `sandbox` GitHub Environment to require approval for changes. A
 `platform` or `app` destroy additionally requires the exact workflow input
 `DESTROY_SANDBOX`.
+
+## Application delivery
+
+`deploy.yml` runs automatically only when application files merge to `main`,
+or manually for a selected commit SHA that is already reachable from `main`.
+It first verifies the Terraform-managed Artifact Registry and Cloud Run service
+exist. It then publishes an immutable image and updates only the Cloud Run
+image revision; it never creates the repository, service, service account, or
+access policy.
