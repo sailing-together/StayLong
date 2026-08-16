@@ -74,3 +74,42 @@ git diff --check            -> exit 0 (no whitespace errors)
   emulator-backed test when infrastructure and cloud dependencies are in scope.
 - Event ids are domain-generated UUIDs. Incoming integrations must preserve the
   original `event_id` on retries for the idempotency boundary to take effect.
+
+## Review-finding remediation
+
+### Changes
+
+- Declared `google-cloud-firestore>=2.16` as a runtime dependency, so a clean
+  project installation includes the package imported by the production
+  Firestore adapters.
+- Moved Firestore events to the global `events/{event_id}` collection. Atomic
+  document creation now deduplicates one event id across every case, matching
+  `InMemoryEventRepository` semantics. `list_events(case_id=...)` uses a
+  Firestore `case_id` equality query, retaining case-scoped timeline reads.
+
+### TDD evidence
+
+1. Added a parameterized regression test before changing the Firestore
+   implementation. It sends a second event with the same `event_id`, a
+   different `case_id`, and different payload to both adapters. RED:
+
+   ```text
+   .venv/bin/python -m pytest tests/services/test_events.py
+   1 failed, 4 passed: Firestore append_if_new returned True for the cross-case duplicate
+   ```
+
+2. Implemented global document identity and the case-filtered read query.
+   GREEN:
+
+   ```text
+   .venv/bin/python -m pytest tests/services/test_cases.py tests/services/test_events.py
+   7 passed in 0.01s
+   ```
+
+3. Final remediation verification:
+
+   ```text
+   .venv/bin/python -m pytest  -> 26 passed in 0.01s
+   .venv/bin/ruff check .      -> All checks passed!
+   git diff --check            -> exit 0 (no whitespace errors)
+   ```

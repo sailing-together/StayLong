@@ -44,6 +44,24 @@ class FakeCollection:
             if document._data is not None
         )
 
+    def where(self, field_path: str, op_string: str, value: object) -> "FakeQuery":
+        assert op_string == "=="
+        return FakeQuery(self, field_path, value)
+
+
+class FakeQuery:
+    def __init__(self, collection: FakeCollection, field_path: str, value: object) -> None:
+        self._collection = collection
+        self._field_path = field_path
+        self._value = value
+
+    def stream(self) -> tuple[FakeSnapshot, ...]:
+        return tuple(
+            snapshot
+            for snapshot in self._collection.stream()
+            if snapshot.to_dict()[self._field_path] == self._value
+        )
+
 
 class FakeFirestoreClient:
     def __init__(self) -> None:
