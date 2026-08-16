@@ -1,51 +1,124 @@
-name: Terraform
+name: Terraform sandbox lifecycle
 
 on:
-  pull_request:
-    paths:
-      - "infra/terraform/**"
-      - ".github/workflows/terraform.yml"
   workflow_dispatch:
     inputs:
-      apply:
-        description: "Apply reviewed Terraform changes to the selected environment"
-        required: true
-        default: false
-        type: boolean
       environment:
-        description: "GitHub environment holding GCP configuration"
+        description: "Target environment (sandbox only until production is reviewed)"
         required: true
-        default: production
+        default: sandbox
         type: choice
-        options: [production]
+        options: [sandbox]
+      component:
+        description: "Terraform component to operate"
+        required: true
+        type: choice
+        options: [bootstrap-state, bootstrap-identity, platform, app]
+      operation:
+        description: "Requested Terraform operation"
+        required: true
+        type: choice
+        options: [validate, plan, apply, destroy]
+      confirmation:
+        description: "Enter DESTROY_SANDBOX for platform/app destroy; otherwise leave blank"
+        required: false
+        type: string
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  plan:
-    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
+  lifecycle:
+    name: ${{ inputs.operation }} ${{ inputs.component }}
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || 'production' }}
+    # The sandbox environment is the approval and configuration boundary for
+    # mutation. GitHub environment protection should require human approval.
+    environment: sandbox
     defaults:
       run:
-        working-directory: infra/terraform
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
+      - name: Enforce lifecycle guardrails
+        env:
+          COMPONENT: ${{ inputs.component }}
+          OPERATION: ${{ inputs.operation }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          if [[ "$OPERATION" == "destroy" && ("$COMPONENT" == "bootstrap-state" || "$COMPONENT" == "bootstrap-identity") ]]; then
+            echo "Bootstrap state and identity are long-lived and have no workflow destroy operation."
+            exit 1
+          fi
+          if [[ "$OPERATION" == "destroy" && "$CONFIRMATION" != "DESTROY_SANDBOX" ]]; then
+            echo "Sandbox destroy requires confirmation=DESTROY_SANDBOX."
+            exit 1
+          fi
+      - name: Select Terraform identity
+        id: identity
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          if [[ "$OPERATION" == "apply" || "$OPERATION" == "destroy" ]]; then
+            echo "service_account=${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "service_account=${{ vars.GCP_TERRAFORM_PLANNER_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
+          fi
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ github.event_name == 'workflow_dispatch' && inputs.apply && vars.GCP_DEPLOY_SERVICE_ACCOUNT || vars.GCP_TERRAFORM_SERVICE_ACCOUNT }}
-      - name: Format check
-        run: terraform fmt -check -recursive
-      - name: Initialise
-        run: terraform init -input=false
-      - name: Validate
-        run: terraform validate
+          service_account: ${{ steps.identity.outputs.service_account }}
+      - name: Initialise selected component
+        env:
+          COMPONENT: ${{ inputs.component }}
+          STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: |
+          component_path="infra/terraform/projects/staylong/sandbox/${COMPONENT}"
+          if [[ "$COMPONENT" == "bootstrap-state" ]]; then
+            terraform -chdir="$component_path" init -backend=false -input=false
+          else
+            test -n "$STATE_BUCKET"
+            terraform -chdir="$component_path" init -input=false \
+              -backend-config="bucket=${STATE_BUCKET}" \
+              -backend-config="prefix=staylong/sandbox/${COMPONENT}"
+          fi
+      - name: Format and validate
+        env:
+          COMPONENT: ${{ inputs.component }}
+        run: |
+          component_path="infra/terraform/projects/staylong/sandbox/${COMPONENT}"
+          terraform fmt -check -recursive "$component_path"
+          terraform -chdir="$component_path" validate
       - name: Plan
-        run: terraform plan -input=false -out=tfplan -var="project_id=${{ vars.GCP_PROJECT_ID }}"
+        if: ${{ inputs.operation == 'plan' || inputs.operation == 'apply' || inputs.operation == 'destroy' }}
+        env:
+          COMPONENT: ${{ inputs.component }}
+        run: |
+          component_path="infra/terraform/projects/staylong/sandbox/${COMPONENT}"
+          plan_args=(-input=false -out=tfplan -var="project_id=${{ vars.GCP_PROJECT_ID }}")
+          if [[ "$COMPONENT" == "bootstrap-state" ]]; then
+            plan_args+=("-var=state_bucket_name=${{ vars.TF_STATE_BUCKET }}")
+          fi
+          if [[ "$COMPONENT" == "app" ]]; then
+            plan_args+=("-var=runtime_service_account=${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}")
+            plan_args+=("-var=image=${{ vars.STAYLONG_APP_IMAGE }}")
+          fi
+          terraform -chdir="$component_path" plan "${plan_args[@]}"
       - name: Apply reviewed plan
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply }}
-        run: terraform apply -input=false tfplan
+        if: ${{ inputs.operation == 'apply' }}
+        env:
+          COMPONENT: ${{ inputs.component }}
+        run: terraform -chdir="infra/terraform/projects/staylong/sandbox/${COMPONENT}" apply -input=false tfplan
+      - name: Destroy selected sandbox component
+        if: ${{ inputs.operation == 'destroy' }}
+        env:
+          COMPONENT: ${{ inputs.component }}
+        run: |
+          component_path="infra/terraform/projects/staylong/sandbox/${COMPONENT}"
+          destroy_args=(-input=false -auto-approve -var="project_id=${{ vars.GCP_PROJECT_ID }}")
+          if [[ "$COMPONENT" == "app" ]]; then
+            destroy_args+=("-var=runtime_service_account=${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}")
+            destroy_args+=("-var=image=${{ vars.STAYLONG_APP_IMAGE }}")
+          fi
+          terraform -chdir="$component_path" destroy "${destroy_args[@]}"

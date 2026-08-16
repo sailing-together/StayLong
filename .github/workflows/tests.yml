@@ -36,9 +36,15 @@ jobs:
       - name: Format check
         run: terraform fmt -check -recursive
       - name: Initialise without backend
-        run: terraform init -backend=false -input=false
+        run: |
+          while IFS= read -r component; do
+            terraform -chdir="$component" init -backend=false -input=false
+          done < <(find projects -mindepth 4 -maxdepth 4 -name main.tf -exec dirname {} \; | sort)
       - name: Validate
-        run: terraform validate
+        run: |
+          while IFS= read -r component; do
+            terraform -chdir="$component" validate
+          done < <(find projects -mindepth 4 -maxdepth 4 -name main.tf -exec dirname {} \; | sort)
 
   trivy:
     name: Trivy repository and IaC scan
