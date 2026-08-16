@@ -42,7 +42,7 @@ class RecordedExecutor:
 def _vertex_environment() -> dict[str, str]:
     return {
         "GOOGLE_CLOUD_PROJECT": "staylong-demo",
-        "GOOGLE_CLOUD_LOCATION": "australia-southeast1",
+        "GOOGLE_CLOUD_LOCATION": "global",
         "GOOGLE_GENAI_USE_VERTEXAI": "true",
     }
 
@@ -62,9 +62,24 @@ def test_vertex_configuration_requires_project_location_and_vertex_mode() -> Non
         VertexRuntimeConfig.from_environment(
             {
                 "GOOGLE_CLOUD_PROJECT": "staylong-demo",
-                "GOOGLE_CLOUD_LOCATION": "australia-southeast1",
+                "GOOGLE_CLOUD_LOCATION": "global",
                 "GOOGLE_GENAI_USE_VERTEXAI": "false",
             }
+        )
+
+    with pytest.raises(VertexConfigurationError, match="global"):
+        VertexRuntimeConfig.from_environment(
+            {
+                "GOOGLE_CLOUD_PROJECT": "staylong-demo",
+                "GOOGLE_CLOUD_LOCATION": "australia-southeast1",
+                "GOOGLE_GENAI_USE_VERTEXAI": "true",
+            }
+        )
+
+    with pytest.raises(VertexConfigurationError, match="global"):
+        VertexRuntimeConfig(
+            project_id="staylong-demo",
+            location="australia-southeast1",
         )
 
 
@@ -101,6 +116,8 @@ def test_intake_factory_keeps_emergency_and_schema_boundaries_outside_adk() -> N
     assert executor.prompts == ["Supplied concern:\nThe shower entry is difficult."]
     assert factory.requests[0]["model_id"] == "gemini-3.6-flash"
     assert factory.requests[0]["name"] == "staylong_intake"
+    assert not hasattr(agent, "provider")
+    assert not hasattr(agent, "adk_agent")
 
     executor.response = {"summary": "A prompt cannot bypass the output schema."}
 
@@ -137,3 +154,42 @@ def test_coordinator_factory_returns_a_draft_without_approval() -> None:
     assert result.may_execute is False
     assert factory.requests[0]["model_id"] == "gemini-3.6-flash"
     assert factory.requests[0]["name"] == "staylong_coordinator"
+
+
+def test_google_adk_factory_binds_validated_vertex_runtime_and_disables_tools(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from staylong.agents import vertex
+
+    class FakeGemini:
+        def __init__(self, *, model: str) -> None:
+            self.model = model
+
+    class FakeAgent:
+        def __init__(self, **kwargs: object) -> None:
+            self.kwargs = kwargs
+
+    runtime_environment: dict[str, str] = {}
+    monkeypatch.setattr(vertex, "_load_adk_types", lambda: (FakeAgent, FakeGemini))
+    monkeypatch.setattr(vertex.os, "environ", runtime_environment)
+
+    config = vertex.VertexRuntimeConfig(
+        project_id="staylong-demo",
+        location="global",
+    )
+    agent = vertex.build_google_adk_agent(
+        name="staylong_intake",
+        model_id="gemini-3.6-flash",
+        instruction="contract instruction",
+        vertex_config=config,
+    )
+
+    assert runtime_environment == {
+        "GOOGLE_CLOUD_PROJECT": "staylong-demo",
+        "GOOGLE_CLOUD_LOCATION": "global",
+        "GOOGLE_GENAI_USE_VERTEXAI": "true",
+    }
+    assert isinstance(agent, FakeAgent)
+    assert isinstance(agent.kwargs["model"], FakeGemini)
+    assert agent.kwargs["model"].model == "gemini-3.6-flash"
+    assert agent.kwargs["tools"] == []

@@ -8,8 +8,8 @@ from staylong.agents.prompts import INTAKE_SYSTEM_INSTRUCTION
 from staylong.agents.vertex import (
     AdkAgentFactory,
     AdkJsonExecutor,
-    AdkJsonProvider,
     VertexRuntimeConfig,
+    _AdkJsonProvider,
     build_google_adk_agent,
 )
 from staylong.policy.emergency import EMERGENCY_ROUTE, route_concern
@@ -105,11 +105,12 @@ class IntakeOutput:
         )
 
 
-@dataclass(slots=True)
 class IntakeAgent:
     """Runs a supplied local or production provider behind the intake contract."""
 
-    provider: StructuredModelProvider
+    def __init__(self, *, provider: StructuredModelProvider) -> None:
+        """Keep the provider private so calls cannot skip safety and schema checks."""
+        self._provider = provider
 
     def intake(self, concern: str) -> IntakeOutput:
         """Return validated intake data, never asking a model to assess emergencies."""
@@ -119,7 +120,7 @@ class IntakeAgent:
                 "call Triple Zero (000)."
             )
 
-        response = self.provider.generate_json(
+        response = self._provider.generate_json(
             system_instruction=INTAKE_SYSTEM_INSTRUCTION,
             prompt=f"Supplied concern:\n{concern}",
         )
@@ -146,4 +147,4 @@ def build_vertex_adk_intake_agent(
         instruction=INTAKE_SYSTEM_INSTRUCTION,
         vertex_config=vertex_config,
     )
-    return IntakeAgent(provider=AdkJsonProvider(agent=adk_agent, executor=executor))
+    return IntakeAgent(provider=_AdkJsonProvider(agent=adk_agent, executor=executor))
