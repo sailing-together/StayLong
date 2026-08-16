@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "region": "australia-southeast1",
+  "terraform_state_prefix": "staylong",
+  "labels": {}
+}

@@ -11,7 +11,7 @@ requires-python = ">=3.12"
 dependencies = ["google-cloud-firestore>=2.16"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3", "ruff>=0.8"]
+dev = ["jsonschema>=4.23", "pytest>=8.3", "ruff>=0.8"]
 agents = ["google-adk[gcp]>=2.0.0,<3.0.0"]
 
 [tool.pytest.ini_options]

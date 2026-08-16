@@ -1,0 +1,8 @@
+{
+  "environment": "sandbox",
+  "project_id": "staylong-sandbox",
+  "state_bucket_name": "staylong-sandbox-terraform-state",
+  "labels": {
+    "environment": "sandbox"
+  }
+}

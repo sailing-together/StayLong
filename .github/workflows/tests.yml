@@ -33,18 +33,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install configuration validator dependency
+        run: python -m pip install jsonschema
+      - name: Validate Terraform configuration selections
+        run: PYTHONPATH=../../src python ../../tools/terraform_config.py --config-root projects/config --project-config staylong.json --environment-config sandbox.json
       - name: Format check
         run: terraform fmt -check -recursive
       - name: Initialise without backend
         run: |
           while IFS= read -r component; do
             terraform -chdir="$component" init -backend=false -input=false
-          done < <(find bootstrap projects -name main.tf -exec dirname {} \; | sort)
+          done < <(find bootstrap components -name main.tf -exec dirname {} \; | sort)
       - name: Validate
         run: |
           while IFS= read -r component; do
             terraform -chdir="$component" validate
-          done < <(find bootstrap projects -name main.tf -exec dirname {} \; | sort)
+          done < <(find bootstrap components -name main.tf -exec dirname {} \; | sort)
 
   trivy:
     name: Trivy repository and IaC scan

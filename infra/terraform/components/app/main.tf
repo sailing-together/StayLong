@@ -1,3 +1,7 @@
+terraform {
+  backend "gcs" {}
+}
+
 locals {
   config_root = "${path.module}/../../projects/config"
   common      = jsondecode(file("${local.config_root}/common-environment.json"))
@@ -8,10 +12,12 @@ locals {
   })
 }
 
-module "state_backend" {
-  source = "../../modules/foundations/state_backend"
+module "service" {
+  source = "../../modules/base/cloud_run_service"
 
-  project_id  = local.config.project_id
-  location    = local.config.region
-  bucket_name = local.config.state_bucket_name
+  project_id            = local.config.project_id
+  location              = local.config.region
+  service_name          = local.config.cloud_run_service_name
+  service_account_email = "${local.config.runtime_account_id}@${local.config.project_id}.iam.gserviceaccount.com"
+  image                 = local.config.initial_image
 }
