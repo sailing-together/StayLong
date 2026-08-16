@@ -13,7 +13,7 @@ on:
         description: "Terraform component to operate"
         required: true
         type: choice
-        options: [bootstrap-state, bootstrap-identity, platform, app]
+        options: [platform, app]
       operation:
         description: "Requested Terraform operation"
         required: true
@@ -47,10 +47,6 @@ jobs:
           OPERATION: ${{ inputs.operation }}
           CONFIRMATION: ${{ inputs.confirmation }}
         run: |
-          if [[ "$OPERATION" == "destroy" && ("$COMPONENT" == "bootstrap-state" || "$COMPONENT" == "bootstrap-identity") ]]; then
-            echo "Bootstrap state and identity are long-lived and have no workflow destroy operation."
-            exit 1
-          fi
           if [[ "$OPERATION" == "destroy" && "$CONFIRMATION" != "DESTROY_SANDBOX" ]]; then
             echo "Sandbox destroy requires confirmation=DESTROY_SANDBOX."
             exit 1
@@ -75,14 +71,10 @@ jobs:
           STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
         run: |
           component_path="infra/terraform/projects/staylong/sandbox/${COMPONENT}"
-          if [[ "$COMPONENT" == "bootstrap-state" ]]; then
-            terraform -chdir="$component_path" init -backend=false -input=false
-          else
-            test -n "$STATE_BUCKET"
-            terraform -chdir="$component_path" init -input=false \
-              -backend-config="bucket=${STATE_BUCKET}" \
-              -backend-config="prefix=staylong/sandbox/${COMPONENT}"
-          fi
+          test -n "$STATE_BUCKET"
+          terraform -chdir="$component_path" init -input=false \
+            -backend-config="bucket=${STATE_BUCKET}" \
+            -backend-config="prefix=staylong/sandbox/${COMPONENT}"
       - name: Format and validate
         env:
           COMPONENT: ${{ inputs.component }}
@@ -97,9 +89,6 @@ jobs:
         run: |
           component_path="infra/terraform/projects/staylong/sandbox/${COMPONENT}"
           plan_args=(-input=false -out=tfplan -var="project_id=${{ vars.GCP_PROJECT_ID }}")
-          if [[ "$COMPONENT" == "bootstrap-state" ]]; then
-            plan_args+=("-var=state_bucket_name=${{ vars.TF_STATE_BUCKET }}")
-          fi
           if [[ "$COMPONENT" == "app" ]]; then
             plan_args+=("-var=runtime_service_account=${{ vars.GCP_RUNTIME_SERVICE_ACCOUNT }}")
             plan_args+=("-var=image=${{ vars.STAYLONG_APP_IMAGE }}")
