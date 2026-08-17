@@ -127,7 +127,8 @@ jobs:
           cleanup() { kill "$proxy_pid" 2>/dev/null || true; }
           trap cleanup EXIT
           for attempt in $(seq 1 30); do
-            if curl --fail --silent "http://127.0.0.1:${proxy_port}/healthz" >/dev/null; then
+            proxy_status="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 5 "http://127.0.0.1:${proxy_port}/healthz" || true)"
+            if [ "$proxy_status" != "000" ]; then
               break
             fi
             if [ "$attempt" -eq 30 ]; then
