@@ -54,6 +54,12 @@ terraform -chdir=infra/terraform/bootstrap/state apply \
 Bootstrap roots are deliberately absent from `terraform.yml`. Their exceptional
 teardown remains a separate, human-authorised break-glass procedure.
 
+See [the bootstrap and teardown runbook](../../docs/bootstrap-runbook.md) for
+the local-state first apply, GCS initialisation or migration, GitHub Actions
+handoff, and the only safe order for teardown. The tracked
+`backend.hcl.example` is a template only; its copied `backend.hcl` file is
+ignored and must never be committed.
+
 ## Configuration safety
 
 Committed configuration is non-sensitive. The shared validator rejects unknown

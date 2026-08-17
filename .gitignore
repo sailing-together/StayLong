@@ -16,5 +16,6 @@ src/*.egg-info/
 *.tfstate
 *.tfstate.*
 tfplan
+infra/terraform/backend.hcl
 _private/
 .worktrees/
