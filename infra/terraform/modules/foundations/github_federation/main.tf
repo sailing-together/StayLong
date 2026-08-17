@@ -104,12 +104,20 @@ locals {
       role   = "roles/storage.objectViewer"
       member = "serviceAccount:${module.deployer.email}"
     }
+    deployer_bucket_reader = {
+      role   = "roles/storage.legacyBucketReader"
+      member = "serviceAccount:${module.deployer.email}"
+    }
     cloudbuild_creator = {
       role   = "roles/storage.objectCreator"
       member = "serviceAccount:service-${var.project_number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
     }
     cloudbuild_viewer = {
       role   = "roles/storage.objectViewer"
+      member = "serviceAccount:service-${var.project_number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+    }
+    cloudbuild_bucket_reader = {
+      role   = "roles/storage.legacyBucketReader"
       member = "serviceAccount:service-${var.project_number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
     }
   }

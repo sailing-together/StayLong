@@ -67,6 +67,7 @@ def test_cloud_build_staging_uses_bootstrap_bucket_and_scoped_identity_members()
     assert "gcp-sa-cloudbuild.iam.gserviceaccount.com" in identity_source
     assert '"roles/storage.objectCreator"' in identity_source
     assert '"roles/storage.objectViewer"' in identity_source
+    assert '"roles/storage.legacyBucketReader"' in identity_source
 
 
 def test_platform_enables_cloud_resource_manager_before_managing_project_services() -> None:
