@@ -140,6 +140,8 @@ jobs:
             fi
             sleep 1
           done
+          echo "Cloud Run smoke target: ${{ steps.service.outputs.url }}"
+          cat "$RUNNER_TEMP/staylong-cloud-run-proxy.log"
           python3 tools/cloudrun_smoke.py \
             --url "http://127.0.0.1:${proxy_port}" \
             --token "$STAYLONG_API_TOKEN" \
