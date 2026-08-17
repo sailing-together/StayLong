@@ -102,6 +102,23 @@ jobs:
           token_format: id_token
           id_token_audience: ${{ steps.service.outputs.url }}
           id_token_include_email: true
+      - name: Validate Cloud Run identity token audience
+        env:
+          CLOUD_RUN_ID_TOKEN: ${{ steps.cloud_run_id_token.outputs.id_token }}
+          EXPECTED_AUDIENCE: ${{ steps.service.outputs.url }}
+        run: |
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+
+          token = os.environ["CLOUD_RUN_ID_TOKEN"]
+          payload = token.split(".")[1]
+          payload += "=" * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload))
+          assert claims["aud"] == os.environ["EXPECTED_AUDIENCE"]
+          assert claims["email"] == "${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}"
+          PY
       - name: Smoke-test deployed revision
         env:
           STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
@@ -124,7 +141,7 @@ jobs:
               "${{ steps.service.outputs.url }}/healthz",
               headers={
                   "Accept": "application/json",
-                  "X-Serverless-Authorization": f"Bearer {os.environ['CLOUD_RUN_ID_TOKEN']}",
+                  "Authorization": f"Bearer {os.environ['CLOUD_RUN_ID_TOKEN']}",
               },
           )
           with urllib.request.urlopen(request, timeout=15) as response:
