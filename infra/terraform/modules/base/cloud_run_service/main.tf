@@ -19,3 +19,13 @@ resource "google_cloud_run_v2_service" "this" {
 
   deletion_protection = var.deletion_protection
 }
+
+resource "google_cloud_run_v2_service_iam_member" "invoker" {
+  for_each = var.invoker_members
+
+  project  = var.project_id
+  location = var.location
+  name     = google_cloud_run_v2_service.this.name
+  role     = "roles/run.invoker"
+  member   = each.value
+}
