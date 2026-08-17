@@ -9,6 +9,28 @@ permissions:
   contents: read
 
 jobs:
+  frontend:
+    name: React and TypeScript quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build production bundle
+        run: npm run build
+
   python:
     name: Python quality
     runs-on: ubuntu-latest
@@ -45,6 +67,7 @@ jobs:
             fi
             sleep 1
           done
+          curl --fail --silent http://127.0.0.1:8080/ | grep --fixed-strings '<div id="root"></div>'
           python tools/cloudrun_smoke.py --url http://127.0.0.1:8080 --token ci-smoke-token
 
   terraform:
