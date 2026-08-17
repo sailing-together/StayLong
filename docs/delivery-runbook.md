@@ -17,8 +17,9 @@ No service-account JSON key is created, stored or uploaded. GitHub Actions excha
 | `ci.yml` | Pull requests and `main` | Python tests and Ruff linting |
 | `terraform.yml` | Infrastructure PRs, manual dispatch from `main` | Format, validate, plan; reviewed apply only when selected |
 | `deploy.yml` | Manual dispatch from `main` | Build and deploy the Cloud Run service with WIF |
+| `release-evidence.yml` | Manual dispatch from `main` | Capture live Cloud Run, Artifact Registry and security release evidence |
 
-`deploy.yml` is intentionally scaffolded until the Cloud Run application and `Dockerfile` are implemented in Linear task ST-7. This prevents a misleading "green" deployment before there is a real service to deploy.
+`deploy.yml` builds and smoke-tests the implemented Cloud Run service. The first live run still requires the sandbox environment variables, masked API token and protected-environment approval described in [release evidence](release-evidence.md).
 
 ## Safety release gate
 
