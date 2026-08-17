@@ -16,7 +16,7 @@ resource "google_cloud_run_v2_service" "this" {
   # so infrastructure reconciliation must not roll a revision back to the
   # placeholder image or remove deployment-managed environment variables.
   lifecycle {
-    ignore_changes = [template]
+    ignore_changes = [template, scaling]
   }
 
   deletion_protection = var.deletion_protection
