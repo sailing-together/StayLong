@@ -42,5 +42,6 @@ variable "deployer_project_roles" {
     "roles/cloudbuild.builds.editor",
     "roles/iam.serviceAccountUser",
     "roles/run.admin",
+    "roles/serviceusage.serviceUsageConsumer",
   ]
 }

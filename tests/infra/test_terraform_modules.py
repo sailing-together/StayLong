@@ -45,6 +45,12 @@ def test_terraform_workflow_identities_can_lock_the_remote_state_bucket() -> Non
     assert "state_bucket_name = local.config.state_bucket_name" in bootstrap_source
 
 
+def test_deployer_can_consume_enabled_google_apis_for_cloud_build() -> None:
+    source = Path("infra/terraform/modules/foundations/github_federation/variables.tf").read_text()
+
+    assert '"roles/serviceusage.serviceUsageConsumer"' in source
+
+
 def test_platform_enables_cloud_resource_manager_before_managing_project_services() -> None:
     bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text()
     platform_source = SANDBOX_PLATFORM_MODULE.read_text()
