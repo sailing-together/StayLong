@@ -2,7 +2,8 @@
 
 import pytest
 
-from tools.cloudrun_smoke import HttpResponse, SmokeTestError, run_smoke
+import tools.cloudrun_smoke as smoke
+from tools.cloudrun_smoke import HttpResponse, SmokeTestError, UrlLibClient, run_smoke
 
 
 class FakeClient:
@@ -50,3 +51,38 @@ def test_smoke_flow_rejects_unhealthy_service() -> None:
 
     with pytest.raises(SmokeTestError, match="health check failed"):
         run_smoke(UnhealthyClient())
+
+
+def test_url_lib_client_separates_cloud_run_and_application_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[object] = []
+
+    class Response:
+        status = 200
+
+        def __enter__(self) -> "Response":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            del args
+
+        @staticmethod
+        def read() -> bytes:
+            return b'{"status":"ok"}'
+
+    def fake_urlopen(request: object, timeout: int) -> Response:
+        del timeout
+        captured.append(request)
+        return Response()
+
+    monkeypatch.setattr(smoke, "urlopen", fake_urlopen)
+
+    response = UrlLibClient("https://example.test", "app-token", "run-token").request(
+        "GET", "/healthz"
+    )
+
+    request = captured[0]
+    assert response == HttpResponse(200, {"status": "ok"})
+    assert request.headers["Authorization"] == "Bearer app-token"  # type: ignore[attr-defined]
+    assert request.headers["X-serverless-authorization"] == "Bearer run-token"  # type: ignore[attr-defined]

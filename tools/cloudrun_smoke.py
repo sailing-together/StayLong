@@ -24,9 +24,10 @@ class HttpResponse:
 class UrlLibClient:
     """Small standard-library client so the deployment check has no extra dependency."""
 
-    def __init__(self, base_url: str, token: str) -> None:
+    def __init__(self, base_url: str, token: str, id_token: str | None = None) -> None:
         self.base_url = base_url.rstrip("/")
         self.token = token
+        self.id_token = id_token
 
     def request(
         self,
@@ -36,6 +37,10 @@ class UrlLibClient:
     ) -> HttpResponse:
         data = json.dumps(payload).encode() if payload is not None else None
         headers = {"Authorization": f"Bearer {self.token}"}
+        if self.id_token:
+            # Cloud Run consumes this platform token before forwarding the
+            # application bearer token used by StayLong's own auth layer.
+            headers["X-Serverless-Authorization"] = f"Bearer {self.id_token}"
         if data is not None:
             headers["Content-Type"] = "application/json"
         request = Request(f"{self.base_url}{path}", data=data, headers=headers, method=method)
@@ -87,9 +92,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", required=True, help="Cloud Run service URL")
     parser.add_argument("--token", required=True, help="API bearer token (never printed)")
+    parser.add_argument(
+        "--id-token",
+        help="Cloud Run identity token for private services (never printed)",
+    )
     args = parser.parse_args()
     try:
-        case_id = run_smoke(UrlLibClient(args.url, args.token))
+        case_id = run_smoke(UrlLibClient(args.url, args.token, args.id_token))
     except SmokeTestError as error:
         print(f"Smoke test failed: {error}", file=sys.stderr)
         return 1
