@@ -18,4 +18,5 @@ module "github_federation" {
   project_id        = local.config.project_id
   github_repository = local.config.github_repository
   github_branch     = local.config.github_branch
+  state_bucket_name = local.config.state_bucket_name
 }

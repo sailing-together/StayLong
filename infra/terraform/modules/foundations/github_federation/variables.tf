@@ -1,6 +1,7 @@
 variable "project_id" { type = string }
 variable "github_repository" { type = string }
 variable "github_branch" { type = string }
+variable "state_bucket_name" { type = string }
 variable "pool_id" {
   type    = string
   default = "staylong-github"

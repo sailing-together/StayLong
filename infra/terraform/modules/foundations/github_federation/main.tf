@@ -16,6 +16,10 @@ module "workload_identity" {
 
 locals {
   protected_branch_principal = "principalSet://iam.googleapis.com/${module.workload_identity.pool_name}/attribute.repository_ref/${var.github_repository}:refs/heads/${var.github_branch}"
+  terraform_state_members = {
+    "planner"  = module.planner.email
+    "operator" = module.operator.email
+  }
 }
 
 module "planner" {
@@ -80,4 +84,12 @@ module "bindings" {
       member             = local.protected_branch_principal
     },
   ]
+}
+
+resource "google_storage_bucket_iam_member" "terraform_state" {
+  for_each = local.terraform_state_members
+
+  bucket = var.state_bucket_name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${each.value}"
 }
