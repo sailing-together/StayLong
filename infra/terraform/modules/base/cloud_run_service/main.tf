@@ -12,9 +12,13 @@ resource "google_cloud_run_v2_service" "this" {
   }
 
   # Terraform owns the service and all runtime configuration. Application
-  # delivery changes only this immutable image reference to publish a revision.
+  # delivery changes the image and injects the runtime API token. Keep those
+  # deployment-owned fields out of the infrastructure reconciliation loop.
   lifecycle {
-    ignore_changes = [template[0].containers[0].image]
+    ignore_changes = [
+      template[0].containers[0].image,
+      template[0].containers[0].env,
+    ]
   }
 
   deletion_protection = var.deletion_protection
