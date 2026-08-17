@@ -87,10 +87,11 @@ jobs:
       - name: Resolve deployed service URL
         id: service
         run: |
-          service_url="$(gcloud run services describe staylong \
+          service_urls="$(gcloud run services describe staylong \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="${{ vars.GCP_REGION }}" \
-            --format='value(status.url)')"
+            --format='value(metadata.annotations."run.googleapis.com/urls")')"
+          service_url="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])[0])' "$service_urls")"
           test -n "$service_url"
           echo "url=$service_url" >> "$GITHUB_OUTPUT"
       - name: Mint Cloud Run identity token
