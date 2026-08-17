@@ -12,6 +12,12 @@ locals {
   })
 }
 
+resource "google_project_service" "cloud_resource_manager" {
+  project            = local.config.project_id
+  service            = "cloudresourcemanager.googleapis.com"
+  disable_on_destroy = false
+}
+
 module "github_federation" {
   source = "../../modules/foundations/github_federation"
 
@@ -19,4 +25,6 @@ module "github_federation" {
   github_repository = local.config.github_repository
   github_branch     = local.config.github_branch
   state_bucket_name = local.config.state_bucket_name
+
+  depends_on = [google_project_service.cloud_resource_manager]
 }
