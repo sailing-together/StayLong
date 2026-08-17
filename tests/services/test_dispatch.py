@@ -62,12 +62,12 @@ def test_pubsub_adapter_publishes_a_versioned_event_contract() -> None:
     publisher = FakePublisher()
     receipt = PubSubDispatchAdapter(
         publisher=publisher,
-        topic_path="projects/staylong-sandbox/topics/workflow-events",
+        topic_path="projects/staylong/topics/workflow-events",
     ).dispatch(DispatchEvent.from_timeline_event(_event()))
 
     assert receipt.transport == "pubsub"
     assert receipt.message_id == "pubsub-message-001"
-    assert publisher.calls[0][0] == "projects/staylong-sandbox/topics/workflow-events"
+    assert publisher.calls[0][0] == "projects/staylong/topics/workflow-events"
     assert publisher.calls[0][2] == {
         "case_id": "case-001",
         "event_id": "event-001",
@@ -91,11 +91,11 @@ def test_cloud_tasks_adapter_creates_an_authenticated_work_item() -> None:
     client = FakeTasksClient()
     receipt = CloudTasksDispatchAdapter(
         client=client,
-        project_id="staylong-sandbox",
+        project_id="staylong",
         location="australia-southeast2",
         queue="workflow-events",
         target_uri="https://staylong.example.test/internal/events",
-        service_account_email="workflow-runtime@staylong-sandbox.iam.gserviceaccount.com",
+        service_account_email="workflow-runtime@staylong.iam.gserviceaccount.com",
     ).dispatch(DispatchEvent.from_timeline_event(_event("reminder.due")))
 
     assert receipt.transport == "cloud_tasks"
@@ -103,7 +103,7 @@ def test_cloud_tasks_adapter_creates_an_authenticated_work_item() -> None:
     parent, task = client.calls[0]
     assert (
         parent
-        == "projects/staylong-sandbox/locations/australia-southeast2/queues/workflow-events"
+        == "projects/staylong/locations/australia-southeast2/queues/workflow-events"
     )
     assert task["name"].endswith("/tasks/event-001")
     request = task["http_request"]
@@ -124,6 +124,6 @@ def test_cloud_tasks_adapter_creates_an_authenticated_work_item() -> None:
             separators=(",", ":"),
         ).encode(),
         "oidc_token": {
-            "service_account_email": "workflow-runtime@staylong-sandbox.iam.gserviceaccount.com"
+            "service_account_email": "workflow-runtime@staylong.iam.gserviceaccount.com"
         },
     }
