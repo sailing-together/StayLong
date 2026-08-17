@@ -18,13 +18,19 @@ resource "google_project_service" "cloud_resource_manager" {
   disable_on_destroy = false
 }
 
+data "google_project" "current" {
+  project_id = local.config.project_id
+}
+
 module "github_federation" {
   source = "../../modules/foundations/github_federation"
 
-  project_id        = local.config.project_id
-  github_repository = local.config.github_repository
-  github_branch     = local.config.github_branch
-  state_bucket_name = local.config.state_bucket_name
+  project_id                     = local.config.project_id
+  github_repository              = local.config.github_repository
+  github_branch                  = local.config.github_branch
+  state_bucket_name              = local.config.state_bucket_name
+  cloudbuild_staging_bucket_name = local.config.cloudbuild_staging_bucket_name
+  project_number                 = data.google_project.current.number
 
   depends_on = [google_project_service.cloud_resource_manager]
 }

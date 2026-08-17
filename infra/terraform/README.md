@@ -77,7 +77,9 @@ exist. It then publishes an immutable image and updates only the Cloud Run
 image revision; it never creates the repository, service, service account, or
 access policy.
 
-The platform foundation also creates a dedicated, versioned Cloud Build
-staging bucket. The deployment workflow passes this bucket explicitly for
-source and log staging; it does not rely on the unmanaged `${PROJECT_ID}_cloudbuild`
+The local-only `bootstrap/state` root creates a dedicated, versioned Cloud Build
+staging bucket before GitHub Actions is enabled. The `bootstrap/identity` root
+then grants only object creator/viewer access to the deployer and Cloud Build
+service agent. The deployment workflow passes this bucket explicitly for source
+and log staging; it does not rely on the unmanaged `${PROJECT_ID}_cloudbuild`
 default bucket.
