@@ -6,6 +6,9 @@ GITHUB_FEDERATION_MODULE = Path(
     "infra/terraform/modules/foundations/github_federation/main.tf"
 )
 IDENTITY_BOOTSTRAP_ROOT = Path("infra/terraform/bootstrap/identity/main.tf")
+SANDBOX_PLATFORM_MODULE = Path(
+    "infra/terraform/modules/foundations/sandbox_platform/main.tf"
+)
 
 
 def test_service_account_iam_bindings_use_static_instance_keys() -> None:
@@ -43,12 +46,11 @@ def test_terraform_workflow_identities_can_lock_the_remote_state_bucket() -> Non
 
 
 def test_platform_enables_cloud_resource_manager_before_managing_project_services() -> None:
-    module_source = Path(
-        "infra/terraform/modules/foundations/sandbox_platform/main.tf"
-    ).read_text()
+    bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text()
+    platform_source = SANDBOX_PLATFORM_MODULE.read_text()
 
-    assert 'resource "google_project_service" "cloud_resource_manager"' in module_source
+    assert 'resource "google_project_service" "cloud_resource_manager"' in bootstrap_source
     assert re.search(
-        r'service\s+= "cloudresourcemanager\.googleapis\.com"', module_source
+        r'service\s+= "cloudresourcemanager\.googleapis\.com"', bootstrap_source
     )
-    assert "depends_on = [google_project_service.cloud_resource_manager]" in module_source
+    assert 'resource "google_project_service" "cloud_resource_manager"' not in platform_source
