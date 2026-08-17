@@ -40,3 +40,15 @@ def test_terraform_workflow_identities_can_lock_the_remote_state_bucket() -> Non
     assert '"planner"  = module.planner.email' in federation_source
     assert '"operator" = module.operator.email' in federation_source
     assert "state_bucket_name = local.config.state_bucket_name" in bootstrap_source
+
+
+def test_platform_enables_cloud_resource_manager_before_managing_project_services() -> None:
+    module_source = Path(
+        "infra/terraform/modules/foundations/sandbox_platform/main.tf"
+    ).read_text()
+
+    assert 'resource "google_project_service" "cloud_resource_manager"' in module_source
+    assert re.search(
+        r'service\s+= "cloudresourcemanager\.googleapis\.com"', module_source
+    )
+    assert "depends_on = [google_project_service.cloud_resource_manager]" in module_source
