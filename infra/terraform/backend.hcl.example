@@ -1,0 +1,4 @@
+# Copy to backend.hcl, then replace both values before use.
+# backend.hcl is ignored because it identifies a specific state location.
+bucket = "REPLACE_WITH_BOOTSTRAP_STATE_BUCKET"
+prefix = "REPLACE_WITH_COMPONENT_PREFIX"
