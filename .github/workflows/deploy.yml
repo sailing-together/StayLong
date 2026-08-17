@@ -67,8 +67,14 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
       - name: Build and publish immutable image
         run: |
+          test -n "${{ vars.GCP_CLOUDBUILD_BUCKET }}" || {
+            echo "Configure sandbox variable GCP_CLOUDBUILD_BUCKET before deploying." >&2
+            exit 1
+          }
           gcloud builds submit \
             --project="${{ vars.GCP_PROJECT_ID }}" \
+            --gcs-source-staging-dir="gs://${{ vars.GCP_CLOUDBUILD_BUCKET }}/source" \
+            --gcs-log-dir="gs://${{ vars.GCP_CLOUDBUILD_BUCKET }}/logs" \
             --tag "${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/staylong/app:${{ steps.revision.outputs.sha }}"
       - name: Publish only the Cloud Run application revision
         env:

@@ -15,6 +15,7 @@ def test_resolve_config_merges_common_environment_and_project_deterministically(
     assert config["project_id"] == "staylong"
     assert config["region"] == "australia-southeast2"
     assert config["artifact_registry_repository_id"] == "staylong"
+    assert config["cloudbuild_staging_bucket_name"] == "staylong-cloudbuild-186136682416"
     assert config["labels"] == {"environment": "sandbox", "product": "staylong"}
 
 

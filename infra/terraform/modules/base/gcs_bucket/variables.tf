@@ -9,3 +9,11 @@ variable "object_admin_members" {
   type    = list(string)
   default = []
 }
+variable "object_creator_members" {
+  type    = list(string)
+  default = []
+}
+variable "object_viewer_members" {
+  type    = list(string)
+  default = []
+}

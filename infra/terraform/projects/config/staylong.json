@@ -4,6 +4,8 @@
   "github_branch": "main",
   "artifact_registry_repository_id": "staylong",
   "runtime_account_id": "staylong-runtime",
+  "deployer_account_id": "staylong-app-deployer",
+  "cloudbuild_staging_bucket_name": "staylong-cloudbuild-186136682416",
   "cloud_run_service_name": "staylong",
   "initial_image": "gcr.io/google-samples/hello-app:1.0",
   "labels": {

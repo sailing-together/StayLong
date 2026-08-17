@@ -19,4 +19,6 @@ module "sandbox_platform" {
   region                          = local.config.region
   artifact_registry_repository_id = local.config.artifact_registry_repository_id
   runtime_account_id              = local.config.runtime_account_id
+  deployer_account_id             = local.config.deployer_account_id
+  cloudbuild_staging_bucket_name  = local.config.cloudbuild_staging_bucket_name
 }

@@ -6,6 +6,10 @@ resource "google_project_service" "services" {
   disable_on_destroy = false
 }
 
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
 module "artifact_registry" {
   source = "../../base/artifact_registry"
 
@@ -24,4 +28,22 @@ module "runtime" {
   account_id   = var.runtime_account_id
   display_name = "StayLong Cloud Run runtime"
   description  = "Least-privilege runtime identity for the StayLong service"
+}
+
+module "cloudbuild_staging" {
+  source = "../../base/gcs_bucket"
+
+  name       = var.cloudbuild_staging_bucket_name
+  project_id = var.project_id
+  location   = var.region
+  object_creator_members = [
+    "serviceAccount:${var.deployer_account_id}@${var.project_id}.iam.gserviceaccount.com",
+    "serviceAccount:service-${data.google_project.current.number}@gcp-sa-cloudbuild.iam.gserviceaccount.com",
+  ]
+  object_viewer_members = [
+    "serviceAccount:${var.deployer_account_id}@${var.project_id}.iam.gserviceaccount.com",
+    "serviceAccount:service-${data.google_project.current.number}@gcp-sa-cloudbuild.iam.gserviceaccount.com",
+  ]
+
+  depends_on = [google_project_service.services]
 }
