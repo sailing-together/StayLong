@@ -11,14 +11,12 @@ resource "google_cloud_run_v2_service" "this" {
     }
   }
 
-  # Terraform owns the service and all runtime configuration. Application
-  # delivery changes the image and injects the runtime API token. Keep those
-  # deployment-owned fields out of the infrastructure reconciliation loop.
+  # Terraform owns the service resource and access policy. Application
+  # delivery owns the complete revision template (image and runtime secrets),
+  # so infrastructure reconciliation must not roll a revision back to the
+  # placeholder image or remove deployment-managed environment variables.
   lifecycle {
-    ignore_changes = [
-      template[0].containers[0].image,
-      template[0].containers[0].env,
-    ]
+    ignore_changes = [template]
   }
 
   deletion_protection = var.deletion_protection
