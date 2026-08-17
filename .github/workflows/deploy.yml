@@ -100,12 +100,12 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
           token_format: id_token
-          id_token_audience: ${{ steps.service.outputs.url }}
+          id_token_audience: ${{ steps.service.outputs.url }}/
           id_token_include_email: true
       - name: Validate Cloud Run identity token audience
         env:
           CLOUD_RUN_ID_TOKEN: ${{ steps.cloud_run_id_token.outputs.id_token }}
-          EXPECTED_AUDIENCE: ${{ steps.service.outputs.url }}
+          EXPECTED_AUDIENCE: ${{ steps.service.outputs.url }}/
         run: |
           python3 - <<'PY'
           import base64
