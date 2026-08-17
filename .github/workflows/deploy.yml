@@ -117,6 +117,7 @@ jobs:
             exit 1
           }
           gcloud components install cloud-run-proxy --quiet
+          gcloud components install alpha --quiet
           proxy_port=18080
           gcloud alpha run services proxy staylong \
             --project="${{ vars.GCP_PROJECT_ID }}" \
