@@ -9,9 +9,13 @@ module "workload_identity" {
     "google.subject"             = "assertion.sub"
     "attribute.repository"       = "assertion.repository"
     "attribute.repository_owner" = "assertion.repository_owner"
-    "attribute.ref"              = "assertion.ref"
+    "attribute.repository_ref"   = "assertion.repository + \":\" + assertion.ref"
   }
   attribute_condition = "assertion.repository == '${var.github_repository}'"
+}
+
+locals {
+  protected_branch_principal = "principalSet://iam.googleapis.com/${module.workload_identity.pool_name}/attribute.repository_ref/${var.github_repository}:refs/heads/${var.github_branch}"
 }
 
 module "planner" {
@@ -68,22 +72,12 @@ module "bindings" {
     {
       service_account_id = module.operator.name
       role               = "roles/iam.workloadIdentityUser"
-      member             = "principalSet://iam.googleapis.com/${module.workload_identity.pool_name}/attribute.repository/${var.github_repository}"
-      condition = {
-        title       = "protected_sandbox_branch"
-        description = "Apply operations must originate from the protected branch."
-        expression  = "attribute.ref == 'refs/heads/${var.github_branch}'"
-      }
+      member             = local.protected_branch_principal
     },
     {
       service_account_id = module.deployer.name
       role               = "roles/iam.workloadIdentityUser"
-      member             = "principalSet://iam.googleapis.com/${module.workload_identity.pool_name}/attribute.repository/${var.github_repository}"
-      condition = {
-        title       = "protected_sandbox_branch"
-        description = "Deployments must originate from the protected branch."
-        expression  = "attribute.ref == 'refs/heads/${var.github_branch}'"
-      }
+      member             = local.protected_branch_principal
     },
   ]
 }
