@@ -13,6 +13,7 @@ GITHUB_FEDERATION_VARIABLES = Path(
     "infra/terraform/modules/foundations/github_federation/variables.tf"
 )
 BOOTSTRAP_STATE_ROOT = Path("infra/terraform/bootstrap/state/main.tf")
+DEPLOY_WORKFLOW = Path(".github/workflows/deploy.yml")
 
 
 def test_service_account_iam_bindings_use_static_instance_keys() -> None:
@@ -88,3 +89,11 @@ def test_platform_enables_cloud_resource_manager_before_managing_project_service
         r'service\s+= "cloudresourcemanager\.googleapis\.com"', bootstrap_source
     )
     assert 'resource "google_project_service" "cloud_resource_manager"' not in platform_source
+
+
+def test_deployment_builds_directly_to_artifact_registry_without_cloud_build_queue() -> None:
+    source = DEPLOY_WORKFLOW.read_text()
+
+    assert "docker/setup-buildx-action@v3" in source
+    assert "docker buildx build" in source
+    assert "gcloud builds submit" not in source

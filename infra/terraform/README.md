@@ -78,8 +78,7 @@ image revision; it never creates the repository, service, service account, or
 access policy.
 
 The local-only `bootstrap/state` root creates a dedicated, versioned Cloud Build
-staging bucket before GitHub Actions is enabled. The `bootstrap/identity` root
-then grants only object creator/viewer access to the deployer and Cloud Build
-service agent. The deployment workflow passes this bucket explicitly for source
-and log staging; it does not rely on the unmanaged `${PROJECT_ID}_cloudbuild`
-default bucket.
+staging bucket for optional Google-managed build integrations. The current
+deployment workflow builds with Docker Buildx on the GitHub runner and pushes
+directly to the Terraform-managed Artifact Registry, so it does not rely on an
+unmanaged `${PROJECT_ID}_cloudbuild` default bucket.
