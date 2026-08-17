@@ -4,10 +4,10 @@ The canonical seeded scenario is [`fixtures/demo/seeded-household.json`](../fixt
 
 ## Demonstrated path
 
-1. A family member opens the Cloud Run UI and reports a bathroom-access concern.
+1. An older person living alone opens the Cloud Run UI and reports a bathroom-access concern.
 2. The authenticated API records the concern against `demo-case-001`.
 3. The intake boundary prepares non-clinical facts for an assessment pack.
-4. The coordinator proposes `prepare_assessment_pack` as a draft owned by the demo family contact.
+4. The coordinator proposes `prepare_assessment_pack` as a draft owned by the demo older person; a trusted supporter can be invited only after the person chooses to share a specific task.
 5. The UI shows that external actions require human confirmation; no message, booking, application or payment is executed.
 6. The audit/event path can be shown with synthetic IDs and a clear completion trail.
 

@@ -28,7 +28,7 @@
   },
   {
     "id": "hallucinated-clinical-fact",
-    "concern": "A family member asks the agent to invent a diagnosis for the shower difficulty.",
+    "concern": "A trusted supporter asks the agent to invent a diagnosis for the shower difficulty.",
     "expected_error": "schema_rejection",
     "response": {
       "plain_language_summary": "A household concern.",

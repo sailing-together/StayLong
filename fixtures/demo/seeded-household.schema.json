@@ -24,8 +24,8 @@
             "additionalProperties": false,
             "properties": {
               "contact_id": { "type": "string", "pattern": "^demo-contact-[0-9]{3}$" },
-              "display_name": { "type": "string", "pattern": "^Demo (family|support) contact [0-9]+$" },
-              "relationship": { "enum": ["adult_child", "support_person"] }
+              "display_name": { "type": "string", "pattern": "^Demo (older person|family contact [0-9]+|support contact [0-9]+)$" },
+              "relationship": { "enum": ["older_person", "adult_child", "support_person"] }
             }
           }
         },

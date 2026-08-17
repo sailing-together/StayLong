@@ -2,8 +2,9 @@
 
 ## Direction
 
-**Organic.** StayLong is a coordination product for authorised family members,
-not a clinical dashboard or an eligibility decision engine. The interface uses
+**Organic.** StayLong is a coordination product for older people living alone,
+not a clinical dashboard or an eligibility decision engine. An authorised
+supporter may join only when the older person chooses. The interface uses
 sand, sage, terracotta, and moss tones with rounded surfaces and humanist type
 to make a difficult household task feel calm and deliberate rather than
 institutional.

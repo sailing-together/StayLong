@@ -1,8 +1,9 @@
 # StayLong family workspace
 
-The StayLong family workspace is a React and TypeScript interface served by the
-StayLong API container. It lets an authorised family member create a real
-case-flow concern and see the API-returned case path.
+The StayLong independent-living workspace is a React and TypeScript interface
+served by the StayLong API container. It lets an older person living alone
+create a real case-flow concern and see the API-returned case path. Trusted
+supporters are optional and require the person's choice.
 
 ## Local development
 
