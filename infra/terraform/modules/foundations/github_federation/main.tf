@@ -93,3 +93,32 @@ resource "google_storage_bucket_iam_member" "terraform_state" {
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${each.value}"
 }
+
+locals {
+  cloudbuild_staging_members = {
+    deployer_creator = {
+      role   = "roles/storage.objectCreator"
+      member = "serviceAccount:${module.deployer.email}"
+    }
+    deployer_viewer = {
+      role   = "roles/storage.objectViewer"
+      member = "serviceAccount:${module.deployer.email}"
+    }
+    cloudbuild_creator = {
+      role   = "roles/storage.objectCreator"
+      member = "serviceAccount:service-${var.project_number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+    }
+    cloudbuild_viewer = {
+      role   = "roles/storage.objectViewer"
+      member = "serviceAccount:service-${var.project_number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+    }
+  }
+}
+
+resource "google_storage_bucket_iam_member" "cloudbuild_staging" {
+  for_each = local.cloudbuild_staging_members
+
+  bucket = var.cloudbuild_staging_bucket_name
+  role   = each.value.role
+  member = each.value.member
+}

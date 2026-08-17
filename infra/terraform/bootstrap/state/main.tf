@@ -15,3 +15,11 @@ module "state_backend" {
   location    = local.config.region
   bucket_name = local.config.state_bucket_name
 }
+
+module "cloudbuild_staging" {
+  source = "../../modules/base/gcs_bucket"
+
+  name       = local.config.cloudbuild_staging_bucket_name
+  project_id = local.config.project_id
+  location   = local.config.region
+}

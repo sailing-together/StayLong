@@ -8,7 +8,7 @@ GitHub Actions and the remote GCS state after this procedure is complete.
 
 | Terraform root | State location | Why |
 | --- | --- | --- |
-| `bootstrap/state` | Local only | It creates and manages the GCS bucket that would otherwise contain its own state. |
+| `bootstrap/state` | Local only | It creates and manages the Terraform state bucket and the dedicated Cloud Build staging bucket that must exist before GitHub Actions can run. |
 | `bootstrap/identity` | GCS after bootstrap | It creates GitHub OIDC WIF and Terraform identities. |
 | `components/platform` | GCS | GitHub Actions manages the platform lifecycle. |
 | `components/app` | GCS | GitHub Actions manages the application lifecycle. |
@@ -51,7 +51,7 @@ Prerequisites:
 
    ```sh
    cp infra/terraform/backend.hcl.example infra/terraform/backend.hcl
-   # Set bucket to the output from bootstrap/state.
+   # Set bucket to the state bucket output from bootstrap/state.
    # Set prefix to staylong/sandbox/bootstrap-identity.
    terraform -chdir=infra/terraform/bootstrap/identity init \
      -backend-config=../../backend.hcl

@@ -9,6 +9,10 @@ IDENTITY_BOOTSTRAP_ROOT = Path("infra/terraform/bootstrap/identity/main.tf")
 SANDBOX_PLATFORM_MODULE = Path(
     "infra/terraform/modules/foundations/sandbox_platform/main.tf"
 )
+GITHUB_FEDERATION_VARIABLES = Path(
+    "infra/terraform/modules/foundations/github_federation/variables.tf"
+)
+BOOTSTRAP_STATE_ROOT = Path("infra/terraform/bootstrap/state/main.tf")
 
 
 def test_service_account_iam_bindings_use_static_instance_keys() -> None:
@@ -42,7 +46,7 @@ def test_terraform_workflow_identities_can_lock_the_remote_state_bucket() -> Non
     assert 'role   = "roles/storage.objectAdmin"' in federation_source
     assert '"planner"  = module.planner.email' in federation_source
     assert '"operator" = module.operator.email' in federation_source
-    assert "state_bucket_name = local.config.state_bucket_name" in bootstrap_source
+    assert "state_bucket_name              = local.config.state_bucket_name" in bootstrap_source
 
 
 def test_deployer_can_consume_enabled_google_apis_for_cloud_build() -> None:
@@ -51,17 +55,18 @@ def test_deployer_can_consume_enabled_google_apis_for_cloud_build() -> None:
     assert '"roles/serviceusage.serviceUsageConsumer"' in source
 
 
-def test_cloud_build_staging_uses_a_terraform_managed_bucket_and_scoped_members() -> None:
-    source = SANDBOX_PLATFORM_MODULE.read_text()
+def test_cloud_build_staging_uses_bootstrap_bucket_and_scoped_identity_members() -> None:
+    state_source = BOOTSTRAP_STATE_ROOT.read_text()
+    identity_source = GITHUB_FEDERATION_MODULE.read_text()
+    variables_source = GITHUB_FEDERATION_VARIABLES.read_text()
 
-    assert 'module "cloudbuild_staging"' in source
-    assert 'source = "../../base/gcs_bucket"' in source
-    assert "var.cloudbuild_staging_bucket_name" in source
-    assert "var.deployer_account_id" in source
-    assert "gcp-sa-cloudbuild.iam.gserviceaccount.com" in source
-    assert "object_creator_members" in source
-    assert "object_viewer_members" in source
-    assert "object_admin_members" not in source
+    assert 'module "cloudbuild_staging"' in state_source
+    assert 'source = "../../modules/base/gcs_bucket"' in state_source
+    assert 'resource "google_storage_bucket_iam_member" "cloudbuild_staging"' in identity_source
+    assert 'variable "cloudbuild_staging_bucket_name"' in variables_source
+    assert "gcp-sa-cloudbuild.iam.gserviceaccount.com" in identity_source
+    assert '"roles/storage.objectCreator"' in identity_source
+    assert '"roles/storage.objectViewer"' in identity_source
 
 
 def test_platform_enables_cloud_resource_manager_before_managing_project_services() -> None:
