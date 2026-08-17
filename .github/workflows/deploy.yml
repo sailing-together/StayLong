@@ -115,6 +115,7 @@ jobs:
             echo "Could not mint a Cloud Run identity token for the deployed service." >&2
             exit 1
           }
+          gcloud components install cloud-run-proxy --quiet
           proxy_port=18080
           gcloud run services proxy staylong \
             --project="${{ vars.GCP_PROJECT_ID }}" \
