@@ -27,3 +27,19 @@ resource "google_storage_bucket_iam_member" "members" {
   role   = "roles/storage.objectAdmin"
   member = each.value
 }
+
+resource "google_storage_bucket_iam_member" "object_creators" {
+  for_each = toset(var.object_creator_members)
+
+  bucket = google_storage_bucket.this.name
+  role   = "roles/storage.objectCreator"
+  member = each.value
+}
+
+resource "google_storage_bucket_iam_member" "object_viewers" {
+  for_each = toset(var.object_viewer_members)
+
+  bucket = google_storage_bucket.this.name
+  role   = "roles/storage.objectViewer"
+  member = each.value
+}

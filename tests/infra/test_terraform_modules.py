@@ -59,6 +59,9 @@ def test_cloud_build_staging_uses_a_terraform_managed_bucket_and_scoped_members(
     assert "var.cloudbuild_staging_bucket_name" in source
     assert "var.deployer_account_id" in source
     assert "gcp-sa-cloudbuild.iam.gserviceaccount.com" in source
+    assert "object_creator_members" in source
+    assert "object_viewer_members" in source
+    assert "object_admin_members" not in source
 
 
 def test_platform_enables_cloud_resource_manager_before_managing_project_services() -> None:
