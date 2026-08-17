@@ -51,6 +51,16 @@ def test_deployer_can_consume_enabled_google_apis_for_cloud_build() -> None:
     assert '"roles/serviceusage.serviceUsageConsumer"' in source
 
 
+def test_cloud_build_staging_uses_a_terraform_managed_bucket_and_scoped_members() -> None:
+    source = SANDBOX_PLATFORM_MODULE.read_text()
+
+    assert 'module "cloudbuild_staging"' in source
+    assert 'source = "../../base/gcs_bucket"' in source
+    assert "var.cloudbuild_staging_bucket_name" in source
+    assert "var.deployer_account_id" in source
+    assert "gcp-sa-cloudbuild.iam.gserviceaccount.com" in source
+
+
 def test_platform_enables_cloud_resource_manager_before_managing_project_services() -> None:
     bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text()
     platform_source = SANDBOX_PLATFORM_MODULE.read_text()

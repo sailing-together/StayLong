@@ -76,3 +76,8 @@ It first verifies the Terraform-managed Artifact Registry and Cloud Run service
 exist. It then publishes an immutable image and updates only the Cloud Run
 image revision; it never creates the repository, service, service account, or
 access policy.
+
+The platform foundation also creates a dedicated, versioned Cloud Build
+staging bucket. The deployment workflow passes this bucket explicitly for
+source and log staging; it does not rely on the unmanaged `${PROJECT_ID}_cloudbuild`
+default bucket.
