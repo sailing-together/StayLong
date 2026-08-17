@@ -64,6 +64,14 @@ def test_cloud_build_staging_uses_a_terraform_managed_bucket_and_scoped_members(
     assert "object_admin_members" not in source
 
 
+def test_terraform_operator_can_create_platform_buckets() -> None:
+    source = Path(
+        "infra/terraform/modules/foundations/github_federation/variables.tf"
+    ).read_text()
+
+    assert '"roles/storage.admin"' in source
+
+
 def test_platform_enables_cloud_resource_manager_before_managing_project_services() -> None:
     bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text()
     platform_source = SANDBOX_PLATFORM_MODULE.read_text()

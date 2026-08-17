@@ -33,6 +33,7 @@ variable "operator_project_roles" {
     "roles/pubsub.admin",
     "roles/run.admin",
     "roles/serviceusage.serviceUsageAdmin",
+    "roles/storage.admin",
   ]
 }
 variable "deployer_project_roles" {
