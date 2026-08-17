@@ -120,6 +120,10 @@ locals {
       role   = "roles/storage.legacyBucketReader"
       member = "serviceAccount:service-${var.project_number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
     }
+    compute_source_viewer = {
+      role   = "roles/storage.objectViewer"
+      member = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+    }
   }
 }
 
