@@ -66,9 +66,10 @@ function App() {
         <p className="eyebrow">Family workspace</p>
         <h1 id="workspace-title">Start with what is making home harder.</h1>
         <p className="intro-copy">
-          StayLong helps an authorised family member turn a household concern into
-          an organised, consent-led coordination path. It does not diagnose,
-          decide eligibility, choose providers, or make payments.
+          StayLong helps an older person living alone turn a home concern into an
+          organised, consent-led coordination path. Invite a trusted supporter
+          only when you choose. It does not diagnose, decide eligibility, choose
+          providers, or make payments.
         </p>
       </section>
 
@@ -76,7 +77,7 @@ function App() {
         <form className="surface concern-form" onSubmit={createCase}>
           <div className="surface-heading">
             <p className="eyebrow">01 · Create a household case</p>
-            <h2>Who are we coordinating for?</h2>
+            <h2>What is making home harder?</h2>
           </div>
 
           <label htmlFor="access-token">Demo access token</label>
@@ -103,9 +104,8 @@ function App() {
           <div className="consent-note">
             <span aria-hidden="true">✦</span>
             <p>
-              By continuing, you confirm you are authorised to coordinate this
-              household. External sharing, bookings, and costs always need human
-              approval.
+              You choose whether to invite a trusted supporter. External sharing,
+              bookings, and costs always need your approval.
             </p>
           </div>
 
@@ -168,9 +168,8 @@ function App() {
               <div className="empty-mark" aria-hidden="true">↗</div>
               <h3>Your case path will appear here.</h3>
               <p>
-                Begin with a household the family is authorised to coordinate.
-                StayLong will show only the information actually supplied or
-                returned by the service.
+                Start with a concern you want help coordinating. StayLong will
+                show only the information you supply or the service returns.
               </p>
             </div>
           )}

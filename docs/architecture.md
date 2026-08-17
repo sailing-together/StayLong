@@ -6,8 +6,9 @@ Build a small, demonstrable Taskmaster that persists a household coordination pl
 
 ```mermaid
 flowchart LR
-  subgraph FAMILY["Family experience"]
-    U["Authorised family member"] --> W["Accessible web UI"]
+  subgraph EXPERIENCE["Independent-living experience"]
+    U["Older person living alone"] --> W["Accessible web UI"]
+    S["Optional authorised supporter"] -. invited for an approved task .-> W
   end
   subgraph RUN["Cloud Run service"]
     W --> API["Authenticated FastAPI API"]
@@ -44,7 +45,7 @@ The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded
 
 ## Core event flow
 
-1. An authorised family member creates a concern.
+1. An older person living alone creates a concern independently, or an authorised supporter creates one with the person's permission.
 2. The API performs deterministic red-flag screening before invoking Gemini.
 3. The intake agent produces a typed concern summary and lists missing facts.
 4. The coordinator creates only allowed draft tasks, appointments or messages.
@@ -71,6 +72,7 @@ The design rationale and MVP priorities are recorded in [training-informed impro
 - Encrypt data in transit and at rest using managed Google Cloud controls.
 - Use least-privilege service accounts; the Cloud Run runtime identity may access only its Firestore, Cloud Tasks, Pub/Sub and logging resources.
 - Never send a message, create a booking or share personal data until a confirmed approval is stored.
+- The older person decides whether to invite a supporter. The application does not silently notify family, friends or services.
 
 ## Emergency handling
 
@@ -78,8 +80,9 @@ Emergency handling is a static, deterministic route, not an LLM feature. A possi
 
 ## Deployment architecture
 
-- Terraform provisions Google Cloud resources.
+- Terraform provisions all Google Cloud resources, including identity, state storage, runtime, data stores, messaging, observability and—when a custom domain is purchased—the load balancer, certificate and DNS records.
 - GitHub Actions authenticates to Google Cloud using OpenID Connect Workload Identity Federation (WIF); no JSON service-account key is stored in GitHub.
 - CI runs formatting, linting and tests on every pull request.
 - Terraform plan runs on pull requests; apply is manually dispatched from protected `main` after review.
 - Cloud Run deployment is manually dispatched from `main` after Terraform has provisioned prerequisites.
+- The sandbox initially uses the generated `run.app` URL. A future public custom domain will use a global external HTTPS Load Balancer, Google-managed TLS certificate and Serverless NEG in front of Cloud Run; direct Cloud Run domain mapping is not used.

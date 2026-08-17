@@ -92,7 +92,7 @@ def test_cloud_tasks_adapter_creates_an_authenticated_work_item() -> None:
     receipt = CloudTasksDispatchAdapter(
         client=client,
         project_id="staylong-sandbox",
-        location="australia-southeast1",
+        location="australia-southeast2",
         queue="workflow-events",
         target_uri="https://staylong.example.test/internal/events",
         service_account_email="workflow-runtime@staylong-sandbox.iam.gserviceaccount.com",
@@ -103,7 +103,7 @@ def test_cloud_tasks_adapter_creates_an_authenticated_work_item() -> None:
     parent, task = client.calls[0]
     assert (
         parent
-        == "projects/staylong-sandbox/locations/australia-southeast1/queues/workflow-events"
+        == "projects/staylong-sandbox/locations/australia-southeast2/queues/workflow-events"
     )
     assert task["name"].endswith("/tasks/event-001")
     request = task["http_request"]

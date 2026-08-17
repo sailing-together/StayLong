@@ -8,8 +8,8 @@
     "contacts": [
       {
         "contact_id": "demo-contact-001",
-        "display_name": "Demo family contact 1",
-        "relationship": "adult_child"
+        "display_name": "Demo older person",
+        "relationship": "older_person"
       },
       {
         "contact_id": "demo-contact-002",
@@ -28,7 +28,7 @@
     "concern": {
       "summary": "The bathroom entry is difficult to use at night.",
       "home_area": "bathroom",
-      "reported_difficulty": "The family wants to prepare clear non-clinical facts for an assessment."
+      "reported_difficulty": "The older person wants to prepare clear non-clinical facts for an assessment."
     },
     "next_step": {
       "action_type": "prepare_assessment_pack",

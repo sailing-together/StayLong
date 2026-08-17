@@ -13,7 +13,7 @@ def test_resolve_config_merges_common_environment_and_project_deterministically(
     config = resolve_config(CONFIG_ROOT, "staylong.json", "sandbox.json")
 
     assert config["project_id"] == "staylong-sandbox"
-    assert config["region"] == "australia-southeast1"
+    assert config["region"] == "australia-southeast2"
     assert config["artifact_registry_repository_id"] == "staylong"
     assert config["labels"] == {"environment": "sandbox", "product": "staylong"}
 
