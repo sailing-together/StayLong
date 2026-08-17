@@ -1,9 +1,17 @@
+resource "google_project_service" "cloud_resource_manager" {
+  project            = var.project_id
+  service            = "cloudresourcemanager.googleapis.com"
+  disable_on_destroy = false
+}
+
 resource "google_project_service" "services" {
   for_each = toset(var.required_services)
 
   project            = var.project_id
   service            = each.value
   disable_on_destroy = false
+
+  depends_on = [google_project_service.cloud_resource_manager]
 }
 
 module "artifact_registry" {
