@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StayLong demo household",
+  "type": "object",
+  "required": ["schema_version", "scenario_id", "household", "case"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "scenario_id": { "type": "string", "pattern": "^demo-[a-z0-9-]+$" },
+    "household": {
+      "type": "object",
+      "required": ["household_id", "display_name", "region", "contacts", "consent"],
+      "additionalProperties": false,
+      "properties": {
+        "household_id": { "type": "string", "pattern": "^demo-household-[0-9]{3}$" },
+        "display_name": { "const": "Demo household" },
+        "region": { "const": "Victoria, Australia" },
+        "contacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["contact_id", "display_name", "relationship"],
+            "additionalProperties": false,
+            "properties": {
+              "contact_id": { "type": "string", "pattern": "^demo-contact-[0-9]{3}$" },
+              "display_name": { "type": "string", "pattern": "^Demo (family|support) contact [0-9]+$" },
+              "relationship": { "enum": ["adult_child", "support_person"] }
+            }
+          }
+        },
+        "consent": {
+          "type": "object",
+          "required": ["information_sharing", "external_actions"],
+          "additionalProperties": false,
+          "properties": {
+            "information_sharing": { "const": "demo-only" },
+            "external_actions": { "const": "approval-required" }
+          }
+        }
+      }
+    },
+    "case": {
+      "type": "object",
+      "required": ["case_id", "status", "concern", "next_step"],
+      "additionalProperties": false,
+      "properties": {
+        "case_id": { "const": "demo-case-001" },
+        "status": { "const": "open" },
+        "concern": {
+          "type": "object",
+          "required": ["summary", "home_area", "reported_difficulty"],
+          "additionalProperties": false,
+          "properties": {
+            "summary": { "type": "string", "minLength": 1 },
+            "home_area": { "const": "bathroom" },
+            "reported_difficulty": { "type": "string", "minLength": 1 }
+          }
+        },
+        "next_step": {
+          "type": "object",
+          "required": ["action_type", "requires_human_confirmation", "owner_contact_id"],
+          "additionalProperties": false,
+          "properties": {
+            "action_type": { "const": "prepare_assessment_pack" },
+            "requires_human_confirmation": { "const": true },
+            "owner_contact_id": { "const": "demo-contact-001" }
+          }
+        }
+      }
+    }
+  }
+}

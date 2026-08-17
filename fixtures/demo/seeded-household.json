@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "scenario_id": "demo-night-bathroom-access",
+  "household": {
+    "household_id": "demo-household-001",
+    "display_name": "Demo household",
+    "region": "Victoria, Australia",
+    "contacts": [
+      {
+        "contact_id": "demo-contact-001",
+        "display_name": "Demo family contact 1",
+        "relationship": "adult_child"
+      },
+      {
+        "contact_id": "demo-contact-002",
+        "display_name": "Demo support contact 1",
+        "relationship": "support_person"
+      }
+    ],
+    "consent": {
+      "information_sharing": "demo-only",
+      "external_actions": "approval-required"
+    }
+  },
+  "case": {
+    "case_id": "demo-case-001",
+    "status": "open",
+    "concern": {
+      "summary": "The bathroom entry is difficult to use at night.",
+      "home_area": "bathroom",
+      "reported_difficulty": "The family wants to prepare clear non-clinical facts for an assessment."
+    },
+    "next_step": {
+      "action_type": "prepare_assessment_pack",
+      "requires_human_confirmation": true,
+      "owner_contact_id": "demo-contact-001"
+    }
+  }
+}

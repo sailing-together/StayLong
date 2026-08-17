@@ -6,16 +6,28 @@ Build a small, demonstrable Taskmaster that persists a household coordination pl
 
 ```mermaid
 flowchart LR
-  U["Older person or authorised family member"] --> W["Web app on Cloud Run"]
-  W --> A["Google ADK coordination agent"]
-  A --> V["Vertex AI Gemini 3.5+"]
-  A --> F[("Firestore household state")]
-  A --> Q["Cloud Tasks and Pub/Sub"]
-  Q --> A
-  A --> T["Approved tool adapters"]
-  T --> C["Calendar / email / demo service directory"]
-  A --> L["Audit log and action timeline"]
+  subgraph FAMILY["Family experience"]
+    U["Authorised family member"] --> W["Accessible web UI"]
+  end
+  subgraph RUN["Cloud Run service"]
+    W --> API["Authenticated FastAPI API"]
+    API --> R["Deterministic safety route"]
+    R --> ADK["Google ADK intake / coordinator"]
+  end
+  ADK --> V["Vertex AI Gemini 3.5+"]
+  ADK --> F[("Firestore case state")]
+  ADK --> Q["Cloud Tasks / Pub/Sub"]
+  Q --> ADK
+  ADK --> P["Approval policy"]
+  P --> T["Calendar / email / SMS demo adapters"]
+  T --> C["Approved external action"]
+  F --> L["Immutable audit timeline"]
+  L --> W
+  D["Synthetic seeded household"] --> F
+  CI["GitHub Actions + Terraform + WIF"] -. deploys .-> RUN
 ```
+
+The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded-household.json). It exercises the normal concern → intake → draft → human approval path with synthetic identifiers only; it does not represent a real household or execute an external side effect.
 
 ## Components
 
