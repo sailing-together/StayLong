@@ -124,6 +124,10 @@ locals {
       role   = "roles/storage.objectViewer"
       member = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
     }
+    compute_bucket_reader = {
+      role   = "roles/storage.legacyBucketReader"
+      member = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+    }
   }
 }
 
