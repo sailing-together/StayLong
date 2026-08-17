@@ -93,15 +93,24 @@ jobs:
             --format='value(status.url)')"
           test -n "$service_url"
           echo "url=$service_url" >> "$GITHUB_OUTPUT"
+      - name: Mint Cloud Run identity token
+        id: cloud_run_id_token
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+          token_format: id_token
+          id_token_audience: ${{ steps.service.outputs.url }}
+          id_token_include_email: true
       - name: Smoke-test deployed revision
         env:
           STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
+          CLOUD_RUN_ID_TOKEN: ${{ steps.cloud_run_id_token.outputs.id_token }}
         run: |
           test -n "$STAYLONG_API_TOKEN" || {
             echo "Configure the sandbox GitHub environment secret STAYLONG_API_TOKEN before deploying." >&2
             exit 1
           }
-          export CLOUD_RUN_ID_TOKEN="$(gcloud auth print-identity-token --audiences='${{ steps.service.outputs.url }}')"
           test -n "$CLOUD_RUN_ID_TOKEN" || {
             echo "Could not mint a Cloud Run identity token for the deployed service." >&2
             exit 1
