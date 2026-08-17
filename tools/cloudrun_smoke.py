@@ -24,10 +24,17 @@ class HttpResponse:
 class UrlLibClient:
     """Small standard-library client so the deployment check has no extra dependency."""
 
-    def __init__(self, base_url: str, token: str, id_token: str | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        id_token: str | None = None,
+        application_token_header: str = "Authorization",
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.id_token = id_token
+        self.application_token_header = application_token_header
 
     def request(
         self,
@@ -36,7 +43,12 @@ class UrlLibClient:
         payload: Mapping[str, str] | None = None,
     ) -> HttpResponse:
         data = json.dumps(payload).encode() if payload is not None else None
-        headers = {"Authorization": f"Bearer {self.token}"}
+        application_token = (
+            f"Bearer {self.token}"
+            if self.application_token_header.lower() == "authorization"
+            else self.token
+        )
+        headers = {self.application_token_header: application_token}
         if self.id_token:
             # Cloud Run consumes this platform token before forwarding the
             # application bearer token used by StayLong's own auth layer.
@@ -96,9 +108,21 @@ def main() -> int:
         "--id-token",
         help="Cloud Run identity token for private services (never printed)",
     )
+    parser.add_argument(
+        "--application-token-header",
+        default="Authorization",
+        help="Header carrying the StayLong API token (default: Authorization)",
+    )
     args = parser.parse_args()
     try:
-        case_id = run_smoke(UrlLibClient(args.url, args.token, args.id_token))
+        case_id = run_smoke(
+            UrlLibClient(
+                args.url,
+                args.token,
+                args.id_token,
+                args.application_token_header,
+            )
+        )
     except SmokeTestError as error:
         print(f"Smoke test failed: {error}", file=sys.stderr)
         return 1
