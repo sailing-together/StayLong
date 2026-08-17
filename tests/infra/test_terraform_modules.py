@@ -71,6 +71,14 @@ def test_cloud_build_staging_uses_bootstrap_bucket_and_scoped_identity_members()
     assert "${var.project_number}-compute@developer.gserviceaccount.com" in identity_source
 
 
+def test_cloud_build_compute_identity_can_push_only_to_the_artifact_repository() -> None:
+    source = SANDBOX_PLATFORM_MODULE.read_text()
+
+    assert 'resource "google_artifact_registry_repository_iam_member" "cloudbuild_writer"' in source
+    assert 'role       = "roles/artifactregistry.writer"' in source
+    assert "${data.google_project.current.number}-compute@developer.gserviceaccount.com" in source
+
+
 def test_platform_enables_cloud_resource_manager_before_managing_project_services() -> None:
     bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text()
     platform_source = SANDBOX_PLATFORM_MODULE.read_text()
