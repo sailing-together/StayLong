@@ -1,0 +1,168 @@
+name: Capture release evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Main commit SHA to verify and capture"
+        required: true
+        type: string
+      environment:
+        description: "Protected Google Cloud environment"
+        required: true
+        default: sandbox
+        type: choice
+        options: [sandbox]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: release-evidence-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    name: Capture ${{ inputs.environment }} release evidence
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha }}
+      - name: Verify commit belongs to main
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor "$(git rev-parse HEAD)" origin/main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package and verification tools
+        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
+      - name: Run application quality and safety checks
+        run: |
+          ruff check .
+          pytest
+          PYTHONPATH=src python tools/policy_evaluations.py | tee "${RUNNER_TEMP}/policy-evaluations.json"
+      - uses: hashicorp/setup-terraform@v3
+      - name: Validate Terraform configuration
+        working-directory: infra/terraform
+        run: |
+          PYTHONPATH=../../src python ../../tools/terraform_config.py \
+            --config-root projects/config \
+            --project-config staylong.json \
+            --environment-config sandbox.json
+          terraform fmt -check -recursive
+          while IFS= read -r component; do
+            terraform -chdir="$component" init -backend=false -input=false
+            terraform -chdir="$component" validate
+          done < <(find bootstrap components -name main.tf -exec dirname {} \; | sort)
+      - name: Scan repository and IaC
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: json
+          output: ${{ runner.temp }}/trivy.json
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_PLANNER_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Capture Cloud Run and Artifact Registry evidence
+        id: cloud
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+        run: |
+          test -n "$GCP_PROJECT_ID"
+          test -n "$GCP_REGION"
+          service_url="$(gcloud run services describe staylong \
+            --project="$GCP_PROJECT_ID" \
+            --region="$GCP_REGION" \
+            --format='value(status.url)')"
+          image_ref="$(gcloud run services describe staylong \
+            --project="$GCP_PROJECT_ID" \
+            --region="$GCP_REGION" \
+            --format='value(spec.template.spec.containers[0].image)')"
+          image_digest="$(gcloud artifacts docker images describe \
+            "$image_ref" \
+            --project="$GCP_PROJECT_ID" \
+            --format='value(image_summary.digest)')"
+          test -n "$service_url"
+          test -n "$image_ref"
+          test -n "$image_digest"
+          printf 'service_url=%s\nimage_ref=%s\nimage_digest=%s\n' "$service_url" "$image_ref" "$image_digest" > "${RUNNER_TEMP}/cloud-resource-evidence.txt"
+          echo "service_url=$service_url" >> "$GITHUB_OUTPUT"
+          echo "image_digest=$image_digest" >> "$GITHUB_OUTPUT"
+      - name: Verify deployed health and authenticated workflow
+        env:
+          STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
+          SERVICE_URL: ${{ steps.cloud.outputs.service_url }}
+        run: |
+          test -n "$STAYLONG_API_TOKEN"
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          request = urllib.request.Request(
+              f"{os.environ['SERVICE_URL']}/healthz",
+              headers={"Accept": "application/json"},
+          )
+          with urllib.request.urlopen(request, timeout=15) as response:
+              assert response.status == 200
+              assert json.load(response) == {"status": "ok"}
+          PY
+          python tools/cloudrun_smoke.py --url "$SERVICE_URL" --token "$STAYLONG_API_TOKEN" | tee "${RUNNER_TEMP}/cloudrun-smoke.txt"
+      - name: Write release evidence manifest
+        env:
+          SERVICE_URL: ${{ steps.cloud.outputs.service_url }}
+          IMAGE_DIGEST: ${{ steps.cloud.outputs.image_digest }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+
+          checked_out_sha = subprocess.check_output(
+              ["git", "rev-parse", "HEAD"], text=True
+          ).strip()
+
+          manifest = {
+              "schema_version": 1,
+              "commit_sha": checked_out_sha,
+              "requested_commit_sha": "${{ inputs.commit_sha }}",
+              "environment": "${{ inputs.environment }}",
+              "workflow_run": os.environ["GITHUB_SERVER_URL"] + "/" + os.environ["GITHUB_REPOSITORY"] + "/actions/runs/" + os.environ["GITHUB_RUN_ID"],
+              "cloud_run_service_url": os.environ["SERVICE_URL"],
+              "artifact_registry_image_digest": os.environ["IMAGE_DIGEST"],
+              "checks": {
+                  "python_and_policy": "pass",
+                  "terraform": "pass",
+                  "trivy": "pass",
+                  "cloud_run_health": "pass",
+                  "authenticated_case_flow": "pass",
+              },
+          }
+          output = Path(os.environ["RUNNER_TEMP"]) / "release-evidence.json"
+          output.write_text(json.dumps(manifest, indent=2) + "\n")
+          PY
+      - name: Upload release evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: staylong-release-evidence-${{ inputs.environment }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/release-evidence.json
+            ${{ runner.temp }}/trivy.json
+            ${{ runner.temp }}/cloud-resource-evidence.txt
+            ${{ runner.temp }}/cloudrun-smoke.txt
+            ${{ runner.temp }}/policy-evaluations.json
+          if-no-files-found: error

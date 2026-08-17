@@ -25,6 +25,7 @@ Official Google training and the implementation choices it drives are in [offici
 - `tests/` — automated tests
 - `infra/terraform/` — Google Cloud infrastructure definitions
 - `.github/workflows/` — CI, Terraform, and Cloud Run deployment automation
+- `docs/release-evidence.md` — release-candidate evidence packet and the one-time live verification gate
 - `docs/` — product, architecture, prompt, competition and delivery documentation
 
 ## Runtime container and smoke test
