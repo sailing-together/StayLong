@@ -41,6 +41,18 @@ def test_authenticated_case_flow_creates_and_reads_a_concern() -> None:
     assert concerns.json()[0]["summary"] == "The bathroom step is difficult."
 
 
+def test_authenticated_case_flow_accepts_proxy_application_token_header() -> None:
+    client = TestClient(create_app(api_token="secret-token"))
+
+    response = client.post(
+        "/v1/cases",
+        json={"summary": "The bathroom step is difficult."},
+        headers={"X-StayLong-API-Token": "secret-token"},
+    )
+
+    assert response.status_code == 201
+
+
 def test_case_input_rejects_unknown_fields() -> None:
     client = TestClient(create_app(api_token="secret-token"))
 

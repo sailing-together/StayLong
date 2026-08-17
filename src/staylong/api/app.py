@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.staticfiles import StaticFiles
@@ -32,6 +32,9 @@ class ConcernResponse(BaseModel):
     summary: str
 
 
+APPLICATION_TOKEN_HEADER = "X-StayLong-API-Token"
+
+
 def create_app(
     *,
     api_token: str,
@@ -46,15 +49,24 @@ def create_app(
     bearer = HTTPBearer(auto_error=False)
 
     def require_auth(
+        request: Request,
         credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     ) -> None:
-        if credentials is None or credentials.scheme.lower() != "bearer":
+        # The proxy used by private Cloud Run smoke tests owns Authorization
+        # for the platform ID token. Preserve the normal bearer contract for
+        # clients, with a narrow application-token header for that proxy path.
+        application_token = request.headers.get(APPLICATION_TOKEN_HEADER)
+        if application_token is not None:
+            provided_token = application_token
+        elif credentials is not None and credentials.scheme.lower() == "bearer":
+            provided_token = credentials.credentials
+        else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Bearer authentication is required.",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        if not secrets.compare_digest(credentials.credentials, api_token):
+        if not secrets.compare_digest(provided_token, api_token):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid bearer token.",
