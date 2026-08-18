@@ -5,6 +5,7 @@ resource "google_cloud_run_v2_service" "this" {
 
   # Keep the managed run.app endpoint available for authenticated smoke tests
   # and future load-balancer routing; IAM still controls who may invoke it.
+  launch_stage        = "BETA"
   default_uri_disabled = false
 
   template {
