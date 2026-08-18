@@ -90,7 +90,7 @@ jobs:
           service_url="$(gcloud run services describe staylong \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="${{ vars.GCP_REGION }}" \
-            --format=json | jq -er '.metadata.annotations["run.googleapis.com/urls"][0]')"
+            --format=json | jq -er '.metadata.annotations["run.googleapis.com/urls"] | fromjson | .[0]')"
           test -n "$service_url"
           echo "url=$service_url" >> "$GITHUB_OUTPUT"
       - name: Mint Cloud Run identity token
