@@ -87,22 +87,14 @@ jobs:
       - name: Resolve deployed service URL
         id: service
         run: |
-          region="${{ vars.GCP_REGION }}"
           service_url="$(gcloud run services describe staylong \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="${{ vars.GCP_REGION }}" \
             --format='value(status.url)')"
-          identity_audience="$(gcloud run services describe staylong \
-            --project="${{ vars.GCP_PROJECT_ID }}" \
-            --region="${{ vars.GCP_REGION }}" \
-            --format=json | jq -er --arg region "$region" \
-              '.metadata.annotations["run.googleapis.com/urls"] | fromjson | map(select(endswith("." + $region + ".run.app"))) | .[0]')"
           test -n "$service_url"
-          test -n "$identity_audience"
           echo "Resolved Cloud Run URL: $service_url"
-          echo "Resolved Cloud Run identity audience: $identity_audience"
           echo "url=$service_url" >> "$GITHUB_OUTPUT"
-          echo "identity_audience=$identity_audience" >> "$GITHUB_OUTPUT"
+          echo "identity_audience=$service_url" >> "$GITHUB_OUTPUT"
       - name: Inspect Cloud Run routing and revision state
         continue-on-error: true
         run: |
@@ -111,7 +103,7 @@ jobs:
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="${{ vars.GCP_REGION }}" \
             --format=json > "$service_json"
-          jq '{url: .status.url, conditions: .status.conditions, latestReadyRevision: .status.latestReadyRevision, traffic: .status.traffic, ingress: .metadata.annotations["run.googleapis.com/ingress"], urls: (.metadata.annotations["run.googleapis.com/urls"] | fromjson)}' "$service_json"
+          jq '{url: .status.url, conditions: .status.conditions, latestReadyRevision: .status.latestReadyRevisionName, traffic: .status.traffic, ingress: .metadata.annotations["run.googleapis.com/ingress"], urls: (.metadata.annotations["run.googleapis.com/urls"] | fromjson)}' "$service_json"
       - name: Mint Cloud Run identity token
         id: cloud_run_id_token
         uses: google-github-actions/auth@v2
