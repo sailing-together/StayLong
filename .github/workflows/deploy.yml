@@ -87,13 +87,22 @@ jobs:
       - name: Resolve deployed service URL
         id: service
         run: |
+          region="${{ vars.GCP_REGION }}"
           service_url="$(gcloud run services describe staylong \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="${{ vars.GCP_REGION }}" \
             --format='value(status.url)')"
+          identity_audience="$(gcloud run services describe staylong \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${{ vars.GCP_REGION }}" \
+            --format=json | jq -er --arg region "$region" \
+              '.metadata.annotations["run.googleapis.com/urls"] | fromjson | map(select(endswith("." + $region + ".run.app"))) | .[0]')"
           test -n "$service_url"
+          test -n "$identity_audience"
           echo "Resolved Cloud Run URL: $service_url"
+          echo "Resolved Cloud Run identity audience: $identity_audience"
           echo "url=$service_url" >> "$GITHUB_OUTPUT"
+          echo "identity_audience=$identity_audience" >> "$GITHUB_OUTPUT"
       - name: Inspect Cloud Run routing and revision state
         continue-on-error: true
         run: |
@@ -110,7 +119,7 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
           token_format: id_token
-          id_token_audience: ${{ steps.service.outputs.url }}
+          id_token_audience: ${{ steps.service.outputs.identity_audience }}
           id_token_include_email: true
       - name: Smoke-test deployed revision
         env:
