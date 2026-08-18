@@ -87,11 +87,14 @@ jobs:
       - name: Resolve deployed service URL
         id: service
         run: |
+          region="${{ vars.GCP_REGION }}"
           service_url="$(gcloud run services describe staylong \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="${{ vars.GCP_REGION }}" \
-            --format=json | jq -er '.metadata.annotations["run.googleapis.com/urls"] | fromjson | .[0]')"
+            --format=json | jq -er --arg region "$region" \
+              '.metadata.annotations["run.googleapis.com/urls"] | fromjson | map(select(endswith("." + $region + ".run.app"))) | .[0]')"
           test -n "$service_url"
+          echo "Resolved Cloud Run proxy URL: $service_url"
           echo "url=$service_url" >> "$GITHUB_OUTPUT"
       - name: Mint Cloud Run identity token
         id: cloud_run_id_token
