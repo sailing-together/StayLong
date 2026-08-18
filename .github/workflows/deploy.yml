@@ -94,6 +94,15 @@ jobs:
           test -n "$service_url"
           echo "Resolved Cloud Run URL: $service_url"
           echo "url=$service_url" >> "$GITHUB_OUTPUT"
+      - name: Inspect Cloud Run routing and revision state
+        continue-on-error: true
+        run: |
+          service_json="${RUNNER_TEMP}/staylong-service.json"
+          gcloud run services describe staylong \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="${{ vars.GCP_REGION }}" \
+            --format=json > "$service_json"
+          jq '{url: .status.url, conditions: .status.conditions, latestReadyRevision: .status.latestReadyRevision, traffic: .status.traffic, ingress: .metadata.annotations["run.googleapis.com/ingress"], urls: (.metadata.annotations["run.googleapis.com/urls"] | fromjson)}' "$service_json"
       - name: Mint Cloud Run identity token
         id: cloud_run_id_token
         uses: google-github-actions/auth@v2
