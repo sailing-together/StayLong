@@ -87,16 +87,10 @@ jobs:
       - name: Resolve deployed service URL
         id: service
         run: |
-          gcloud run services update-traffic staylong \
+          service_url="$(gcloud run services describe staylong \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="${{ vars.GCP_REGION }}" \
-            --set-tags=smoke=LATEST \
-            --quiet
-          service_json="$(gcloud run services describe staylong \
-            --project="${{ vars.GCP_PROJECT_ID }}" \
-            --region="${{ vars.GCP_REGION }}" \
-            --format=json)"
-          service_url="$(python3 -c 'import json,sys; print(next(item["url"] for item in json.loads(sys.argv[1])["status"]["traffic"] if item.get("tag") == "smoke"))' "$service_json")"
+            --format='value(status.url)')"
           test -n "$service_url"
           echo "url=$service_url" >> "$GITHUB_OUTPUT"
       - name: Mint Cloud Run identity token
@@ -122,25 +116,15 @@ jobs:
             exit 1
           }
           gcloud components install cloud-run-proxy --quiet
-          gcloud components install alpha --quiet
           proxy_port=18080
-          gcloud alpha run services proxy staylong \
+          gcloud run services proxy staylong \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="${{ vars.GCP_REGION }}" \
-            --endpoint-mode=regional-preferred \
-            --tag=smoke \
             --port="$proxy_port" \
             --token="$CLOUD_RUN_ID_TOKEN" \
             >"$RUNNER_TEMP/staylong-cloud-run-proxy.log" 2>&1 &
           proxy_pid=$!
-          cleanup() {
-            kill "$proxy_pid" 2>/dev/null || true
-            gcloud run services update-traffic staylong \
-              --project="${{ vars.GCP_PROJECT_ID }}" \
-              --region="${{ vars.GCP_REGION }}" \
-              --remove-tags=smoke \
-              --quiet || true
-          }
+          cleanup() { kill "$proxy_pid" 2>/dev/null || true; }
           trap cleanup EXIT
           for attempt in $(seq 1 30); do
             proxy_status="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 5 "http://127.0.0.1:${proxy_port}/healthz" || true)"
@@ -153,8 +137,6 @@ jobs:
             fi
             sleep 1
           done
-          echo "Cloud Run smoke target: ${{ steps.service.outputs.url }}"
-          cat "$RUNNER_TEMP/staylong-cloud-run-proxy.log"
           python3 tools/cloudrun_smoke.py \
             --url "http://127.0.0.1:${proxy_port}" \
             --token "$STAYLONG_API_TOKEN" \
