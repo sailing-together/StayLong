@@ -1,7 +1,14 @@
 resource "google_cloud_run_v2_service" "this" {
+  provider = googlebeta
+
   project  = var.project_id
   name     = var.service_name
   location = var.location
+
+  # Keep the managed run.app endpoint available for authenticated smoke tests
+  # and future load-balancer routing; IAM still controls who may invoke it.
+  launch_stage         = "BETA"
+  default_uri_disabled = false
 
   template {
     service_account = var.service_account_email
@@ -23,6 +30,8 @@ resource "google_cloud_run_v2_service" "this" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "invoker" {
+  provider = googlebeta
+
   for_each = var.invoker_members
 
   project  = var.project_id
