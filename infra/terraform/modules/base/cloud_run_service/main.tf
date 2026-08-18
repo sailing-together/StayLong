@@ -5,6 +5,10 @@ resource "google_cloud_run_v2_service" "this" {
   name     = var.service_name
   location = var.location
 
+  # Keep the generated run.app endpoints available for the sandbox demo and
+  # make the routing choice explicit in Terraform state.
+  default_uri_disabled = false
+
   template {
     service_account = var.service_account_email
 
