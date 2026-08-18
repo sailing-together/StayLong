@@ -1,4 +1,6 @@
 resource "google_cloud_run_v2_service" "this" {
+  provider = googlebeta
+
   project  = var.project_id
   name     = var.service_name
   location = var.location
@@ -28,6 +30,8 @@ resource "google_cloud_run_v2_service" "this" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "invoker" {
+  provider = googlebeta
+
   for_each = var.invoker_members
 
   project  = var.project_id

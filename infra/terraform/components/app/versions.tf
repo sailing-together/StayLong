@@ -6,7 +6,7 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 6.0"
     }
-    google-beta = {
+    googlebeta = {
       source  = "hashicorp/google-beta"
       version = "~> 6.0"
     }
@@ -18,7 +18,7 @@ provider "google" {
   region  = local.config.region
 }
 
-provider "google-beta" {
+provider "googlebeta" {
   project = local.config.project_id
   region  = local.config.region
 }

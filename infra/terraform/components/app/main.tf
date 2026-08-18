@@ -16,7 +16,7 @@ module "service" {
   source = "../../modules/base/cloud_run_service"
 
   providers = {
-    google = google-beta
+    googlebeta = googlebeta
   }
 
   project_id            = local.config.project_id
