@@ -25,6 +25,9 @@ module "service" {
   location              = local.config.region
   service_name          = "staylong-sydney-app-canary"
   service_account_email = "${local.config.runtime_account_id}@${local.config.project_id}.iam.gserviceaccount.com"
-  image                 = var.canary_image
+  # Terraform creates a healthy placeholder revision first. The guarded
+  # workflow then updates image and runtime token together, keeping the token
+  # out of Terraform state.
+  image                 = "gcr.io/google-samples/hello-app:1.0"
   enable_public_invoker = true
 }
