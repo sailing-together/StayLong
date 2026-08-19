@@ -1,0 +1,67 @@
+name: Diagnose private Sydney Cloud Run routing
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  diagnose:
+    name: Read-only Sydney routing evidence
+    runs-on: ubuntu-latest
+    environment: sandbox
+    env:
+      REGION: australia-southeast1
+      SERVICE: staylong-sydney
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Collect service, revision and IAM evidence
+        id: service
+        run: |
+          set -euo pipefail
+          gcloud run services describe "$SERVICE" --project="${{ vars.GCP_PROJECT_ID }}" --region="$REGION" --format=json > service.json
+          revision="$(jq -r '.status.latestReadyRevisionName' service.json)"
+          test -n "$revision"
+          gcloud run revisions describe "$revision" --project="${{ vars.GCP_PROJECT_ID }}" --region="$REGION" --format=json > revision.json
+          gcloud run services get-iam-policy "$SERVICE" --project="${{ vars.GCP_PROJECT_ID }}" --region="$REGION" --format=json > policy.json
+          python3 tools/cloudrun_diagnostics.py --service-json service.json --revision-json revision.json --policy-json policy.json
+          service_url="$(jq -r '.status.url' service.json)"
+          project_number="$(gcloud projects describe "${{ vars.GCP_PROJECT_ID }}" --format='value(projectNumber)')"
+          canonical_url="https://${SERVICE}-${project_number}.${REGION}.run.app"
+          echo "service_url=$service_url" >> "$GITHUB_OUTPUT"
+          echo "canonical_url=$canonical_url" >> "$GITHUB_OUTPUT"
+      - name: Mint deployer identity token
+        id: token
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+          token_format: id_token
+          id_token_audience: ${{ steps.service.outputs.service_url }}
+          id_token_include_email: true
+      - name: Record redacted endpoint fingerprints
+        env:
+          TOKEN: ${{ steps.token.outputs.id_token }}
+          CANONICAL_URL: ${{ steps.service.outputs.canonical_url }}
+          HASH_URL: ${{ steps.service.outputs.service_url }}
+        run: |
+          set -euo pipefail
+          for url in "$CANONICAL_URL" "$HASH_URL"; do
+            for header in Authorization X-Serverless-Authorization; do
+              headers_file="$(mktemp)"
+              body_file="$(mktemp)"
+              status="$(curl --silent --show-error --output "$body_file" --dump-header "$headers_file" --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "$header: Bearer $TOKEN" "$url/healthz")"
+              content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {print $2}' "$headers_file" | tr -d '\r' | tail -1)"
+              body_bytes="$(wc -c < "$body_file" | tr -d ' ')"
+              body_sha256="$(sha256sum "$body_file" | cut -d ' ' -f1)"
+              echo "endpoint url=$url header=$header status=$status content_type=${content_type:-none} body_bytes=$body_bytes body_sha256=$body_sha256"
+              rm -f "$headers_file" "$body_file"
+            done
+          done
