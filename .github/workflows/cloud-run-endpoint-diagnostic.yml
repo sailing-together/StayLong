@@ -1,0 +1,85 @@
+name: Diagnose Cloud Run authenticated endpoints
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  diagnose:
+    name: Compare configured Cloud Run endpoints
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Resolve the service endpoints
+        id: service
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          REGION: ${{ vars.GCP_REGION }}
+        run: |
+          set -euo pipefail
+          service_json="${RUNNER_TEMP}/staylong-service.json"
+          gcloud run services describe staylong \
+            --project="$PROJECT_ID" \
+            --region="$REGION" \
+            --format=json > "$service_json"
+          canonical_url="$(jq -er '.status.url' "$service_json")"
+          regional_url="$(jq -er --arg region "$REGION" '
+            .metadata.annotations["run.googleapis.com/urls"]
+            | fromjson
+            | map(select(endswith("." + $region + ".run.app")))
+            | first
+          ' "$service_json")"
+          printf 'Canonical endpoint: %s\nRegional endpoint: %s\n' "$canonical_url" "$regional_url"
+          echo "canonical_url=$canonical_url" >> "$GITHUB_OUTPUT"
+          echo "regional_url=$regional_url" >> "$GITHUB_OUTPUT"
+      - name: Mint an ID token for the canonical endpoint
+        id: canonical_token
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+          token_format: id_token
+          id_token_audience: ${{ steps.service.outputs.canonical_url }}
+          id_token_include_email: true
+          create_credentials_file: false
+      - name: Mint an ID token for the regional endpoint
+        id: regional_token
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+          token_format: id_token
+          id_token_audience: ${{ steps.service.outputs.regional_url }}
+          id_token_include_email: true
+          create_credentials_file: false
+      - name: Probe each endpoint with its matching audience
+        env:
+          CANONICAL_URL: ${{ steps.service.outputs.canonical_url }}
+          CANONICAL_ID_TOKEN: ${{ steps.canonical_token.outputs.id_token }}
+          REGIONAL_URL: ${{ steps.service.outputs.regional_url }}
+          REGIONAL_ID_TOKEN: ${{ steps.regional_token.outputs.id_token }}
+        run: |
+          set -euo pipefail
+          probe() {
+            label="$1"
+            endpoint="$2"
+            id_token="$3"
+            response_file="${RUNNER_TEMP}/${label}-response"
+            status="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 30 \
+              --header "X-Serverless-Authorization: Bearer $id_token" \
+              "$endpoint/healthz")"
+            content_type="$(file --brief --mime-type "$response_file")"
+            printf '%s endpoint returned HTTP %s (%s response).\n' "$label" "$status" "$content_type"
+            test "$status" = 200
+          }
+          probe canonical "$CANONICAL_URL" "$CANONICAL_ID_TOKEN"
+          probe regional "$REGIONAL_URL" "$REGIONAL_ID_TOKEN"
