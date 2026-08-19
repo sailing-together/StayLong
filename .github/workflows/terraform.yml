@@ -13,7 +13,7 @@ on:
         description: "Terraform component to operate"
         required: true
         type: choice
-        options: [platform, app, probe, sydney-platform, sydney-app, app-canary]
+        options: [platform, app, probe, sydney-platform, sydney-app, app-canary, sydney-v2-foundation]
       operation:
         description: "Requested Terraform operation"
         required: true
@@ -53,7 +53,10 @@ jobs:
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
-          if [[ "$COMPONENT" == "sydney-platform" || "$COMPONENT" == "sydney-app" || "$COMPONENT" == "app-canary" ]]; then
+          if [[ "$COMPONENT" == "sydney-v2-foundation" ]]; then
+            test "$ENVIRONMENT" = "sydney-sandbox"
+            echo "project_config=staylong-sydney-v2.json" >> "$GITHUB_OUTPUT"
+          elif [[ "$COMPONENT" == "sydney-platform" || "$COMPONENT" == "sydney-app" || "$COMPONENT" == "app-canary" ]]; then
             test "$ENVIRONMENT" = "sydney-sandbox"
             echo "project_config=staylong-sydney.json" >> "$GITHUB_OUTPUT"
           else
@@ -117,13 +120,13 @@ jobs:
               exit 1
             fi
           fi
-          if [[ "$COMPONENT" == "sydney-platform" || "$COMPONENT" == "sydney-app" || "$COMPONENT" == "app-canary" ]]; then
+          if [[ "$COMPONENT" == "sydney-platform" || "$COMPONENT" == "sydney-app" || "$COMPONENT" == "app-canary" || "$COMPONENT" == "sydney-v2-foundation" ]]; then
             if [[ "${{ inputs.environment }}" != "sydney-sandbox" ]]; then
               echo "Sydney components require environment=sydney-sandbox."
               exit 1
             fi
           elif [[ "${{ inputs.environment }}" == "sydney-sandbox" ]]; then
-            echo "sydney-sandbox may only operate sydney-platform or sydney-app."
+            echo "sydney-sandbox may only operate Sydney-scoped components."
             exit 1
           fi
       - name: Select Terraform identity
