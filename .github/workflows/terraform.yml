@@ -8,12 +8,12 @@ on:
         required: true
         default: sandbox
         type: choice
-        options: [sandbox]
+        options: [sandbox, sydney-sandbox]
       component:
         description: "Terraform component to operate"
         required: true
         type: choice
-        options: [platform, app, probe]
+        options: [platform, app, probe, sydney-platform, sydney-app]
       operation:
         description: "Requested Terraform operation"
         required: true
@@ -46,11 +46,26 @@ jobs:
           python-version: "3.12"
       - name: Install configuration validator dependency
         run: python -m pip install jsonschema
+      - name: Select validated configuration pair
+        id: configuration
+        env:
+          COMPONENT: ${{ inputs.component }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          if [[ "$COMPONENT" == "sydney-platform" || "$COMPONENT" == "sydney-app" ]]; then
+            test "$ENVIRONMENT" = "sydney-sandbox"
+            echo "project_config=staylong-sydney.json" >> "$GITHUB_OUTPUT"
+          else
+            test "$ENVIRONMENT" = "sandbox"
+            echo "project_config=staylong.json" >> "$GITHUB_OUTPUT"
+          fi
+          echo "environment_config=${ENVIRONMENT}.json" >> "$GITHUB_OUTPUT"
       - name: Validate selected JSON configuration
         run: |
           PYTHONPATH=src python tools/terraform_config.py \
-            --project-config staylong.json \
-            --environment-config "${{ inputs.environment }}.json" \
+            --project-config "${{ steps.configuration.outputs.project_config }}" \
+            --environment-config "${{ steps.configuration.outputs.environment_config }}" \
             --output "${RUNNER_TEMP}/terraform-config.json"
       - name: Read validated state backend configuration
         id: config
@@ -90,6 +105,15 @@ jobs:
               exit 1
             fi
           fi
+          if [[ "$COMPONENT" == "sydney-platform" || "$COMPONENT" == "sydney-app" ]]; then
+            if [[ "${{ inputs.environment }}" != "sydney-sandbox" ]]; then
+              echo "Sydney components require environment=sydney-sandbox."
+              exit 1
+            fi
+          elif [[ "${{ inputs.environment }}" == "sydney-sandbox" ]]; then
+            echo "sydney-sandbox may only operate sydney-platform or sydney-app."
+            exit 1
+          fi
       - name: Select Terraform identity
         id: identity
         env:
@@ -127,7 +151,7 @@ jobs:
           COMPONENT: ${{ inputs.component }}
         run: |
           component_path="infra/terraform/components/${COMPONENT}"
-          plan_args=(-input=false -out=tfplan -var="project_config=staylong.json" -var="environment_config=${{ inputs.environment }}.json")
+          plan_args=(-input=false -out=tfplan -var="project_config=${{ steps.configuration.outputs.project_config }}" -var="environment_config=${{ steps.configuration.outputs.environment_config }}")
           if [[ "${{ inputs.operation }}" == "replace-plan" || "${{ inputs.operation }}" == "replace-apply" ]]; then
             plan_args+=("-replace=module.service.google_cloud_run_v2_service.this")
           fi
@@ -161,7 +185,7 @@ jobs:
         run: |
           set -euo pipefail
           component_path="infra/terraform/components/${COMPONENT}"
-          revoke_args=(-input=false -out=revoke.tfplan -var="project_config=staylong.json" -var="environment_config=${{ inputs.environment }}.json" -var="diagnostic_public_invoker=false")
+          revoke_args=(-input=false -out=revoke.tfplan -var="project_config=${{ steps.configuration.outputs.project_config }}" -var="environment_config=${{ steps.configuration.outputs.environment_config }}" -var="diagnostic_public_invoker=false")
           terraform -chdir="$component_path" plan "${revoke_args[@]}"
           terraform -chdir="$component_path" apply -input=false revoke.tfplan
       - name: Probe the disposable Sydney service
@@ -187,7 +211,7 @@ jobs:
         run: |
           set -euo pipefail
           component_path="infra/terraform/components/${COMPONENT}"
-          destroy_args=(-input=false -auto-approve -var="project_config=staylong.json" -var="environment_config=${{ inputs.environment }}.json")
+          destroy_args=(-input=false -auto-approve -var="project_config=${{ steps.configuration.outputs.project_config }}" -var="environment_config=${{ steps.configuration.outputs.environment_config }}")
           terraform -chdir="$component_path" destroy "${destroy_args[@]}"
       - name: Destroy selected sandbox component
         if: ${{ inputs.operation == 'destroy' }}

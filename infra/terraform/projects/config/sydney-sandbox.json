@@ -1,0 +1,10 @@
+{
+  "environment": "sydney-sandbox",
+  "project_id": "staylong",
+  "state_bucket_name": "staylong-terraform-state-186136682416",
+  "region": "australia-southeast1",
+  "labels": {
+    "environment": "sydney-sandbox",
+    "region": "sydney"
+  }
+}
