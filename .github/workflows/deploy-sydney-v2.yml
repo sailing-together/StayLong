@@ -33,8 +33,6 @@ jobs:
     name: Build image and add token version
     runs-on: ubuntu-latest
     environment: sandbox
-    outputs:
-      image_ref: ${{ steps.image.outputs.image_ref }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,13 +53,11 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
       - uses: docker/setup-buildx-action@v3
       - name: Build and publish immutable Sydney v2 image
-        id: image
         run: |
           set -euo pipefail
           image_ref="$SYDNEY_REGION-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/$SYDNEY_REPOSITORY/app:${{ steps.revision.outputs.sha }}"
           gcloud auth configure-docker "$SYDNEY_REGION-docker.pkg.dev" --quiet
           docker buildx build --tag "$image_ref" --push .
-          echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
       - name: Add a masked token version to Secret Manager
         env:
           STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
@@ -79,6 +75,17 @@ jobs:
     environment: sandbox
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha || github.sha }}
+      - name: Verify deployment commit belongs to main
+        id: revision
+        run: |
+          set -euo pipefail
+          deployment_sha="$(git rev-parse HEAD)"
+          git fetch origin main
+          git merge-base --is-ancestor "$deployment_sha" origin/main
+          echo "sha=$deployment_sha" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -97,7 +104,7 @@ jobs:
           service_account: ${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}
       - name: Create or update the v2 service from the reviewed image
         env:
-          IMAGE_REF: ${{ needs.build_and_publish.outputs.image_ref }}
+          IMAGE_REF: $SYDNEY_REGION-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/$SYDNEY_REPOSITORY/app:${{ steps.revision.outputs.sha }}
         run: |
           set -euo pipefail
           component_path="infra/terraform/components/sydney-v2-app"
