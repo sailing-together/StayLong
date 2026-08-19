@@ -86,8 +86,12 @@ jobs:
         id: service
         run: |
           service_url="$(gcloud run services describe "$SYDNEY_SERVICE" --project="${{ vars.GCP_PROJECT_ID }}" --region="$SYDNEY_REGION" --format='value(status.url)')"
+          service_urls="$(gcloud run services describe "$SYDNEY_SERVICE" --project="${{ vars.GCP_PROJECT_ID }}" --region="$SYDNEY_REGION" --format='value(metadata.annotations.run.googleapis.com/urls)')"
+          canonical_url="$(jq -r '.[] | select(endswith(".australia-southeast1.run.app"))' <<< "$service_urls")"
           test -n "$service_url"
+          test -n "$canonical_url"
           echo "url=$service_url" >> "$GITHUB_OUTPUT"
+          echo "canonical_url=$canonical_url" >> "$GITHUB_OUTPUT"
           echo "identity_audience=$service_url" >> "$GITHUB_OUTPUT"
       - name: Mint Sydney Cloud Run identity token
         id: cloud_run_id_token
@@ -98,6 +102,22 @@ jobs:
           token_format: id_token
           id_token_audience: ${{ steps.service.outputs.identity_audience }}
           id_token_include_email: true
+      - name: Diagnose Cloud Run authentication boundary
+        env:
+          CANONICAL_URL: ${{ steps.service.outputs.canonical_url }}
+          HASH_URL: ${{ steps.service.outputs.url }}
+          CLOUD_RUN_ID_TOKEN: ${{ steps.cloud_run_id_token.outputs.id_token }}
+          STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUD_RUN_ID_TOKEN"
+          test -n "$STAYLONG_API_TOKEN"
+          python3 -c 'import base64, json, os; payload = os.environ["CLOUD_RUN_ID_TOKEN"].split(".")[1]; payload += "=" * (-len(payload) % 4); claims = json.loads(base64.urlsafe_b64decode(payload)); print(json.dumps({key: claims.get(key) for key in ("aud", "email", "iss", "exp")}, sort_keys=True))'
+          for service_url in "$CANONICAL_URL" "$HASH_URL"; do
+            authorization_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "Authorization: Bearer $CLOUD_RUN_ID_TOKEN" "$service_url/healthz")"
+            serverless_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "X-Serverless-Authorization: Bearer $CLOUD_RUN_ID_TOKEN" -H "X-StayLong-API-Token: $STAYLONG_API_TOKEN" "$service_url/healthz")"
+            echo "Cloud Run auth diagnostic: url=$service_url authorization=$authorization_status x_serverless=$serverless_status"
+          done
       - name: Smoke-test Sydney revision
         env:
           STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
