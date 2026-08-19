@@ -103,12 +103,11 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}
       - name: Create or update the v2 service from the reviewed image
-        env:
-          IMAGE_REF: $SYDNEY_REGION-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/$SYDNEY_REPOSITORY/app:${{ steps.revision.outputs.sha }}
         run: |
           set -euo pipefail
           component_path="infra/terraform/components/sydney-v2-app"
           state_bucket="$(jq -r '.state_bucket_name' "${RUNNER_TEMP}/terraform-config.json")"
+          IMAGE_REF="${SYDNEY_REGION}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${SYDNEY_REPOSITORY}/app:${{ steps.revision.outputs.sha }}"
           test -n "$IMAGE_REF"
           test -n "$state_bucket"
           terraform -chdir="$component_path" init -input=false \
