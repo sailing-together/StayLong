@@ -18,9 +18,9 @@ on:
         description: "Requested Terraform operation"
         required: true
         type: choice
-        options: [validate, plan, apply, replace-plan, replace-apply, public-diagnostic, regional-probe, destroy]
+        options: [validate, plan, apply, replace-plan, replace-apply, public-diagnostic, sydney-public-diagnostic, regional-probe, destroy]
       confirmation:
-        description: "Enter PLAN_CLOUD_RUN_SERVICE_REPLACE, EXECUTE_CLOUD_RUN_SERVICE_REPLACE, TEMPORARILY_PUBLIC_CLOUD_RUN, RUN_SYDNEY_CLOUD_RUN_PROBE, or DESTROY_SANDBOX as applicable"
+        description: "Enter PLAN_CLOUD_RUN_SERVICE_REPLACE, EXECUTE_CLOUD_RUN_SERVICE_REPLACE, TEMPORARILY_PUBLIC_CLOUD_RUN, TEMPORARILY_PUBLIC_SYDNEY_CLOUD_RUN, RUN_SYDNEY_CLOUD_RUN_PROBE, or DESTROY_SANDBOX as applicable"
         required: false
         type: string
 
@@ -99,6 +99,12 @@ jobs:
               exit 1
             fi
           fi
+          if [[ "$OPERATION" == "sydney-public-diagnostic" ]]; then
+            if [[ "$COMPONENT" != "sydney-app" || "$CONFIRMATION" != "TEMPORARILY_PUBLIC_SYDNEY_CLOUD_RUN" ]]; then
+              echo "Sydney public diagnostic requires component=sydney-app and confirmation=TEMPORARILY_PUBLIC_SYDNEY_CLOUD_RUN."
+              exit 1
+            fi
+          fi
           if [[ "$OPERATION" == "regional-probe" ]]; then
             if [[ "$COMPONENT" != "probe" || "$CONFIRMATION" != "RUN_SYDNEY_CLOUD_RUN_PROBE" ]]; then
               echo "Regional probe requires component=probe and confirmation=RUN_SYDNEY_CLOUD_RUN_PROBE."
@@ -119,7 +125,7 @@ jobs:
         env:
           OPERATION: ${{ inputs.operation }}
         run: |
-          if [[ "$OPERATION" == "apply" || "$OPERATION" == "replace-apply" || "$OPERATION" == "public-diagnostic" || "$OPERATION" == "regional-probe" || "$OPERATION" == "destroy" ]]; then
+          if [[ "$OPERATION" == "apply" || "$OPERATION" == "replace-apply" || "$OPERATION" == "public-diagnostic" || "$OPERATION" == "sydney-public-diagnostic" || "$OPERATION" == "regional-probe" || "$OPERATION" == "destroy" ]]; then
             echo "service_account=${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
           else
             echo "service_account=${{ vars.GCP_TERRAFORM_PLANNER_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
@@ -146,7 +152,7 @@ jobs:
           terraform fmt -check -recursive "$component_path"
           terraform -chdir="$component_path" validate
       - name: Plan
-        if: ${{ inputs.operation == 'plan' || inputs.operation == 'apply' || inputs.operation == 'replace-plan' || inputs.operation == 'replace-apply' || inputs.operation == 'public-diagnostic' || inputs.operation == 'regional-probe' || inputs.operation == 'destroy' }}
+        if: ${{ inputs.operation == 'plan' || inputs.operation == 'apply' || inputs.operation == 'replace-plan' || inputs.operation == 'replace-apply' || inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic' || inputs.operation == 'regional-probe' || inputs.operation == 'destroy' }}
         env:
           COMPONENT: ${{ inputs.component }}
         run: |
@@ -158,14 +164,17 @@ jobs:
           if [[ "${{ inputs.operation }}" == "public-diagnostic" ]]; then
             plan_args+=("-var=diagnostic_public_invoker=true")
           fi
+          if [[ "${{ inputs.operation }}" == "sydney-public-diagnostic" ]]; then
+            plan_args+=("-var=diagnostic_public_invoker=true")
+          fi
           terraform -chdir="$component_path" plan "${plan_args[@]}"
       - name: Apply reviewed plan
-        if: ${{ inputs.operation == 'apply' || inputs.operation == 'replace-apply' || inputs.operation == 'public-diagnostic' || inputs.operation == 'regional-probe' }}
+        if: ${{ inputs.operation == 'apply' || inputs.operation == 'replace-apply' || inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic' || inputs.operation == 'regional-probe' }}
         env:
           COMPONENT: ${{ inputs.component }}
         run: terraform -chdir="infra/terraform/components/${COMPONENT}" apply -input=false tfplan
       - name: Configure Cloud Run diagnostic client
-        if: ${{ inputs.operation == 'public-diagnostic' || inputs.operation == 'regional-probe' }}
+        if: ${{ inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic' || inputs.operation == 'regional-probe' }}
         uses: google-github-actions/setup-gcloud@v2
       - name: Probe the temporarily public health endpoint
         if: ${{ inputs.operation == 'public-diagnostic' }}
@@ -178,8 +187,19 @@ jobs:
           http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 "$service_url/healthz")"
           echo "Anonymous health endpoint returned HTTP $http_status."
           test "$http_status" = 200
+      - name: Probe the temporarily public Sydney health endpoint
+        if: ${{ inputs.operation == 'sydney-public-diagnostic' }}
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          REGION: australia-southeast1
+        run: |
+          set -euo pipefail
+          service_url="$(gcloud run services describe staylong-sydney --project="$PROJECT_ID" --region="$REGION" --format='value(status.url)')"
+          http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 "$service_url/healthz")"
+          echo "Anonymous Sydney health endpoint returned HTTP $http_status."
+          test "$http_status" = 200
       - name: Revoke temporary public invocation
-        if: ${{ always() && inputs.operation == 'public-diagnostic' }}
+        if: ${{ always() && (inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic') }}
         env:
           COMPONENT: ${{ inputs.component }}
         run: |
