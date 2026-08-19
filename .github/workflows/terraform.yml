@@ -13,14 +13,14 @@ on:
         description: "Terraform component to operate"
         required: true
         type: choice
-        options: [platform, app, probe, sydney-platform, sydney-app]
+        options: [platform, app, probe, sydney-platform, sydney-app, app-canary]
       operation:
         description: "Requested Terraform operation"
         required: true
         type: choice
-        options: [validate, plan, apply, replace-plan, replace-apply, public-diagnostic, sydney-public-diagnostic, regional-probe, destroy]
+        options: [validate, plan, apply, replace-plan, replace-apply, public-diagnostic, sydney-public-diagnostic, regional-probe, sydney-app-canary, destroy]
       confirmation:
-        description: "Enter PLAN_CLOUD_RUN_SERVICE_REPLACE, EXECUTE_CLOUD_RUN_SERVICE_REPLACE, TEMPORARILY_PUBLIC_CLOUD_RUN, TEMPORARILY_PUBLIC_SYDNEY_CLOUD_RUN, RUN_SYDNEY_CLOUD_RUN_PROBE, or DESTROY_SANDBOX as applicable"
+        description: "Enter PLAN_CLOUD_RUN_SERVICE_REPLACE, EXECUTE_CLOUD_RUN_SERVICE_REPLACE, TEMPORARILY_PUBLIC_CLOUD_RUN, TEMPORARILY_PUBLIC_SYDNEY_CLOUD_RUN, RUN_SYDNEY_CLOUD_RUN_PROBE, RUN_SYDNEY_APP_CANARY, or DESTROY_SANDBOX as applicable"
         required: false
         type: string
 
@@ -53,7 +53,7 @@ jobs:
           ENVIRONMENT: ${{ inputs.environment }}
         run: |
           set -euo pipefail
-          if [[ "$COMPONENT" == "sydney-platform" || "$COMPONENT" == "sydney-app" ]]; then
+          if [[ "$COMPONENT" == "sydney-platform" || "$COMPONENT" == "sydney-app" || "$COMPONENT" == "app-canary" ]]; then
             test "$ENVIRONMENT" = "sydney-sandbox"
             echo "project_config=staylong-sydney.json" >> "$GITHUB_OUTPUT"
           else
@@ -111,7 +111,13 @@ jobs:
               exit 1
             fi
           fi
-          if [[ "$COMPONENT" == "sydney-platform" || "$COMPONENT" == "sydney-app" ]]; then
+          if [[ "$OPERATION" == "sydney-app-canary" ]]; then
+            if [[ "$COMPONENT" != "app-canary" || "$CONFIRMATION" != "RUN_SYDNEY_APP_CANARY" ]]; then
+              echo "Sydney application canary requires component=app-canary and confirmation=RUN_SYDNEY_APP_CANARY."
+              exit 1
+            fi
+          fi
+          if [[ "$COMPONENT" == "sydney-platform" || "$COMPONENT" == "sydney-app" || "$COMPONENT" == "app-canary" ]]; then
             if [[ "${{ inputs.environment }}" != "sydney-sandbox" ]]; then
               echo "Sydney components require environment=sydney-sandbox."
               exit 1
@@ -125,7 +131,7 @@ jobs:
         env:
           OPERATION: ${{ inputs.operation }}
         run: |
-          if [[ "$OPERATION" == "apply" || "$OPERATION" == "replace-apply" || "$OPERATION" == "public-diagnostic" || "$OPERATION" == "sydney-public-diagnostic" || "$OPERATION" == "regional-probe" || "$OPERATION" == "destroy" ]]; then
+          if [[ "$OPERATION" == "apply" || "$OPERATION" == "replace-apply" || "$OPERATION" == "public-diagnostic" || "$OPERATION" == "sydney-public-diagnostic" || "$OPERATION" == "regional-probe" || "$OPERATION" == "sydney-app-canary" || "$OPERATION" == "destroy" ]]; then
             echo "service_account=${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
           else
             echo "service_account=${{ vars.GCP_TERRAFORM_PLANNER_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
@@ -134,6 +140,13 @@ jobs:
         with:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ steps.identity.outputs.service_account }}
+      - name: Resolve deployed Sydney application image
+        if: ${{ inputs.operation == 'sydney-app-canary' }}
+        id: canary
+        run: |
+          image="$(gcloud run services describe staylong-sydney --project="${{ vars.GCP_PROJECT_ID }}" --region=australia-southeast1 --format='value(spec.template.spec.containers[0].image)')"
+          test -n "$image"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
       - name: Initialise selected component
         env:
           COMPONENT: ${{ inputs.component }}
@@ -152,7 +165,7 @@ jobs:
           terraform fmt -check -recursive "$component_path"
           terraform -chdir="$component_path" validate
       - name: Plan
-        if: ${{ inputs.operation == 'plan' || inputs.operation == 'apply' || inputs.operation == 'replace-plan' || inputs.operation == 'replace-apply' || inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic' || inputs.operation == 'regional-probe' || inputs.operation == 'destroy' }}
+        if: ${{ inputs.operation == 'plan' || inputs.operation == 'apply' || inputs.operation == 'replace-plan' || inputs.operation == 'replace-apply' || inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic' || inputs.operation == 'regional-probe' || inputs.operation == 'sydney-app-canary' || inputs.operation == 'destroy' }}
         env:
           COMPONENT: ${{ inputs.component }}
         run: |
@@ -167,14 +180,17 @@ jobs:
           if [[ "${{ inputs.operation }}" == "sydney-public-diagnostic" ]]; then
             plan_args+=("-var=diagnostic_public_invoker=true")
           fi
+          if [[ "${{ inputs.operation }}" == "sydney-app-canary" ]]; then
+            plan_args+=("-var=canary_image=${{ steps.canary.outputs.image }}")
+          fi
           terraform -chdir="$component_path" plan "${plan_args[@]}"
       - name: Apply reviewed plan
-        if: ${{ inputs.operation == 'apply' || inputs.operation == 'replace-apply' || inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic' || inputs.operation == 'regional-probe' }}
+        if: ${{ inputs.operation == 'apply' || inputs.operation == 'replace-apply' || inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic' || inputs.operation == 'regional-probe' || inputs.operation == 'sydney-app-canary' }}
         env:
           COMPONENT: ${{ inputs.component }}
         run: terraform -chdir="infra/terraform/components/${COMPONENT}" apply -input=false tfplan
       - name: Configure Cloud Run diagnostic client
-        if: ${{ inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic' || inputs.operation == 'regional-probe' }}
+        if: ${{ inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic' || inputs.operation == 'regional-probe' || inputs.operation == 'sydney-app-canary' }}
         uses: google-github-actions/setup-gcloud@v2
       - name: Probe the temporarily public health endpoint
         if: ${{ inputs.operation == 'public-diagnostic' }}
@@ -224,6 +240,24 @@ jobs:
             sleep 5
           done
           exit 1
+      - name: Probe the disposable same-image Sydney application canary
+        if: ${{ inputs.operation == 'sydney-app-canary' }}
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$STAYLONG_API_TOKEN"
+          service_url="$(gcloud run services describe staylong-sydney-app-canary --project="$PROJECT_ID" --region=australia-southeast1 --format='value(status.url)')"
+          for attempt in $(seq 1 12); do
+            http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "X-StayLong-API-Token: $STAYLONG_API_TOKEN" "$service_url/healthz")"
+            echo "Sydney same-image application canary attempt $attempt returned HTTP $http_status."
+            if [[ "$http_status" == 200 ]]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
       - name: Destroy disposable Sydney probe
         if: ${{ always() && inputs.operation == 'regional-probe' }}
         env:
@@ -232,6 +266,16 @@ jobs:
           set -euo pipefail
           component_path="infra/terraform/components/${COMPONENT}"
           destroy_args=(-input=false -auto-approve -var="project_config=${{ steps.configuration.outputs.project_config }}" -var="environment_config=${{ steps.configuration.outputs.environment_config }}")
+          terraform -chdir="$component_path" destroy "${destroy_args[@]}"
+      - name: Destroy disposable same-image Sydney application canary
+        if: ${{ always() && inputs.operation == 'sydney-app-canary' }}
+        env:
+          COMPONENT: ${{ inputs.component }}
+          CANARY_IMAGE: ${{ steps.canary.outputs.image }}
+        run: |
+          set -euo pipefail
+          component_path="infra/terraform/components/${COMPONENT}"
+          destroy_args=(-input=false -auto-approve -var="project_config=${{ steps.configuration.outputs.project_config }}" -var="environment_config=${{ steps.configuration.outputs.environment_config }}" -var="canary_image=$CANARY_IMAGE")
           terraform -chdir="$component_path" destroy "${destroy_args[@]}"
       - name: Destroy selected sandbox component
         if: ${{ inputs.operation == 'destroy' }}
