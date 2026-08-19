@@ -78,8 +78,9 @@ jobs:
               --header "X-Serverless-Authorization: Bearer $id_token" \
               "$endpoint/healthz")"
             content_type="$(file --brief --mime-type "$response_file")"
-            printf '%s endpoint returned HTTP %s (%s response).\n' "$label" "$status" "$content_type"
-            test "$status" = 200
+            printf '%s endpoint returned HTTP %s (%s response).\n' "$label" "$status" "$content_type" >&2
+            printf '%s' "$status"
           }
-          probe canonical "$CANONICAL_URL" "$CANONICAL_ID_TOKEN"
-          probe regional "$REGIONAL_URL" "$REGIONAL_ID_TOKEN"
+          canonical_status="$(probe canonical "$CANONICAL_URL" "$CANONICAL_ID_TOKEN")"
+          regional_status="$(probe regional "$REGIONAL_URL" "$REGIONAL_ID_TOKEN")"
+          test "$canonical_status" = 200 && test "$regional_status" = 200
