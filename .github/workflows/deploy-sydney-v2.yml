@@ -1,0 +1,148 @@
+name: Deploy Sydney v2 application
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "Dockerfile"
+      - "pyproject.toml"
+      - "uv.lock"
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Commit SHA already reachable from main to deploy"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-sydney-v2-sandbox
+  cancel-in-progress: false
+
+env:
+  SYDNEY_REGION: australia-southeast1
+  SYDNEY_REPOSITORY: staylong-sydney
+  SYDNEY_SERVICE: staylong-sydney-v2
+
+jobs:
+  build_and_publish:
+    name: Build image and add token version
+    runs-on: ubuntu-latest
+    environment: sandbox
+    outputs:
+      image_ref: ${{ steps.image.outputs.image_ref }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha || github.sha }}
+      - name: Verify deployment commit belongs to main
+        id: revision
+        run: |
+          set -euo pipefail
+          deployment_sha="$(git rev-parse HEAD)"
+          git fetch origin main
+          git merge-base --is-ancestor "$deployment_sha" origin/main
+          echo "sha=$deployment_sha" >> "$GITHUB_OUTPUT"
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: docker/setup-buildx-action@v3
+      - name: Build and publish immutable Sydney v2 image
+        id: image
+        run: |
+          set -euo pipefail
+          image_ref="$SYDNEY_REGION-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/$SYDNEY_REPOSITORY/app:${{ steps.revision.outputs.sha }}"
+          gcloud auth configure-docker "$SYDNEY_REGION-docker.pkg.dev" --quiet
+          docker buildx build --tag "$image_ref" --push .
+          echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
+      - name: Add a masked token version to Secret Manager
+        env:
+          STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$STAYLONG_API_TOKEN"
+          printf '%s' "$STAYLONG_API_TOKEN" | gcloud secrets versions add staylong-api-token \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --data-file=-
+
+  apply_service:
+    name: Create or update the v2 service with Terraform
+    needs: build_and_publish
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@v3
+      - name: Install configuration validator dependency
+        run: python -m pip install jsonschema
+      - name: Validate Sydney v2 configuration
+        run: |
+          PYTHONPATH=src python tools/terraform_config.py \
+            --project-config staylong-sydney-v2.json \
+            --environment-config sydney-sandbox.json \
+            --output "${RUNNER_TEMP}/terraform-config.json"
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}
+      - name: Create or update the v2 service from the reviewed image
+        env:
+          IMAGE_REF: ${{ needs.build_and_publish.outputs.image_ref }}
+        run: |
+          set -euo pipefail
+          component_path="infra/terraform/components/sydney-v2-app"
+          state_bucket="$(jq -r '.state_bucket_name' "${RUNNER_TEMP}/terraform-config.json")"
+          test -n "$IMAGE_REF"
+          test -n "$state_bucket"
+          terraform -chdir="$component_path" init -input=false \
+            -backend-config="bucket=$state_bucket" \
+            -backend-config="prefix=staylong/sydney-sandbox/sydney-v2-app"
+          terraform -chdir="$component_path" fmt -check -recursive
+          terraform -chdir="$component_path" validate
+          terraform -chdir="$component_path" plan -input=false -out=tfplan \
+            -var="project_config=staylong-sydney-v2.json" \
+            -var="environment_config=sydney-sandbox.json" \
+            "-var=image_ref=$IMAGE_REF"
+          terraform -chdir="$component_path" apply -input=false tfplan
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Resolve private v2 service URL
+        id: service
+        run: |
+          set -euo pipefail
+          service_url="$(gcloud run services describe "$SYDNEY_SERVICE" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="$SYDNEY_REGION" \
+            --format='value(status.url)')"
+          test -n "$service_url"
+          echo "url=$service_url" >> "$GITHUB_OUTPUT"
+      - name: Mint a private Cloud Run identity token
+        id: cloud_run_id_token
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+          token_format: id_token
+          id_token_audience: ${{ steps.service.outputs.url }}
+          id_token_include_email: true
+      - name: Smoke-test private v2 service
+        env:
+          STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
+          CLOUD_RUN_ID_TOKEN: ${{ steps.cloud_run_id_token.outputs.id_token }}
+        run: |
+          set -euo pipefail
+          test -n "$STAYLONG_API_TOKEN"
+          python3 tools/cloudrun_smoke.py \
+            --url "${{ steps.service.outputs.url }}" \
+            --token "$STAYLONG_API_TOKEN" \
+            --id-token "$CLOUD_RUN_ID_TOKEN" \
+            --application-token-header "X-StayLong-API-Token"
