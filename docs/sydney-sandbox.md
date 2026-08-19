@@ -15,6 +15,27 @@ open.
   accounts; they do not move or delete Melbourne resources.
 - Terraform state is separate under `staylong/sydney-sandbox/`.
 
+## Clean v2 rollout
+
+The historical `staylong-sydney` service is retained as diagnostic evidence.
+The clean replacement is deliberately named `staylong-sydney-v2`; it is created
+once with the application image and a Secret Manager reference in its initial
+revision, rather than creating a placeholder revision and mutating it later.
+
+Before the v2 application root is applied, run the Terraform lifecycle workflow
+with `environment=sydney-sandbox`, `component=sydney-v2-foundation` and a
+reviewed `plan`/`apply`. This foundation enables Secret Manager, creates only
+the `staylong-api-token` secret container, and grants:
+
+- `staylong-runtime` access to read that one secret at runtime;
+- `staylong-app-deployer` access only to add a secret version.
+
+Terraform never receives the token value and therefore cannot record it in
+state. A later protected deployment workflow will write the value from the
+masked GitHub environment secret and deploy the v2 service using the secret
+reference. Do not add token-like fields to the JSON configuration files: the
+configuration validator rejects them by design.
+
 ## Delivery sequence
 
 1. Run the Terraform lifecycle workflow with `environment=sydney-sandbox`,
