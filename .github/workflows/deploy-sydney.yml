@@ -86,9 +86,10 @@ jobs:
         id: service
         run: |
           service_url="$(gcloud run services describe "$SYDNEY_SERVICE" --project="${{ vars.GCP_PROJECT_ID }}" --region="$SYDNEY_REGION" --format='value(status.url)')"
-          service_urls="$(gcloud run services describe "$SYDNEY_SERVICE" --project="${{ vars.GCP_PROJECT_ID }}" --region="$SYDNEY_REGION" --format='value(metadata.annotations.run.googleapis.com/urls)')"
-          canonical_url="$(jq -r '.[] | select(endswith(".australia-southeast1.run.app"))' <<< "$service_urls")"
+          project_number="$(gcloud projects describe "${{ vars.GCP_PROJECT_ID }}" --format='value(projectNumber)')"
+          canonical_url="https://${SYDNEY_SERVICE}-${project_number}.${SYDNEY_REGION}.run.app"
           test -n "$service_url"
+          test -n "$project_number"
           test -n "$canonical_url"
           echo "url=$service_url" >> "$GITHUB_OUTPUT"
           echo "canonical_url=$canonical_url" >> "$GITHUB_OUTPUT"
