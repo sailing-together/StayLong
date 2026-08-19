@@ -12,7 +12,7 @@ from typing import Any
 def _conditions(resource: Mapping[str, Any]) -> dict[str, str]:
     conditions = resource.get("status", {}).get("conditions", [])
     return {
-        item["type"]: item.get("state", "UNKNOWN")
+        item["type"]: item.get("status", item.get("state", "UNKNOWN"))
         for item in conditions
         if isinstance(item, Mapping) and isinstance(item.get("type"), str)
     }

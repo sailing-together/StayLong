@@ -16,8 +16,8 @@ def test_summary_surfaces_route_readiness_and_public_invoker_state() -> None:
                 "latestReadyRevisionName": "staylong-sydney-00004",
                 "traffic": [{"revisionName": "staylong-sydney-00004", "percent": 100}],
                 "conditions": [
-                    {"type": "Ready", "state": "CONDITION_SUCCEEDED"},
-                    {"type": "RoutesReady", "state": "CONDITION_SUCCEEDED"},
+                    {"type": "Ready", "status": "True"},
+                    {"type": "RoutesReady", "status": "True"},
                 ],
             },
         },
@@ -25,8 +25,8 @@ def test_summary_surfaces_route_readiness_and_public_invoker_state() -> None:
             "metadata": {"name": "staylong-sydney-00004"},
             "status": {
                 "conditions": [
-                    {"type": "Ready", "state": "CONDITION_SUCCEEDED"},
-                    {"type": "ContainerHealthy", "state": "CONDITION_SUCCEEDED"},
+                    {"type": "Ready", "status": "True"},
+                    {"type": "ContainerHealthy", "status": "True"},
                 ]
             },
         },
@@ -45,15 +45,15 @@ def test_summary_surfaces_route_readiness_and_public_invoker_state() -> None:
     assert summary["service"] == {
         "ingress": "all",
         "latest_ready_revision": "staylong-sydney-00004",
-        "ready": "CONDITION_SUCCEEDED",
-        "routes_ready": "CONDITION_SUCCEEDED",
+        "ready": "True",
+        "routes_ready": "True",
         "traffic": [{"percent": 100, "revision": "staylong-sydney-00004"}],
         "urls": ["https://canonical.run.app", "https://hash.a.run.app"],
     }
     assert summary["revision"] == {
-        "container_healthy": "CONDITION_SUCCEEDED",
+        "container_healthy": "True",
         "name": "staylong-sydney-00004",
-        "ready": "CONDITION_SUCCEEDED",
+        "ready": "True",
     }
     assert summary["invoker_policy"] == {
         "public": False,
