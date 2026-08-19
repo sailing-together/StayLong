@@ -31,10 +31,11 @@ the `staylong-api-token` secret container, and grants:
 - `staylong-app-deployer` access only to add a secret version.
 
 Terraform never receives the token value and therefore cannot record it in
-state. A later protected deployment workflow will write the value from the
-masked GitHub environment secret and deploy the v2 service using the secret
-reference. Do not add token-like fields to the JSON configuration files: the
-configuration validator rejects them by design.
+state. The protected **Deploy Sydney v2 application** workflow adds the value
+from the masked GitHub environment secret as a Secret Manager version, then
+uses Terraform to create or update the v2 service with a secret reference. Do
+not add token-like fields to the JSON configuration files: the configuration
+validator rejects them by design.
 
 ## Delivery sequence
 
