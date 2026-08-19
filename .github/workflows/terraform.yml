@@ -18,9 +18,9 @@ on:
         description: "Requested Terraform operation"
         required: true
         type: choice
-        options: [validate, plan, apply, destroy]
+        options: [validate, plan, apply, replace-plan, replace-apply, destroy]
       confirmation:
-        description: "Enter DESTROY_SANDBOX for platform/app destroy; otherwise leave blank"
+        description: "Enter PLAN_CLOUD_RUN_SERVICE_REPLACE, EXECUTE_CLOUD_RUN_SERVICE_REPLACE, or DESTROY_SANDBOX as applicable"
         required: false
         type: string
 
@@ -66,12 +66,24 @@ jobs:
             echo "Sandbox destroy requires confirmation=DESTROY_SANDBOX."
             exit 1
           fi
+          if [[ "$OPERATION" == "replace-plan" ]]; then
+            if [[ "$COMPONENT" != "app" || "$CONFIRMATION" != "PLAN_CLOUD_RUN_SERVICE_REPLACE" ]]; then
+              echo "Cloud Run replacement plan requires component=app and confirmation=PLAN_CLOUD_RUN_SERVICE_REPLACE."
+              exit 1
+            fi
+          fi
+          if [[ "$OPERATION" == "replace-apply" ]]; then
+            if [[ "$COMPONENT" != "app" || "$CONFIRMATION" != "EXECUTE_CLOUD_RUN_SERVICE_REPLACE" ]]; then
+              echo "Cloud Run replacement apply requires component=app and confirmation=EXECUTE_CLOUD_RUN_SERVICE_REPLACE."
+              exit 1
+            fi
+          fi
       - name: Select Terraform identity
         id: identity
         env:
           OPERATION: ${{ inputs.operation }}
         run: |
-          if [[ "$OPERATION" == "apply" || "$OPERATION" == "destroy" ]]; then
+          if [[ "$OPERATION" == "apply" || "$OPERATION" == "replace-apply" || "$OPERATION" == "destroy" ]]; then
             echo "service_account=${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
           else
             echo "service_account=${{ vars.GCP_TERRAFORM_PLANNER_SERVICE_ACCOUNT }}" >> "$GITHUB_OUTPUT"
@@ -98,15 +110,18 @@ jobs:
           terraform fmt -check -recursive "$component_path"
           terraform -chdir="$component_path" validate
       - name: Plan
-        if: ${{ inputs.operation == 'plan' || inputs.operation == 'apply' || inputs.operation == 'destroy' }}
+        if: ${{ inputs.operation == 'plan' || inputs.operation == 'apply' || inputs.operation == 'replace-plan' || inputs.operation == 'replace-apply' || inputs.operation == 'destroy' }}
         env:
           COMPONENT: ${{ inputs.component }}
         run: |
           component_path="infra/terraform/components/${COMPONENT}"
           plan_args=(-input=false -out=tfplan -var="project_config=staylong.json" -var="environment_config=${{ inputs.environment }}.json")
+          if [[ "${{ inputs.operation }}" == "replace-plan" || "${{ inputs.operation }}" == "replace-apply" ]]; then
+            plan_args+=("-replace=module.service.google_cloud_run_v2_service.this")
+          fi
           terraform -chdir="$component_path" plan "${plan_args[@]}"
       - name: Apply reviewed plan
-        if: ${{ inputs.operation == 'apply' }}
+        if: ${{ inputs.operation == 'apply' || inputs.operation == 'replace-apply' }}
         env:
           COMPONENT: ${{ inputs.component }}
         run: terraform -chdir="infra/terraform/components/${COMPONENT}" apply -input=false tfplan

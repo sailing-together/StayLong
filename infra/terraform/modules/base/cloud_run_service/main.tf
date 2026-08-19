@@ -38,4 +38,10 @@ resource "google_cloud_run_v2_service_iam_member" "invoker" {
   name     = google_cloud_run_v2_service.this.name
   role     = "roles/run.invoker"
   member   = each.value
+
+  # IAM policies are attached to the service resource. Recreate each binding
+  # whenever a guarded service replacement is deliberately requested.
+  lifecycle {
+    replace_triggered_by = [google_cloud_run_v2_service.this]
+  }
 }
