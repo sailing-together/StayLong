@@ -45,3 +45,16 @@ resource "google_cloud_run_v2_service_iam_member" "invoker" {
     replace_triggered_by = [google_cloud_run_v2_service.this]
   }
 }
+
+# This binding is only enabled by the guarded public-diagnostic workflow. It
+# must never be enabled by regular app apply/deploy operations.
+resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
+  provider = googlebeta
+  count    = var.enable_public_invoker ? 1 : 0
+
+  project  = var.project_id
+  location = var.location
+  name     = google_cloud_run_v2_service.this.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}

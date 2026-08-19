@@ -7,6 +7,10 @@ variable "invoker_members" {
   type    = set(string)
   default = []
 }
+variable "enable_public_invoker" {
+  type    = bool
+  default = false
+}
 variable "deletion_protection" {
   type    = bool
   default = false
