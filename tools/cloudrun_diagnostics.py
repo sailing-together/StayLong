@@ -85,7 +85,12 @@ def main() -> int:
     parser.add_argument("--revision-json", required=True)
     parser.add_argument("--policy-json", required=True)
     args = parser.parse_args()
-    print(json.dumps(build_summary(_read_json(args.service_json), _read_json(args.revision_json), _read_json(args.policy_json)), indent=2, sort_keys=True))
+    summary = build_summary(
+        _read_json(args.service_json),
+        _read_json(args.revision_json),
+        _read_json(args.policy_json),
+    )
+    print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
 
 

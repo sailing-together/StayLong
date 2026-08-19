@@ -34,7 +34,9 @@ def test_summary_surfaces_route_readiness_and_public_invoker_state() -> None:
             "bindings": [
                 {
                     "role": "roles/run.invoker",
-                    "members": ["serviceAccount:staylong-app-deployer@staylong.iam.gserviceaccount.com"],
+                    "members": [
+                        "serviceAccount:staylong-app-deployer@staylong.iam.gserviceaccount.com"
+                    ],
                 }
             ]
         },
@@ -53,4 +55,7 @@ def test_summary_surfaces_route_readiness_and_public_invoker_state() -> None:
         "name": "staylong-sydney-00004",
         "ready": "CONDITION_SUCCEEDED",
     }
-    assert summary["invoker_policy"] == {"public": False, "principals": ["serviceAccount:staylong-app-deployer@staylong.iam.gserviceaccount.com"]}
+    assert summary["invoker_policy"] == {
+        "public": False,
+        "principals": ["serviceAccount:staylong-app-deployer@staylong.iam.gserviceaccount.com"],
+    }
