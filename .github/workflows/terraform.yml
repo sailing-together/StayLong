@@ -180,9 +180,6 @@ jobs:
           if [[ "${{ inputs.operation }}" == "sydney-public-diagnostic" ]]; then
             plan_args+=("-var=diagnostic_public_invoker=true")
           fi
-          if [[ "${{ inputs.operation }}" == "sydney-app-canary" ]]; then
-            plan_args+=("-var=canary_image=${{ steps.canary.outputs.image }}")
-          fi
           terraform -chdir="$component_path" plan "${plan_args[@]}"
       - name: Apply reviewed plan
         if: ${{ inputs.operation == 'apply' || inputs.operation == 'replace-apply' || inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic' || inputs.operation == 'regional-probe' || inputs.operation == 'sydney-app-canary' }}
@@ -192,6 +189,21 @@ jobs:
       - name: Configure Cloud Run diagnostic client
         if: ${{ inputs.operation == 'public-diagnostic' || inputs.operation == 'sydney-public-diagnostic' || inputs.operation == 'regional-probe' || inputs.operation == 'sydney-app-canary' }}
         uses: google-github-actions/setup-gcloud@v2
+      - name: Update canary with the exact application image and ephemeral runtime token
+        if: ${{ inputs.operation == 'sydney-app-canary' }}
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          CANARY_IMAGE: ${{ steps.canary.outputs.image }}
+          STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$CANARY_IMAGE"
+          test -n "$STAYLONG_API_TOKEN"
+          gcloud run services update staylong-sydney-app-canary \
+            --project="$PROJECT_ID" \
+            --region=australia-southeast1 \
+            --image="$CANARY_IMAGE" \
+            --update-env-vars="STAYLONG_API_TOKEN=$STAYLONG_API_TOKEN"
       - name: Probe the temporarily public health endpoint
         if: ${{ inputs.operation == 'public-diagnostic' }}
         env:
@@ -271,11 +283,10 @@ jobs:
         if: ${{ always() && inputs.operation == 'sydney-app-canary' }}
         env:
           COMPONENT: ${{ inputs.component }}
-          CANARY_IMAGE: ${{ steps.canary.outputs.image }}
         run: |
           set -euo pipefail
           component_path="infra/terraform/components/${COMPONENT}"
-          destroy_args=(-input=false -auto-approve -var="project_config=${{ steps.configuration.outputs.project_config }}" -var="environment_config=${{ steps.configuration.outputs.environment_config }}" -var="canary_image=$CANARY_IMAGE")
+          destroy_args=(-input=false -auto-approve -var="project_config=${{ steps.configuration.outputs.project_config }}" -var="environment_config=${{ steps.configuration.outputs.environment_config }}")
           terraform -chdir="$component_path" destroy "${destroy_args[@]}"
       - name: Destroy selected sandbox component
         if: ${{ inputs.operation == 'destroy' }}
