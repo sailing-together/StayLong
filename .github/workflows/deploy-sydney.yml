@@ -1,0 +1,111 @@
+name: Deploy Sydney sandbox application revision
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "Dockerfile"
+      - "pyproject.toml"
+      - "uv.lock"
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Commit SHA already reachable from main to deploy"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-sydney-sandbox
+  cancel-in-progress: false
+
+env:
+  SYDNEY_REGION: australia-southeast1
+  SYDNEY_REPOSITORY: staylong-sydney
+  SYDNEY_SERVICE: staylong-sydney
+
+jobs:
+  terraform_readiness:
+    name: Verify Sydney Terraform-managed platform and service
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_PLANNER_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Verify Sydney prerequisites
+        run: |
+          gcloud artifacts repositories describe "$SYDNEY_REPOSITORY" --project="${{ vars.GCP_PROJECT_ID }}" --location="$SYDNEY_REGION"
+          gcloud run services describe "$SYDNEY_SERVICE" --project="${{ vars.GCP_PROJECT_ID }}" --region="$SYDNEY_REGION"
+
+  deploy:
+    name: Build and deploy Sydney application revision
+    needs: terraform_readiness
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha || github.sha }}
+      - name: Verify deployment commit belongs to main
+        id: revision
+        run: |
+          deployment_sha="$(git rev-parse HEAD)"
+          git fetch origin main
+          git merge-base --is-ancestor "$deployment_sha" origin/main
+          echo "sha=$deployment_sha" >> "$GITHUB_OUTPUT"
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: docker/setup-buildx-action@v3
+      - name: Build and publish immutable Sydney image
+        run: |
+          image="$SYDNEY_REGION-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/$SYDNEY_REPOSITORY/app:${{ steps.revision.outputs.sha }}"
+          gcloud auth configure-docker "$SYDNEY_REGION-docker.pkg.dev" --quiet
+          docker buildx build --tag "$image" --push .
+      - name: Publish only the Sydney Cloud Run application revision
+        env:
+          STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
+        run: |
+          test -n "$STAYLONG_API_TOKEN"
+          gcloud run services update "$SYDNEY_SERVICE" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="$SYDNEY_REGION" \
+            --image "$SYDNEY_REGION-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/$SYDNEY_REPOSITORY/app:${{ steps.revision.outputs.sha }}" \
+            --update-env-vars "STAYLONG_API_TOKEN=$STAYLONG_API_TOKEN"
+      - name: Resolve Sydney service URL
+        id: service
+        run: |
+          service_url="$(gcloud run services describe "$SYDNEY_SERVICE" --project="${{ vars.GCP_PROJECT_ID }}" --region="$SYDNEY_REGION" --format='value(status.url)')"
+          test -n "$service_url"
+          echo "url=$service_url" >> "$GITHUB_OUTPUT"
+          echo "identity_audience=$service_url" >> "$GITHUB_OUTPUT"
+      - name: Mint Sydney Cloud Run identity token
+        id: cloud_run_id_token
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+          token_format: id_token
+          id_token_audience: ${{ steps.service.outputs.identity_audience }}
+          id_token_include_email: true
+      - name: Smoke-test Sydney revision
+        env:
+          STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
+          CLOUD_RUN_ID_TOKEN: ${{ steps.cloud_run_id_token.outputs.id_token }}
+        run: |
+          test -n "$STAYLONG_API_TOKEN"
+          python3 tools/cloudrun_smoke.py \
+            --url "${{ steps.service.outputs.url }}" \
+            --token "$STAYLONG_API_TOKEN" \
+            --id-token "$CLOUD_RUN_ID_TOKEN" \
+            --application-token-header "X-StayLong-API-Token"

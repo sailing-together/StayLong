@@ -6,6 +6,7 @@
   "properties": {
     "environment": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"},
     "project_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]$"},
+    "region": {"type": "string", "pattern": "^[a-z]+-[a-z]+[0-9]+$"},
     "state_bucket_name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$"},
     "labels": {"type": "object", "additionalProperties": {"type": "string"}}
   }

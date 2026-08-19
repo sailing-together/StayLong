@@ -1,0 +1,15 @@
+{
+  "project": "staylong-sydney",
+  "github_repository": "sailing-together/StayLong",
+  "github_branch": "main",
+  "artifact_registry_repository_id": "staylong-sydney",
+  "runtime_account_id": "staylong-runtime",
+  "deployer_account_id": "staylong-app-deployer",
+  "cloudbuild_staging_bucket_name": "staylong-cloudbuild-186136682416",
+  "cloud_run_service_name": "staylong-sydney",
+  "initial_image": "gcr.io/google-samples/hello-app:1.0",
+  "labels": {
+    "product": "staylong",
+    "deployment": "sydney"
+  }
+}
