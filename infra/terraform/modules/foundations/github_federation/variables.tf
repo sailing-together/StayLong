@@ -34,6 +34,7 @@ variable "operator_project_roles" {
     "roles/iam.serviceAccountUser",
     "roles/pubsub.admin",
     "roles/run.admin",
+    "roles/secretmanager.admin",
     "roles/serviceusage.serviceUsageAdmin",
   ]
 }

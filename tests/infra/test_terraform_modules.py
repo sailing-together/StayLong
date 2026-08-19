@@ -56,6 +56,13 @@ def test_deployer_can_consume_enabled_google_apis_for_cloud_build() -> None:
     assert '"roles/serviceusage.serviceUsageConsumer"' in source
 
 
+def test_terraform_operator_can_create_secret_manager_resources() -> None:
+    """The Terraform identity, not the runtime, owns secret-container creation."""
+    source = Path("infra/terraform/modules/foundations/github_federation/variables.tf").read_text()
+
+    assert '"roles/secretmanager.admin"' in source
+
+
 def test_cloud_build_staging_uses_bootstrap_bucket_and_scoped_identity_members() -> None:
     state_source = BOOTSTRAP_STATE_ROOT.read_text()
     identity_source = GITHUB_FEDERATION_MODULE.read_text()
