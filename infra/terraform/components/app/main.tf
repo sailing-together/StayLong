@@ -24,6 +24,7 @@ module "service" {
   service_name          = local.config.cloud_run_service_name
   service_account_email = "${local.config.runtime_account_id}@${local.config.project_id}.iam.gserviceaccount.com"
   image                 = local.config.initial_image
+  enable_public_invoker = var.diagnostic_public_invoker
   invoker_members = [
     "serviceAccount:${local.config.deployer_account_id}@${local.config.project_id}.iam.gserviceaccount.com",
   ]
