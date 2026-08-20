@@ -49,3 +49,16 @@ validator rejects them by design.
 The existing Melbourne service remains available for evidence and should not
 be treated as a deployment target until its Cloud Run routing issue is
 resolved.
+
+## Clean-project isolation
+
+The rebuilt environment is now isolated in the GCP project `stay-long`. Its
+configuration pair is `stay-long-sydney-v2.json` and
+`stay-long-sydney-sandbox.json`. The state backend
+`stay-long-terraform-state-864199179076` is a new, project-specific bucket;
+it must be created by the standalone Terraform bootstrap before any remote
+Terraform component or GitHub Actions workflow targets this environment.
+
+This clean-project rollout is an isolation test for the earlier `staylong`
+project's gateway-level Cloud Run `404`. It does not modify or destroy the
+original project, state, services, or diagnostic evidence.
