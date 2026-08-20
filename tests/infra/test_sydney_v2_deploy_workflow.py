@@ -3,6 +3,7 @@
 from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/deploy-sydney-v2.yml")
+PUBLIC_DIAGNOSTIC_WORKFLOW = Path(".github/workflows/sydney-v2-public-diagnostic.yml")
 
 
 def test_v2_deployment_adds_a_secret_version_without_passing_it_to_terraform() -> None:
@@ -25,3 +26,17 @@ def test_v2_deployment_adds_a_secret_version_without_passing_it_to_terraform() -
     assert "STAYLONG_API_TOKEN=" not in source
     assert "--project-config stay-long-sydney-v2.json" in source
     assert "--environment-config stay-long-sydney-sandbox.json" in source
+
+
+def test_v2_public_diagnostic_reverts_the_temporary_invoker_binding() -> None:
+    """A diagnostic can expose only the v2 health endpoint and must always revoke it."""
+    source = PUBLIC_DIAGNOSTIC_WORKFLOW.read_text()
+
+    assert "TEMPORARILY_PUBLIC_SYDNEY_V2_CLOUD_RUN" in source
+    assert "STATE_PREFIX: staylong/sydney-sandbox/sydney-v2-app" in source
+    assert '-backend-config="prefix=$STATE_PREFIX"' in source
+    assert 'diagnostic_public_invoker=true' in source
+    assert 'curl --silent --show-error' in source
+    assert 'test "$http_status" = 200' in source
+    assert "if: ${{ always() }}" in source
+    assert 'diagnostic_public_invoker=false' in source

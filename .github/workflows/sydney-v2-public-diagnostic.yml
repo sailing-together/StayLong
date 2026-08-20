@@ -1,0 +1,101 @@
+name: Diagnose StayLong Sydney v2 public routing
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Enter TEMPORARILY_PUBLIC_SYDNEY_V2_CLOUD_RUN to run this diagnostic"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: staylong-sydney-v2-public-diagnostic
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    name: Temporarily expose, probe, and revoke Sydney v2
+    runs-on: ubuntu-latest
+    environment: sandbox
+    env:
+      PROJECT_CONFIG: stay-long-sydney-v2.json
+      ENVIRONMENT_CONFIG: stay-long-sydney-sandbox.json
+      COMPONENT_PATH: infra/terraform/components/sydney-v2-app
+      STATE_PREFIX: staylong/sydney-sandbox/sydney-v2-app
+      REGION: australia-southeast1
+      SERVICE: staylong-sydney-v2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm bounded diagnostic
+        run: test "${{ inputs.confirmation }}" = "TEMPORARILY_PUBLIC_SYDNEY_V2_CLOUD_RUN"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@v3
+      - name: Install configuration validator dependency
+        run: python -m pip install jsonschema
+      - name: Validate fixed Sydney v2 configuration
+        run: |
+          PYTHONPATH=src python tools/terraform_config.py \
+            --project-config "$PROJECT_CONFIG" \
+            --environment-config "$ENVIRONMENT_CONFIG" \
+            --output "${RUNNER_TEMP}/terraform-config.json"
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Resolve the currently deployed v2 image
+        id: service
+        run: |
+          set -euo pipefail
+          image_ref="$(gcloud run services describe "$SERVICE" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="$REGION" \
+            --format='value(spec.template.spec.containers[0].image)')"
+          test -n "$image_ref"
+          echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
+      - name: Initialise and validate the Terraform component
+        run: |
+          set -euo pipefail
+          state_bucket="$(jq -r '.state_bucket_name' "${RUNNER_TEMP}/terraform-config.json")"
+          test -n "$state_bucket"
+          terraform -chdir="$COMPONENT_PATH" init -input=false \
+            -backend-config="bucket=$state_bucket" \
+            -backend-config="prefix=$STATE_PREFIX"
+          terraform -chdir="$COMPONENT_PATH" fmt -check -recursive
+          terraform -chdir="$COMPONENT_PATH" validate
+      - name: Temporarily grant public invocation through Terraform
+        run: |
+          set -euo pipefail
+          terraform -chdir="$COMPONENT_PATH" plan -input=false -out=public.tfplan \
+            -var="project_config=$PROJECT_CONFIG" \
+            -var="environment_config=$ENVIRONMENT_CONFIG" \
+            -var="image_ref=${{ steps.service.outputs.image_ref }}" \
+            -var="diagnostic_public_invoker=true"
+          terraform -chdir="$COMPONENT_PATH" apply -input=false public.tfplan
+      - name: Probe the temporarily public v2 health endpoint
+        run: |
+          set -euo pipefail
+          service_url="$(gcloud run services describe "$SERVICE" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="$REGION" \
+            --format='value(status.url)')"
+          http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --connect-timeout 10 --max-time 30 "$service_url/healthz")"
+          echo "Temporarily public v2 health endpoint returned HTTP $http_status."
+          test "$http_status" = 200
+      - name: Revoke temporary public invocation through Terraform
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          terraform -chdir="$COMPONENT_PATH" plan -input=false -out=revoke.tfplan \
+            -var="project_config=$PROJECT_CONFIG" \
+            -var="environment_config=$ENVIRONMENT_CONFIG" \
+            -var="image_ref=${{ steps.service.outputs.image_ref }}" \
+            -var="diagnostic_public_invoker=false"
+          terraform -chdir="$COMPONENT_PATH" apply -input=false revoke.tfplan
