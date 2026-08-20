@@ -16,7 +16,10 @@ def test_sydney_v2_initial_revision_uses_secret_manager_reference() -> None:
     assert 'secret_id = "staylong-api-token"' in app_source
     assert "STAYLONG_API_TOKEN = {" in app_source
     assert 'version   = "latest"' in app_source
-    assert "enable_public_invoker = false" in app_source
+    assert "enable_public_invoker = var.diagnostic_public_invoker" in app_source
+    assert 'variable "diagnostic_public_invoker"' in Path(
+        "infra/terraform/components/sydney-v2-app/variables.tf"
+    ).read_text()
     assert (
         "serviceAccount:${local.config.deployer_account_id}@${local.config.project_id}"
         in app_source
