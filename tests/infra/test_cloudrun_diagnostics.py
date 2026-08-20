@@ -1,6 +1,17 @@
 """Tests for redacted Cloud Run diagnostic summaries."""
 
+from pathlib import Path
+
 from tools.cloudrun_diagnostics import build_summary
+
+
+def test_endpoint_diagnostic_can_target_the_clean_v2_service() -> None:
+    """The read-only workflow must collect evidence from the service under investigation."""
+    workflow = Path(".github/workflows/cloud-run-endpoint-diagnostic.yml").read_text()
+
+    assert 'description: "Cloud Run service to inspect"' in workflow
+    assert "options: [staylong, staylong-sydney, staylong-sydney-v2]" in workflow
+    assert "SERVICE: ${{ inputs.service || 'staylong-sydney-v2' }}" in workflow
 
 
 def test_summary_surfaces_route_readiness_and_public_invoker_state() -> None:
