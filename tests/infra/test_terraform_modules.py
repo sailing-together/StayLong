@@ -98,6 +98,20 @@ def test_platform_enables_cloud_resource_manager_before_managing_project_service
     assert 'resource "google_project_service" "cloud_resource_manager"' not in platform_source
 
 
+def test_identity_bootstrap_enables_managed_identity_apis_before_bucket_iam() -> None:
+    """New projects must create Google-managed identities before IAM grants."""
+    bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text()
+    federation_source = GITHUB_FEDERATION_MODULE.read_text()
+
+    assert 'resource "google_project_service" "managed_identity_apis"' in bootstrap_source
+    assert '"cloudbuild.googleapis.com"' in bootstrap_source
+    assert '"compute.googleapis.com"' in bootstrap_source
+    assert "depends_on = [" in bootstrap_source
+    assert "google_project_service.managed_identity_apis" in bootstrap_source
+    expected_binding = 'resource "google_storage_bucket_iam_member" "cloudbuild_staging"'
+    assert expected_binding in federation_source
+
+
 def test_deployment_builds_directly_to_artifact_registry_without_cloud_build_queue() -> None:
     source = DEPLOY_WORKFLOW.read_text()
 

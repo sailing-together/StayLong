@@ -18,6 +18,17 @@ resource "google_project_service" "cloud_resource_manager" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "managed_identity_apis" {
+  for_each = toset([
+    "cloudbuild.googleapis.com",
+    "compute.googleapis.com",
+  ])
+
+  project            = local.config.project_id
+  service            = each.value
+  disable_on_destroy = false
+}
+
 data "google_project" "current" {
   project_id = local.config.project_id
 }
@@ -32,5 +43,8 @@ module "github_federation" {
   cloudbuild_staging_bucket_name = local.config.cloudbuild_staging_bucket_name
   project_number                 = data.google_project.current.number
 
-  depends_on = [google_project_service.cloud_resource_manager]
+  depends_on = [
+    google_project_service.cloud_resource_manager,
+    google_project_service.managed_identity_apis,
+  ]
 }
