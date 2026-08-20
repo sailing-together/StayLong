@@ -13,6 +13,7 @@ GITHUB_FEDERATION_VARIABLES = Path(
     "infra/terraform/modules/foundations/github_federation/variables.tf"
 )
 BOOTSTRAP_STATE_ROOT = Path("infra/terraform/bootstrap/state/main.tf")
+SYDNEY_PLATFORM_ROOT = Path("infra/terraform/components/sydney-platform/main.tf")
 DEPLOY_WORKFLOW = Path(".github/workflows/deploy.yml")
 
 
@@ -118,3 +119,12 @@ def test_deployment_builds_directly_to_artifact_registry_without_cloud_build_que
     assert "docker/setup-buildx-action@v3" in source
     assert "docker buildx build" in source
     assert "gcloud builds submit" not in source
+
+
+def test_sydney_platform_creates_runtime_identity_before_cloud_run_deployment() -> None:
+    source = SYDNEY_PLATFORM_ROOT.read_text()
+
+    assert 'service            = "run.googleapis.com"' in source
+    assert 'module "runtime"' in source
+    assert 'source = "../../modules/base/service_account"' in source
+    assert "account_id   = local.config.runtime_account_id" in source

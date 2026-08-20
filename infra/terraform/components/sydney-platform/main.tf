@@ -18,6 +18,21 @@ resource "google_project_service" "artifact_registry" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "cloud_run" {
+  project            = local.config.project_id
+  service            = "run.googleapis.com"
+  disable_on_destroy = false
+}
+
+module "runtime" {
+  source = "../../modules/base/service_account"
+
+  project_id   = local.config.project_id
+  account_id   = local.config.runtime_account_id
+  display_name = "StayLong Cloud Run runtime"
+  description  = "Least-privilege runtime identity for the StayLong service"
+}
+
 module "repository" {
   source = "../../modules/base/artifact_registry"
 
