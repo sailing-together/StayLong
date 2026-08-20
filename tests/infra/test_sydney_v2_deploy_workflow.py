@@ -23,3 +23,5 @@ def test_v2_deployment_adds_a_secret_version_without_passing_it_to_terraform() -
     assert "needs.build_and_publish.outputs.image_ref" not in source
     assert "--update-env-vars" not in source
     assert "STAYLONG_API_TOKEN=" not in source
+    assert "--project-config stay-long-sydney-v2.json" in source
+    assert "--environment-config stay-long-sydney-sandbox.json" in source
