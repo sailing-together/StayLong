@@ -2,6 +2,13 @@ name: Diagnose Cloud Run authenticated endpoints
 
 on:
   workflow_dispatch:
+    inputs:
+      service:
+        description: "Cloud Run service to inspect"
+        required: false
+        type: choice
+        options: [staylong, staylong-sydney, staylong-sydney-v2]
+        default: staylong-sydney-v2
 
 permissions:
   contents: read
@@ -12,6 +19,8 @@ jobs:
     name: Compare configured Cloud Run endpoints
     runs-on: ubuntu-latest
     environment: sandbox
+    env:
+      SERVICE: ${{ inputs.service || 'staylong-sydney-v2' }}
     steps:
       - uses: google-github-actions/auth@v2
         with:
@@ -25,8 +34,8 @@ jobs:
           REGION: ${{ vars.GCP_REGION }}
         run: |
           set -euo pipefail
-          service_json="${RUNNER_TEMP}/staylong-service.json"
-          gcloud run services describe staylong \
+          service_json="${RUNNER_TEMP}/${SERVICE}-service.json"
+          gcloud run services describe "$SERVICE" \
             --project="$PROJECT_ID" \
             --region="$REGION" \
             --format=json > "$service_json"
