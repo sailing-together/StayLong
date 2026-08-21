@@ -57,7 +57,7 @@ jobs:
             for header in Authorization X-Serverless-Authorization; do
               headers_file="$(mktemp)"
               body_file="$(mktemp)"
-              status="$(curl --silent --show-error --output "$body_file" --dump-header "$headers_file" --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "$header: Bearer $TOKEN" "$url/healthz")"
+              status="$(curl --silent --show-error --output "$body_file" --dump-header "$headers_file" --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "$header: Bearer $TOKEN" "$url/health")"
               content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {print $2}' "$headers_file" | tr -d '\r' | tail -1)"
               body_bytes="$(wc -c < "$body_file" | tr -d ' ')"
               body_sha256="$(sha256sum "$body_file" | cut -d ' ' -f1)"

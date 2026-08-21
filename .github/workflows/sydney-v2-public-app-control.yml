@@ -116,7 +116,7 @@ jobs:
               http_status="$(curl --silent --show-error \
                 --dump-header "$curl_headers" --output "$curl_body" \
                 --write-out '%{http_code}' --connect-timeout 10 --max-time 30 \
-                "$service_url/healthz" || true)"
+                "$service_url/health" || true)"
               content_type="$(awk 'BEGIN {IGNORECASE=1} /^content-type:/ {sub(/\r$/, ""); print $2; exit}' "$curl_headers")"
               body_sha256="$(sha256sum "$curl_body" | cut -d' ' -f1)"
               echo "url_${url_index}=$service_url"

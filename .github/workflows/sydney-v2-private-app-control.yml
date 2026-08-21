@@ -116,11 +116,11 @@ jobs:
             authorization_status="$(curl --silent --show-error --output /dev/null \
               --write-out '%{http_code}' --connect-timeout 10 --max-time 30 \
               -H "Authorization: Bearer $CLOUD_RUN_ID_TOKEN" \
-              "$SERVICE_URL/healthz" || true)"
+              "$SERVICE_URL/health" || true)"
             serverless_status="$(curl --silent --show-error --output /dev/null \
               --write-out '%{http_code}' --connect-timeout 10 --max-time 30 \
               -H "X-Serverless-Authorization: Bearer $CLOUD_RUN_ID_TOKEN" \
-              "$SERVICE_URL/healthz" || true)"
+              "$SERVICE_URL/health" || true)"
             echo "Private invocation attempt=$attempt authorization=$authorization_status serverless=$serverless_status"
             if [[ "$serverless_status" == "200" ]]; then
               platform_token_header="X-Serverless-Authorization"

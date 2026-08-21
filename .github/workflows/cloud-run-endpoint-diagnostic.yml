@@ -85,7 +85,7 @@ jobs:
             status="$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
               --connect-timeout 10 --max-time 30 \
               --header "X-Serverless-Authorization: Bearer $id_token" \
-              "$endpoint/healthz")"
+              "$endpoint/health")"
             content_type="$(file --brief --mime-type "$response_file")"
             printf '%s endpoint returned HTTP %s (%s response).\n' "$label" "$status" "$content_type" >&2
             printf '%s' "$status"

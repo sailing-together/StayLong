@@ -76,9 +76,18 @@ the v2 service.
    `STAYLONG_API_TOKEN` secret before dispatching the protected workflow.
 2. Dispatch the v2 deployment workflow from `main`.
 3. Verify the workflow creates a Secret Manager version, creates the v2 Cloud
-   Run service, and receives HTTP 200 from `/healthz` using an identity token.
+   Run service, and receives HTTP 200 from `/health` using an identity token.
 4. Record the immutable image digest, Cloud Run URL, and smoke-test result in
    `docs/release-evidence.md`; do not record the token.
+
+### Cloud Run health-path compatibility
+
+Use `/health`, not `/healthz`, for the application endpoint and deployment
+smoke tests. Cloud Run documents reserved URL paths and recommends avoiding
+all paths ending in `z`; requests to `/healthz` can be rejected by Google
+Frontend before they reach the container. See the official
+[Cloud Run known issues](https://docs.cloud.google.com/run/docs/known-issues)
+and [health-check guidance](https://docs.cloud.google.com/run/docs/configuring/healthchecks).
 
 ## Review checklist
 

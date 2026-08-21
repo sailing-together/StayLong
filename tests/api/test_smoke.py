@@ -18,7 +18,7 @@ class FakeClient:
     ) -> HttpResponse:
         del payload
         self.requests.append((method, path))
-        if path == "/healthz":
+        if path == "/health":
             return HttpResponse(200, {"status": "ok"})
         if method == "POST":
             return HttpResponse(201, {"case_id": "case-smoke"})
@@ -30,7 +30,7 @@ def test_smoke_flow_checks_health_then_create_and_read() -> None:
 
     assert run_smoke(client) == "case-smoke"
     assert client.requests == [
-        ("GET", "/healthz"),
+        ("GET", "/health"),
         ("POST", "/v1/cases"),
         ("GET", "/v1/cases/case-smoke/concerns"),
     ]
@@ -45,7 +45,7 @@ def test_smoke_flow_rejects_unhealthy_service() -> None:
             payload: dict[str, str] | None = None,
         ) -> HttpResponse:
             del method, payload
-            if path == "/healthz":
+            if path == "/health":
                 return HttpResponse(503, {"status": "starting"})
             return super().request("GET", path)
 
@@ -82,7 +82,7 @@ def test_url_lib_client_can_use_a_proxy_application_token_header(
         "https://example.test",
         "app-token",
         application_token_header="X-StayLong-API-Token",
-    ).request("GET", "/healthz")
+    ).request("GET", "/health")
 
     request = captured[0]
     assert request.headers["X-staylong-api-token"] == "app-token"  # type: ignore[attr-defined]
@@ -114,7 +114,7 @@ def test_url_lib_client_separates_cloud_run_and_application_tokens(
     monkeypatch.setattr(smoke, "urlopen", fake_urlopen)
 
     response = UrlLibClient("https://example.test", "app-token", "run-token").request(
-        "GET", "/healthz"
+        "GET", "/health"
     )
 
     request = captured[0]
@@ -154,7 +154,7 @@ def test_url_lib_client_can_send_cloud_run_token_in_authorization(
         "run-token",
         application_token_header="X-StayLong-API-Token",
         platform_token_header="Authorization",
-    ).request("GET", "/healthz")
+    ).request("GET", "/health")
 
     request = captured[0]
     assert request.headers["Authorization"] == "Bearer run-token"  # type: ignore[attr-defined]

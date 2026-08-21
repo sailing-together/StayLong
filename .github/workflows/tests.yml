@@ -58,7 +58,7 @@ jobs:
             staylong:test
           trap 'docker rm --force staylong-smoke' EXIT
           for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:8080/healthz >/dev/null; then
+            if curl --fail --silent http://127.0.0.1:8080/health >/dev/null; then
               break
             fi
             if [ "$attempt" -eq 30 ]; then
