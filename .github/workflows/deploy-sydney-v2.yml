@@ -57,7 +57,10 @@ jobs:
           set -euo pipefail
           image_ref="$SYDNEY_REGION-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/$SYDNEY_REPOSITORY/app:${{ steps.revision.outputs.sha }}"
           gcloud auth configure-docker "$SYDNEY_REGION-docker.pkg.dev" --quiet
-          docker buildx build --tag "$image_ref" --push .
+          docker buildx build \
+            --build-arg "BUILD_REVISION=${{ steps.revision.outputs.sha }}" \
+            --tag "$image_ref" \
+            --push .
       - name: Add a masked token version to Secret Manager
         env:
           STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}

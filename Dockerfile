@@ -10,6 +10,9 @@ RUN npm run build
 
 FROM python:3.12-slim AS runtime
 
+ARG BUILD_REVISION=unknown
+LABEL org.opencontainers.image.revision=$BUILD_REVISION
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8080
