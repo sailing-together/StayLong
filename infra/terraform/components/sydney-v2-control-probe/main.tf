@@ -43,6 +43,12 @@ resource "google_cloud_run_v2_service" "control" {
       }
     }
   }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+    tag     = "probe"
+  }
 }
 
 resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
