@@ -30,4 +30,4 @@ USER 10001
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "exec uvicorn staylong.api.main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh", "-c", "exec hypercorn --bind 0.0.0.0:${PORT} staylong.api.main:app"]

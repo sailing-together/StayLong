@@ -8,7 +8,12 @@ version = "0.1.0"
 description = "An event-driven ageing-in-place coordination agent"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["fastapi>=0.115", "google-cloud-firestore>=2.16", "uvicorn[standard]>=0.34"]
+dependencies = [
+    "fastapi>=0.115",
+    "google-cloud-firestore>=2.16",
+    "hypercorn>=0.17.3,<1",
+    "uvicorn[standard]>=0.34",
+]
 
 [project.optional-dependencies]
 dev = ["httpx2>=0.1", "jsonschema>=4.23", "pytest>=8.3", "ruff>=0.8"]
