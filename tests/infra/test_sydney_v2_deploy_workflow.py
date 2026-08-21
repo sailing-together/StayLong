@@ -5,6 +5,7 @@ from pathlib import Path
 WORKFLOW = Path(".github/workflows/deploy-sydney-v2.yml")
 PUBLIC_DIAGNOSTIC_WORKFLOW = Path(".github/workflows/sydney-v2-public-diagnostic.yml")
 DOCKERFILE = Path("Dockerfile")
+PYPROJECT = Path("pyproject.toml")
 
 
 def test_v2_deployment_adds_a_secret_version_without_passing_it_to_terraform() -> None:
@@ -50,3 +51,11 @@ def test_v2_image_digest_records_the_deployed_main_revision() -> None:
     assert "ARG BUILD_REVISION" in dockerfile
     assert "org.opencontainers.image.revision=$BUILD_REVISION" in dockerfile
     assert '--build-arg "BUILD_REVISION=${{ steps.revision.outputs.sha }}"' in workflow
+
+
+def test_cloud_run_container_uses_hypercorn_asgi_server() -> None:
+    dockerfile = DOCKERFILE.read_text()
+    pyproject = PYPROJECT.read_text()
+
+    assert "hypercorn>=0.17.3,<1" in pyproject
+    assert "exec hypercorn --bind 0.0.0.0:${PORT} staylong.api.main:app" in dockerfile
