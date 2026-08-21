@@ -4,6 +4,7 @@ from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/deploy-sydney-v2.yml")
 PUBLIC_DIAGNOSTIC_WORKFLOW = Path(".github/workflows/sydney-v2-public-diagnostic.yml")
+DOCKERFILE = Path("Dockerfile")
 
 
 def test_v2_deployment_adds_a_secret_version_without_passing_it_to_terraform() -> None:
@@ -40,3 +41,12 @@ def test_v2_public_diagnostic_reverts_the_temporary_invoker_binding() -> None:
     assert 'test "$http_status" = 200' in source
     assert "if: ${{ always() }}" in source
     assert 'diagnostic_public_invoker=false' in source
+
+
+def test_v2_image_digest_records_the_deployed_main_revision() -> None:
+    workflow = WORKFLOW.read_text()
+    dockerfile = DOCKERFILE.read_text()
+
+    assert "ARG BUILD_REVISION" in dockerfile
+    assert "org.opencontainers.image.revision=$BUILD_REVISION" in dockerfile
+    assert '--build-arg "BUILD_REVISION=${{ steps.revision.outputs.sha }}"' in workflow
