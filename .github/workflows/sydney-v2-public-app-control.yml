@@ -85,28 +85,47 @@ jobs:
             -var="image_ref=${{ steps.image.outputs.ref }}"
           terraform -chdir="$COMPONENT_PATH" apply -input=false control.tfplan
       - name: Resolve the public control URL
-        id: service
         run: |
           set -euo pipefail
           project_id="$(jq -r '.project_id' "${RUNNER_TEMP}/terraform-config.json")"
-          service_url="$(gcloud run services describe "$CONTROL_SERVICE" \
+          service_json="${RUNNER_TEMP}/public-control-service.json"
+          urls_file="${RUNNER_TEMP}/public-control-urls.txt"
+          gcloud run services describe "$CONTROL_SERVICE" \
             --project="$project_id" \
             --region="$REGION" \
-            --format='value(status.url)')"
-          test -n "$service_url"
-          echo "url=$service_url" >> "$GITHUB_OUTPUT"
+            --format=json > "$service_json"
+          jq -r '
+            [
+              .status.url,
+              (.metadata.annotations["run.googleapis.com/urls"] | fromjson[])
+            ] | unique[]
+          ' "$service_json" > "$urls_file"
+          test -s "$urls_file"
       - name: Wait for the public invocation path
-        env:
-          SERVICE_URL: ${{ steps.service.outputs.url }}
         run: |
           set -euo pipefail
           healthy="false"
+          mapfile -t service_urls < "${RUNNER_TEMP}/public-control-urls.txt"
+          test "${#service_urls[@]}" -ge 2
           for attempt in {1..12}; do
-            http_status="$(curl --silent --show-error --output /dev/null \
-              --write-out '%{http_code}' --connect-timeout 10 --max-time 30 \
-              "$SERVICE_URL/healthz" || true)"
-            echo "Public invocation attempt=$attempt status=$http_status"
-            if [[ "$http_status" == "200" ]]; then
+            successful=0
+            for url_index in "${!service_urls[@]}"; do
+              service_url="${service_urls[$url_index]}"
+              curl_headers="${RUNNER_TEMP}/public-control-${url_index}.headers"
+              curl_body="${RUNNER_TEMP}/public-control-${url_index}.body"
+              http_status="$(curl --silent --show-error \
+                --dump-header "$curl_headers" --output "$curl_body" \
+                --write-out '%{http_code}' --connect-timeout 10 --max-time 30 \
+                "$service_url/healthz" || true)"
+              content_type="$(awk 'BEGIN {IGNORECASE=1} /^content-type:/ {sub(/\r$/, ""); print $2; exit}' "$curl_headers")"
+              body_sha256="$(sha256sum "$curl_body" | cut -d' ' -f1)"
+              echo "url_${url_index}=$service_url"
+              echo "Public invocation attempt=$attempt url_index=$url_index status=$http_status content_type=$content_type body_sha256=$body_sha256"
+              if [[ "$http_status" == "200" ]]; then
+                successful=$((successful + 1))
+              fi
+            done
+            if [[ "$successful" == "${#service_urls[@]}" ]]; then
               healthy="true"
               break
             fi
@@ -115,12 +134,12 @@ jobs:
           test "$healthy" = "true"
       - name: Run authenticated StayLong application smoke
         env:
-          SERVICE_URL: ${{ steps.service.outputs.url }}
           STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
         run: |
           set -euo pipefail
+          service_url="$(head -n 1 "${RUNNER_TEMP}/public-control-urls.txt")"
           python3 tools/cloudrun_smoke.py \
-            --url "$SERVICE_URL" \
+            --url "$service_url" \
             --token "$STAYLONG_API_TOKEN" \
             --application-token-header X-StayLong-API-Token
       - name: Destroy disposable public application control

@@ -31,3 +31,14 @@ def test_public_app_control_smokes_and_always_destroys() -> None:
     assert "--application-token-header X-StayLong-API-Token" in workflow
     assert "if: ${{ always() }}" in workflow
     assert 'terraform -chdir="$COMPONENT_PATH" destroy' in workflow
+
+
+def test_public_app_control_probes_both_generated_urls_with_response_fingerprints() -> None:
+    workflow = WORKFLOW.read_text()
+
+    assert 'metadata.annotations["run.googleapis.com/urls"]' in workflow
+    assert "mapfile -t service_urls" in workflow
+    assert 'curl_headers="${RUNNER_TEMP}/public-control-${url_index}.headers"' in workflow
+    assert "content_type=" in workflow
+    assert "body_sha256=" in workflow
+    assert 'echo "url_${url_index}=$service_url"' in workflow
