@@ -8,11 +8,13 @@ WORKFLOW = Path(".github/workflows/sydney-v2-control-probe.yml")
 
 def test_control_probe_uses_stable_provider_and_explicit_public_ingress() -> None:
     main = (COMPONENT / "main.tf").read_text()
+    variables = (COMPONENT / "variables.tf").read_text()
     versions = (COMPONENT / "versions.tf").read_text()
 
     assert 'resource "google_cloud_run_v2_service" "control"' in main
     assert 'ingress             = "INGRESS_TRAFFIC_ALL"' in main
-    assert 'image = "gcr.io/google-samples/hello-app:1.0"' in main
+    assert "variable \"image_ref\"" in variables
+    assert "image = var.image_ref" in main
     assert 'name = "STAYLONG_API_TOKEN"' in main
     assert 'secret  = "staylong-api-token"' in main
     assert 'member   = "allUsers"' in main
@@ -32,3 +34,18 @@ def test_control_probe_workflow_is_confirmation_gated_and_always_destroys() -> N
     assert 'X-Cloud-Trace-Context' in workflow
     assert "if: ${{ always() }}" in workflow
     assert 'terraform -chdir="$COMPONENT_PATH" destroy' in workflow
+
+
+def test_control_probe_switches_images_on_the_same_service_and_restores_hello() -> None:
+    workflow = WORKFLOW.read_text()
+
+    assert "HELLO_IMAGE: gcr.io/google-samples/hello-app:1.0" in workflow
+    assert "APP_SERVICE: staylong-sydney-v2" in workflow
+    assert 'status.latestReadyRevisionName' in workflow
+    assert 'status.imageDigest' in workflow
+    assert 'apply_image "$HELLO_IMAGE" "hello-before"' in workflow
+    assert 'apply_image "$app_image" "staylong"' in workflow
+    assert 'apply_image "$HELLO_IMAGE" "hello-after"' in workflow
+    assert 'probe_phase "hello-before" "/" "require-200"' in workflow
+    assert 'probe_phase "staylong" "/healthz" "record-only"' in workflow
+    assert 'probe_phase "hello-after" "/" "require-200"' in workflow

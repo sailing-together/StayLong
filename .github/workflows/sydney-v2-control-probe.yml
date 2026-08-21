@@ -26,7 +26,9 @@ jobs:
       PROJECT_CONFIG: stay-long-sydney-v2.json
       ENVIRONMENT_CONFIG: stay-long-sydney-sandbox.json
       SERVICE: staylong-sydney-v2-control-probe
+      APP_SERVICE: staylong-sydney-v2
       REGION: australia-southeast1
+      HELLO_IMAGE: gcr.io/google-samples/hello-app:1.0
     steps:
       - uses: actions/checkout@v4
       - name: Confirm disposable control probe
@@ -58,41 +60,87 @@ jobs:
             -backend-config="prefix=staylong/sydney-sandbox/sydney-v2-control-probe"
           terraform -chdir="$COMPONENT_PATH" fmt -check -recursive
           terraform -chdir="$COMPONENT_PATH" validate
-      - name: Plan and create the disposable control service
+      - name: Switch one service from hello to StayLong and back
         run: |
           set -euo pipefail
-          terraform -chdir="$COMPONENT_PATH" plan -input=false -out=control.tfplan \
-            -var="project_config=$PROJECT_CONFIG" \
-            -var="environment_config=$ENVIRONMENT_CONFIG"
-          terraform -chdir="$COMPONENT_PATH" apply -input=false control.tfplan
-      - name: Probe both generated Cloud Run URLs
-        run: |
-          set -euo pipefail
-          service_json="${RUNNER_TEMP}/control-service.json"
-          gcloud run services describe "$SERVICE" \
+
+          app_service_json="${RUNNER_TEMP}/staylong-service.json"
+          app_revision_json="${RUNNER_TEMP}/staylong-revision.json"
+          gcloud run services describe "$APP_SERVICE" \
             --project="${{ vars.GCP_PROJECT_ID }}" \
             --region="$REGION" \
-            --format=json > "$service_json"
-          mapfile -t service_urls < <(jq -r '
-            [
-              .status.url,
-              (.metadata.annotations["run.googleapis.com/urls"] | fromjson[])
-            ] | unique[]
-          ' "$service_json")
-          test "${#service_urls[@]}" -ge 1
-          trace_id="205445aa7843bc8bf206b12000100001"
-          successful=0
-          for service_url in "${service_urls[@]}"; do
-            http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-              --connect-timeout 10 --max-time 30 \
-              -H "X-Cloud-Trace-Context: ${trace_id}/1;o=1" \
-              "$service_url/")"
-            echo "Control probe url=$service_url status=$http_status"
-            if [[ "$http_status" == "200" ]]; then
-              successful=$((successful + 1))
-            fi
-          done
-          test "$successful" = "${#service_urls[@]}"
+            --format=json > "$app_service_json"
+          app_revision="$(jq -r '.status.latestReadyRevisionName' "$app_service_json")"
+          test -n "$app_revision"
+          gcloud run revisions describe "$app_revision" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="$REGION" \
+            --format=json > "$app_revision_json"
+          app_image="$(jq -r '.status.imageDigest' "$app_revision_json")"
+          case "$app_image" in *@sha256:*) ;; *) exit 1 ;; esac
+
+          apply_image() {
+            local image_ref="$1"
+            local phase="$2"
+            local plan_file="${RUNNER_TEMP}/${phase}.tfplan"
+            terraform -chdir="$COMPONENT_PATH" plan -input=false -out="$plan_file" \
+              -var="project_config=$PROJECT_CONFIG" \
+              -var="environment_config=$ENVIRONMENT_CONFIG" \
+              -var="image_ref=$image_ref"
+            terraform -chdir="$COMPONENT_PATH" apply -input=false "$plan_file"
+            gcloud run services describe "$SERVICE" \
+              --project="${{ vars.GCP_PROJECT_ID }}" \
+              --region="$REGION" \
+              --format=json > "${RUNNER_TEMP}/${phase}-service.json"
+          }
+
+          probe_phase() {
+            local phase="$1"
+            local path="$2"
+            local mode="$3"
+            local service_json="${RUNNER_TEMP}/${phase}-service.json"
+            local trace_id="205445aa7843bc8bf206b12000100001"
+            mapfile -t service_urls < <(jq -r '
+              [
+                .status.url,
+                (.metadata.annotations["run.googleapis.com/urls"] | fromjson[])
+              ] | unique[]
+            ' "$service_json")
+            test "${#service_urls[@]}" -ge 1
+
+            for attempt in $(seq 1 6); do
+              local successful=0
+              local url_index=0
+              for service_url in "${service_urls[@]}"; do
+                local headers="${RUNNER_TEMP}/${phase}-${attempt}-${url_index}.headers"
+                local body="${RUNNER_TEMP}/${phase}-${attempt}-${url_index}.body"
+                local http_status
+                http_status="$(curl --silent --show-error \
+                  --dump-header "$headers" --output "$body" --write-out '%{http_code}' \
+                  --connect-timeout 10 --max-time 30 \
+                  -H "X-Cloud-Trace-Context: ${trace_id}/1;o=1" \
+                  "${service_url}${path}")"
+                echo "phase=$phase attempt=$attempt url_index=$url_index status=$http_status body_sha256=$(sha256sum "$body" | cut -d ' ' -f 1)"
+                if [[ "$http_status" == "200" ]]; then
+                  successful=$((successful + 1))
+                fi
+                url_index=$((url_index + 1))
+              done
+              if [[ "$successful" == "${#service_urls[@]}" ]]; then
+                return 0
+              fi
+              sleep 10
+            done
+
+            [[ "$mode" == "record-only" ]]
+          }
+
+          apply_image "$HELLO_IMAGE" "hello-before"
+          probe_phase "hello-before" "/" "require-200"
+          apply_image "$app_image" "staylong"
+          probe_phase "staylong" "/healthz" "record-only"
+          apply_image "$HELLO_IMAGE" "hello-after"
+          probe_phase "hello-after" "/" "require-200"
       - name: Destroy disposable control service
         if: ${{ always() }}
         run: |
@@ -103,4 +151,5 @@ jobs:
             -backend-config="prefix=staylong/sydney-sandbox/sydney-v2-control-probe"
           terraform -chdir="$COMPONENT_PATH" destroy -input=false -auto-approve \
             -var="project_config=$PROJECT_CONFIG" \
-            -var="environment_config=$ENVIRONMENT_CONFIG"
+            -var="environment_config=$ENVIRONMENT_CONFIG" \
+            -var="image_ref=$HELLO_IMAGE"
