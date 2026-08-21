@@ -19,7 +19,9 @@ resource "google_cloud_run_v2_service" "control" {
     service_account = "${local.config.runtime_account_id}@${local.config.project_id}.iam.gserviceaccount.com"
 
     containers {
-      image = var.image_ref
+      image   = var.image_ref
+      command = var.run_static_server ? ["python"] : []
+      args    = var.run_static_server ? ["-m", "http.server", "8080"] : []
 
       ports {
         container_port = 8080

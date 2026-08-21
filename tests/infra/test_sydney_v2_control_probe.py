@@ -14,7 +14,10 @@ def test_control_probe_uses_stable_provider_and_explicit_public_ingress() -> Non
     assert 'resource "google_cloud_run_v2_service" "control"' in main
     assert 'ingress             = "INGRESS_TRAFFIC_ALL"' in main
     assert "variable \"image_ref\"" in variables
-    assert "image = var.image_ref" in main
+    assert "variable \"run_static_server\"" in variables
+    assert "image   = var.image_ref" in main
+    assert 'command = var.run_static_server ? ["python"] : []' in main
+    assert 'args    = var.run_static_server ? ["-m", "http.server", "8080"] : []' in main
     assert 'name = "STAYLONG_API_TOKEN"' in main
     assert 'secret  = "staylong-api-token"' in main
     assert 'member   = "allUsers"' in main
@@ -43,9 +46,11 @@ def test_control_probe_switches_images_on_the_same_service_and_restores_hello() 
     assert "APP_SERVICE: staylong-sydney-v2" in workflow
     assert 'status.latestReadyRevisionName' in workflow
     assert 'status.imageDigest' in workflow
-    assert 'apply_image "$HELLO_IMAGE" "hello-before"' in workflow
-    assert 'apply_image "$app_image" "staylong"' in workflow
-    assert 'apply_image "$HELLO_IMAGE" "hello-after"' in workflow
+    assert 'apply_image "$HELLO_IMAGE" "hello-before" "false"' in workflow
+    assert 'apply_image "$app_image" "staylong-static" "true"' in workflow
+    assert 'apply_image "$app_image" "staylong" "false"' in workflow
+    assert 'apply_image "$HELLO_IMAGE" "hello-after" "false"' in workflow
     assert 'probe_phase "hello-before" "/" "require-200"' in workflow
+    assert 'probe_phase "staylong-static" "/" "record-only"' in workflow
     assert 'probe_phase "staylong" "/healthz" "record-only"' in workflow
     assert 'probe_phase "hello-after" "/" "require-200"' in workflow
