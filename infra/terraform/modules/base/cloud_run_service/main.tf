@@ -32,12 +32,11 @@ resource "google_cloud_run_v2_service" "this" {
     }
   }
 
-  # Terraform owns the service resource and access policy. Application
-  # delivery owns the complete revision template (image and runtime secrets),
-  # so infrastructure reconciliation must not roll a revision back to the
-  # placeholder image or remove deployment-managed environment variables.
+  # Terraform owns the revision template because the deployment workflow
+  # supplies the immutable image reference and runtime secret configuration.
+  # Scaling may still be adjusted operationally without creating drift.
   lifecycle {
-    ignore_changes = [template, scaling]
+    ignore_changes = [scaling]
   }
 
   deletion_protection = var.deletion_protection

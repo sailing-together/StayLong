@@ -15,6 +15,9 @@ GITHUB_FEDERATION_VARIABLES = Path(
 BOOTSTRAP_STATE_ROOT = Path("infra/terraform/bootstrap/state/main.tf")
 SYDNEY_PLATFORM_ROOT = Path("infra/terraform/components/sydney-platform/main.tf")
 DEPLOY_WORKFLOW = Path(".github/workflows/deploy.yml")
+CLOUD_RUN_SERVICE_MODULE = Path(
+    "infra/terraform/modules/base/cloud_run_service/main.tf"
+)
 
 
 def test_service_account_iam_bindings_use_static_instance_keys() -> None:
@@ -128,3 +131,14 @@ def test_sydney_platform_creates_runtime_identity_before_cloud_run_deployment() 
     assert 'module "runtime"' in source
     assert 'source = "../../modules/base/service_account"' in source
     assert "account_id   = local.config.runtime_account_id" in source
+
+
+def test_cloud_run_revision_template_is_managed_by_terraform() -> None:
+    """Image and secret changes must create a new Cloud Run revision."""
+    source = CLOUD_RUN_SERVICE_MODULE.read_text()
+
+    lifecycle = re.search(r"lifecycle\s*\{(?P<body>.*?)\n\s*\}", source, re.DOTALL)
+
+    assert lifecycle is not None
+    assert "ignore_changes = [scaling]" in lifecycle.group("body")
+    assert "template" not in lifecycle.group("body")
