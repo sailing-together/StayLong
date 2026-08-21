@@ -11,3 +11,9 @@ variable "run_static_server" {
   type        = bool
   default     = false
 }
+
+variable "run_uvicorn_h11" {
+  description = "Override the image command with Uvicorn's pure-Python h11 parser."
+  type        = bool
+  default     = false
+}
