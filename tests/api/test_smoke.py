@@ -121,3 +121,41 @@ def test_url_lib_client_separates_cloud_run_and_application_tokens(
     assert response == HttpResponse(200, {"status": "ok"})
     assert request.headers["Authorization"] == "Bearer app-token"  # type: ignore[attr-defined]
     assert request.headers["X-serverless-authorization"] == "Bearer run-token"  # type: ignore[attr-defined]
+
+
+def test_url_lib_client_can_send_cloud_run_token_in_authorization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[object] = []
+
+    class Response:
+        status = 200
+
+        def __enter__(self) -> "Response":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            del args
+
+        @staticmethod
+        def read() -> bytes:
+            return b'{"status":"ok"}'
+
+    def fake_urlopen(request: object, timeout: int) -> Response:
+        del timeout
+        captured.append(request)
+        return Response()
+
+    monkeypatch.setattr(smoke, "urlopen", fake_urlopen)
+
+    UrlLibClient(
+        "https://example.test",
+        "app-token",
+        "run-token",
+        application_token_header="X-StayLong-API-Token",
+        platform_token_header="Authorization",
+    ).request("GET", "/healthz")
+
+    request = captured[0]
+    assert request.headers["Authorization"] == "Bearer run-token"  # type: ignore[attr-defined]
+    assert request.headers["X-staylong-api-token"] == "app-token"  # type: ignore[attr-defined]

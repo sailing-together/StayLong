@@ -34,3 +34,14 @@ def test_private_app_control_uses_wif_smoke_and_always_destroys() -> None:
     assert "GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT" in workflow
     assert "if: ${{ always() }}" in workflow
     assert 'terraform -chdir="$COMPONENT_PATH" destroy' in workflow
+
+
+def test_private_app_control_waits_for_iam_and_compares_token_headers() -> None:
+    workflow = WORKFLOW.read_text()
+
+    assert "Wait for the private invocation path" in workflow
+    assert "for attempt in {1..12}" in workflow
+    assert 'Authorization: Bearer $CLOUD_RUN_ID_TOKEN' in workflow
+    assert 'X-Serverless-Authorization: Bearer $CLOUD_RUN_ID_TOKEN' in workflow
+    assert 'test "$platform_token_header" = "authorization"' in workflow
+    assert "sleep 10" in workflow
