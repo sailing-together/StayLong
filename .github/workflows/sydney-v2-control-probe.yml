@@ -84,13 +84,15 @@ jobs:
             local phase="$2"
             local run_static_server="$3"
             local run_uvicorn_h11="$4"
+            local run_minimal_uvicorn="${5:-false}"
             local plan_file="${RUNNER_TEMP}/${phase}.tfplan"
             terraform -chdir="$COMPONENT_PATH" plan -input=false -out="$plan_file" \
               -var="project_config=$PROJECT_CONFIG" \
               -var="environment_config=$ENVIRONMENT_CONFIG" \
               -var="image_ref=$image_ref" \
               -var="run_static_server=$run_static_server" \
-              -var="run_uvicorn_h11=$run_uvicorn_h11"
+              -var="run_uvicorn_h11=$run_uvicorn_h11" \
+              -var="run_minimal_uvicorn=$run_minimal_uvicorn"
             terraform -chdir="$COMPONENT_PATH" apply -input=false "$plan_file"
             gcloud run services describe "$SERVICE" \
               --project="${{ vars.GCP_PROJECT_ID }}" \
@@ -150,6 +152,8 @@ jobs:
           probe_phase "hello-before" "/" "require-200"
           apply_image "$app_image" "staylong-static" "true" "false"
           probe_phase "staylong-static" "/" "record-only"
+          apply_image "$app_image" "minimal-uvicorn" "false" "false" "true"
+          probe_phase "minimal-uvicorn" "/healthz" "record-only"
           apply_image "$app_image" "staylong-h11" "false" "true"
           probe_phase "staylong-h11" "/healthz" "record-only"
           apply_image "$app_image" "staylong" "false" "false"
@@ -169,4 +173,5 @@ jobs:
             -var="environment_config=$ENVIRONMENT_CONFIG" \
             -var="image_ref=$HELLO_IMAGE" \
             -var="run_static_server=false" \
-            -var="run_uvicorn_h11=false"
+            -var="run_uvicorn_h11=false" \
+            -var="run_minimal_uvicorn=false"
