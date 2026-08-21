@@ -6,6 +6,14 @@ locals {
   config = merge(local.common, local.environment, local.project, {
     labels = merge(local.common.labels, local.environment.labels, local.project.labels)
   })
+  minimal_uvicorn_program = <<-PY
+    from fastapi import FastAPI
+    import uvicorn
+
+    app = FastAPI()
+    app.add_api_route("/healthz", lambda: {"status": "ok"})
+    uvicorn.run(app, host="0.0.0.0", port=8080, loop="asyncio", http="h11")
+  PY
 }
 
 resource "google_cloud_run_v2_service" "control" {
@@ -19,13 +27,17 @@ resource "google_cloud_run_v2_service" "control" {
     service_account = "${local.config.runtime_account_id}@${local.config.project_id}.iam.gserviceaccount.com"
 
     containers {
-      image   = var.image_ref
-      command = var.run_static_server ? ["python"] : (var.run_uvicorn_h11 ? ["uvicorn"] : [])
+      image = var.image_ref
+      command = var.run_static_server || var.run_minimal_uvicorn ? ["python"] : (
+        var.run_uvicorn_h11 ? ["uvicorn"] : []
+      )
       args = var.run_static_server ? ["-m", "http.server", "8080"] : (
-        var.run_uvicorn_h11 ? [
-          "staylong.api.main:app", "--host", "0.0.0.0", "--port", "8080",
-          "--http", "h11", "--loop", "asyncio"
-        ] : []
+        var.run_minimal_uvicorn ? ["-c", local.minimal_uvicorn_program] : (
+          var.run_uvicorn_h11 ? [
+            "staylong.api.main:app", "--host", "0.0.0.0", "--port", "8080",
+            "--http", "h11", "--loop", "asyncio"
+          ] : []
+        )
       )
 
       ports {

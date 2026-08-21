@@ -17,3 +17,9 @@ variable "run_uvicorn_h11" {
   type        = bool
   default     = false
 }
+
+variable "run_minimal_uvicorn" {
+  description = "Run an inline FastAPI health endpoint without importing StayLong."
+  type        = bool
+  default     = false
+}
