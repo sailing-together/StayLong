@@ -19,7 +19,7 @@ resource "google_cloud_run_v2_service" "control" {
     service_account = "${local.config.runtime_account_id}@${local.config.project_id}.iam.gserviceaccount.com"
 
     containers {
-      image = "gcr.io/google-samples/hello-app:1.0"
+      image = var.image_ref
 
       ports {
         container_port = 8080
