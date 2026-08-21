@@ -104,6 +104,39 @@ jobs:
           token_format: id_token
           id_token_audience: ${{ steps.service.outputs.url }}
           id_token_include_email: true
+      - name: Wait for the private invocation path
+        id: invocation-path
+        env:
+          SERVICE_URL: ${{ steps.service.outputs.url }}
+          CLOUD_RUN_ID_TOKEN: ${{ steps.invoker-auth.outputs.id_token }}
+        run: |
+          set -euo pipefail
+          platform_token_header=""
+          for attempt in {1..12}; do
+            authorization_status="$(curl --silent --show-error --output /dev/null \
+              --write-out '%{http_code}' --connect-timeout 10 --max-time 30 \
+              -H "Authorization: Bearer $CLOUD_RUN_ID_TOKEN" \
+              "$SERVICE_URL/healthz" || true)"
+            serverless_status="$(curl --silent --show-error --output /dev/null \
+              --write-out '%{http_code}' --connect-timeout 10 --max-time 30 \
+              -H "X-Serverless-Authorization: Bearer $CLOUD_RUN_ID_TOKEN" \
+              "$SERVICE_URL/healthz" || true)"
+            echo "Private invocation attempt=$attempt authorization=$authorization_status serverless=$serverless_status"
+            if [[ "$serverless_status" == "200" ]]; then
+              platform_token_header="X-Serverless-Authorization"
+              break
+            fi
+            if [[ "$authorization_status" == "200" ]]; then
+              platform_token_header="Authorization"
+              break
+            fi
+            sleep 10
+          done
+          test -n "$platform_token_header"
+          test "$platform_token_header" = "authorization" || \
+            test "$platform_token_header" = "Authorization" || \
+            test "$platform_token_header" = "X-Serverless-Authorization"
+          echo "header=$platform_token_header" >> "$GITHUB_OUTPUT"
       - name: Run authenticated StayLong application smoke
         env:
           SERVICE_URL: ${{ steps.service.outputs.url }}
@@ -115,7 +148,8 @@ jobs:
             --url "$SERVICE_URL" \
             --token "$STAYLONG_API_TOKEN" \
             --id-token "$CLOUD_RUN_ID_TOKEN" \
-            --application-token-header X-StayLong-API-Token
+            --application-token-header X-StayLong-API-Token \
+            --platform-token-header "${{ steps.invocation-path.outputs.header }}"
       - name: Re-authenticate as Terraform operator for cleanup
         if: ${{ always() }}
         uses: google-github-actions/auth@v2

@@ -30,11 +30,13 @@ class UrlLibClient:
         token: str,
         id_token: str | None = None,
         application_token_header: str = "Authorization",
+        platform_token_header: str = "X-Serverless-Authorization",
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.id_token = id_token
         self.application_token_header = application_token_header
+        self.platform_token_header = platform_token_header
 
     def request(
         self,
@@ -52,7 +54,7 @@ class UrlLibClient:
         if self.id_token:
             # Cloud Run consumes this platform token before forwarding the
             # application bearer token used by StayLong's own auth layer.
-            headers["X-Serverless-Authorization"] = f"Bearer {self.id_token}"
+            headers[self.platform_token_header] = f"Bearer {self.id_token}"
         if data is not None:
             headers["Content-Type"] = "application/json"
         request = Request(f"{self.base_url}{path}", data=data, headers=headers, method=method)
@@ -113,6 +115,12 @@ def main() -> int:
         default="Authorization",
         help="Header carrying the StayLong API token (default: Authorization)",
     )
+    parser.add_argument(
+        "--platform-token-header",
+        default="X-Serverless-Authorization",
+        choices=("Authorization", "X-Serverless-Authorization"),
+        help="Header carrying the Cloud Run ID token",
+    )
     args = parser.parse_args()
     try:
         case_id = run_smoke(
@@ -121,6 +129,7 @@ def main() -> int:
                 args.token,
                 args.id_token,
                 args.application_token_header,
+                args.platform_token_header,
             )
         )
     except SmokeTestError as error:
