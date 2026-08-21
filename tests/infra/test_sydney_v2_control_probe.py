@@ -17,12 +17,18 @@ def test_control_probe_uses_stable_provider_and_explicit_public_ingress() -> Non
     assert "variable \"run_static_server\"" in variables
     assert "variable \"run_uvicorn_h11\"" in variables
     assert "variable \"run_minimal_uvicorn\"" in variables
+    assert "variable \"run_minimal_wsgi\"" in variables
     assert "image = var.image_ref" in main
-    assert 'command = var.run_static_server || var.run_minimal_uvicorn ? ["python"] : (' in main
+    assert (
+        'command = var.run_static_server || var.run_minimal_uvicorn || var.run_minimal_wsgi '
+        '? ["python"] : ('
+    ) in main
     assert 'args = var.run_static_server ? ["-m", "http.server", "8080"] : (' in main
     assert 'var.run_uvicorn_h11 ? ["uvicorn"]' in main
     assert "var.run_minimal_uvicorn" in main
     assert 'app.add_api_route("/healthz", lambda: {"status": "ok"})' in main
+    assert "from wsgiref.simple_server import make_server" in main
+    assert 'if environ["PATH_INFO"] == "/healthz"' in main
     assert '"--http", "h11"' in main
     assert '"--loop", "asyncio"' in main
     assert 'name = "STAYLONG_API_TOKEN"' in main
@@ -61,12 +67,14 @@ def test_control_probe_switches_images_on_the_same_service_and_restores_hello() 
     assert 'apply_image "$HELLO_IMAGE" "hello-before" "false" "false"' in workflow
     assert 'apply_image "$app_image" "staylong-static" "true" "false"' in workflow
     assert 'apply_image "$app_image" "minimal-uvicorn" "false" "false" "true"' in workflow
+    assert 'apply_image "$app_image" "minimal-wsgi" "false" "false" "false" "true"' in workflow
     assert 'apply_image "$app_image" "staylong-h11" "false" "true"' in workflow
     assert 'apply_image "$app_image" "staylong" "false" "false"' in workflow
     assert 'apply_image "$HELLO_IMAGE" "hello-after" "false" "false"' in workflow
     assert 'probe_phase "hello-before" "/" "require-200"' in workflow
     assert 'probe_phase "staylong-static" "/" "record-only"' in workflow
     assert 'probe_phase "minimal-uvicorn" "/healthz" "record-only"' in workflow
+    assert 'probe_phase "minimal-wsgi" "/healthz" "record-only"' in workflow
     assert 'probe_phase "staylong-h11" "/healthz" "record-only"' in workflow
     assert 'probe_phase "staylong" "/healthz" "record-only"' in workflow
     assert 'probe_phase "hello-after" "/" "require-200"' in workflow

@@ -23,3 +23,9 @@ variable "run_minimal_uvicorn" {
   type        = bool
   default     = false
 }
+
+variable "run_minimal_wsgi" {
+  description = "Run a synchronous standard-library WSGI health endpoint."
+  type        = bool
+  default     = false
+}
