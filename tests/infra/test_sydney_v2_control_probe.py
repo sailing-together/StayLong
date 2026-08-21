@@ -25,6 +25,7 @@ def test_control_probe_uses_stable_provider_and_explicit_public_ingress() -> Non
     assert 'name = "STAYLONG_API_TOKEN"' in main
     assert 'secret  = "staylong-api-token"' in main
     assert 'member   = "allUsers"' in main
+    assert 'tag     = "probe"' in main
     assert 'source  = "hashicorp/google"' in versions
     assert "google-beta" not in versions
     assert "googlebeta" not in main
@@ -39,6 +40,10 @@ def test_control_probe_workflow_is_confirmation_gated_and_always_destroys() -> N
     assert "prefix=staylong/sydney-sandbox/sydney-v2-control-probe" in workflow
     assert 'gcloud run services describe "$SERVICE"' in workflow
     assert 'X-Cloud-Trace-Context' in workflow
+    assert '.status.traffic[]? | (.uri // .url // empty)' in workflow
+    assert 'route_kind: "service"' in workflow
+    assert 'route_kind: "tagged-revision"' in workflow
+    assert "grep -qx 'tagged-revision'" in workflow
     assert "if: ${{ always() }}" in workflow
     assert 'terraform -chdir="$COMPONENT_PATH" destroy' in workflow
 

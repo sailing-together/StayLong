@@ -104,18 +104,25 @@ jobs:
             local mode="$3"
             local service_json="${RUNNER_TEMP}/${phase}-service.json"
             local trace_id="205445aa7843bc8bf206b12000100001"
-            mapfile -t service_urls < <(jq -r '
+            mapfile -t routes < <(jq -r '
               [
-                .status.url,
-                (.metadata.annotations["run.googleapis.com/urls"] | fromjson[])
-              ] | unique[]
+                {route_kind: "service", url: .status.url},
+                (.metadata.annotations["run.googleapis.com/urls"] | fromjson[] |
+                  {route_kind: "service", url: .}),
+                (.status.traffic[]? | (.uri // .url // empty) |
+                  {route_kind: "tagged-revision", url: .})
+              ] | unique_by(.url)[] | [.route_kind, .url] | @tsv
             ' "$service_json")
-            test "${#service_urls[@]}" -ge 1
+            test "${#routes[@]}" -ge 2
+            printf '%s\n' "${routes[@]}" | cut -f1 | grep -qx 'tagged-revision'
 
             for attempt in $(seq 1 6); do
               local successful=0
               local url_index=0
-              for service_url in "${service_urls[@]}"; do
+              for route in "${routes[@]}"; do
+                local route_kind
+                local service_url
+                IFS=$'\t' read -r route_kind service_url <<< "$route"
                 local headers="${RUNNER_TEMP}/${phase}-${attempt}-${url_index}.headers"
                 local body="${RUNNER_TEMP}/${phase}-${attempt}-${url_index}.body"
                 local http_status
@@ -124,13 +131,13 @@ jobs:
                   --connect-timeout 10 --max-time 30 \
                   -H "X-Cloud-Trace-Context: ${trace_id}/1;o=1" \
                   "${service_url}${path}")"
-                echo "phase=$phase attempt=$attempt url_index=$url_index status=$http_status body_sha256=$(sha256sum "$body" | cut -d ' ' -f 1)"
+                echo "phase=$phase route_kind=$route_kind attempt=$attempt url_index=$url_index status=$http_status body_sha256=$(sha256sum "$body" | cut -d ' ' -f 1)"
                 if [[ "$http_status" == "200" ]]; then
                   successful=$((successful + 1))
                 fi
                 url_index=$((url_index + 1))
               done
-              if [[ "$successful" == "${#service_urls[@]}" ]]; then
+              if [[ "$successful" == "${#routes[@]}" ]]; then
                 return 0
               fi
               sleep 10
