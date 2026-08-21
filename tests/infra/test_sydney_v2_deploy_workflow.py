@@ -53,9 +53,12 @@ def test_v2_image_digest_records_the_deployed_main_revision() -> None:
     assert '--build-arg "BUILD_REVISION=${{ steps.revision.outputs.sha }}"' in workflow
 
 
-def test_cloud_run_container_uses_hypercorn_asgi_server() -> None:
+def test_cloud_run_container_uses_granian_asgi_server() -> None:
     dockerfile = DOCKERFILE.read_text()
     pyproject = PYPROJECT.read_text()
 
-    assert "hypercorn>=0.17.3,<1" in pyproject
-    assert "exec hypercorn --bind 0.0.0.0:${PORT} staylong.api.main:app" in dockerfile
+    assert "granian>=2,<3" in pyproject
+    assert (
+        "exec granian --interface asgi --http 1 --host 0.0.0.0 "
+        "--port ${PORT} staylong.api.main:app"
+    ) in dockerfile
