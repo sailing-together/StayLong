@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-
 COMPONENT = Path("infra/terraform/components/sydney-v2-control-probe")
 WORKFLOW = Path(".github/workflows/sydney-v2-control-probe.yml")
 
