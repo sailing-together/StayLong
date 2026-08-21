@@ -115,8 +115,8 @@ jobs:
           test -n "$STAYLONG_API_TOKEN"
           python3 -c 'import base64, json, os; payload = os.environ["CLOUD_RUN_ID_TOKEN"].split(".")[1]; payload += "=" * (-len(payload) % 4); claims = json.loads(base64.urlsafe_b64decode(payload)); print(json.dumps({key: claims.get(key) for key in ("aud", "email", "iss", "exp")}, sort_keys=True))'
           for service_url in "$CANONICAL_URL" "$HASH_URL"; do
-            authorization_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "Authorization: Bearer $CLOUD_RUN_ID_TOKEN" "$service_url/healthz")"
-            serverless_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "X-Serverless-Authorization: Bearer $CLOUD_RUN_ID_TOKEN" -H "X-StayLong-API-Token: $STAYLONG_API_TOKEN" "$service_url/healthz")"
+            authorization_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "Authorization: Bearer $CLOUD_RUN_ID_TOKEN" "$service_url/health")"
+            serverless_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "X-Serverless-Authorization: Bearer $CLOUD_RUN_ID_TOKEN" -H "X-StayLong-API-Token: $STAYLONG_API_TOKEN" "$service_url/health")"
             echo "Cloud Run auth diagnostic: url=$service_url authorization=$authorization_status x_serverless=$serverless_status"
           done
       - name: Smoke-test Sydney revision

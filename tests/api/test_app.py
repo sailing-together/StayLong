@@ -6,7 +6,7 @@ from staylong.api.app import create_app
 
 
 def test_health_check_is_public() -> None:
-    response = TestClient(create_app(api_token="secret-token")).get("/healthz")
+    response = TestClient(create_app(api_token="secret-token")).get("/health")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}

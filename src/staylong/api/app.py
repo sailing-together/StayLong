@@ -73,8 +73,8 @@ def create_app(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-    @app.get("/healthz", include_in_schema=False)
-    def healthz() -> dict[str, str]:
+    @app.get("/health", include_in_schema=False)
+    def health() -> dict[str, str]:
         return {"status": "ok"}
 
     @app.post("/v1/cases", response_model=CaseResponse, status_code=status.HTTP_201_CREATED)

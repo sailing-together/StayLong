@@ -86,7 +86,7 @@ jobs:
             --region="$REGION" \
             --format='value(status.url)')"
           http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-            --connect-timeout 10 --max-time 30 "$service_url/healthz")"
+            --connect-timeout 10 --max-time 30 "$service_url/health")"
           echo "Temporarily public v2 health endpoint returned HTTP $http_status."
           test "$http_status" = 200
       - name: Revoke temporary public invocation through Terraform

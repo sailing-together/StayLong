@@ -6,6 +6,7 @@ WORKFLOW = Path(".github/workflows/deploy-sydney-v2.yml")
 PUBLIC_DIAGNOSTIC_WORKFLOW = Path(".github/workflows/sydney-v2-public-diagnostic.yml")
 DOCKERFILE = Path("Dockerfile")
 PYPROJECT = Path("pyproject.toml")
+SMOKE_TOOL = Path("tools/cloudrun_smoke.py")
 
 
 def test_v2_deployment_adds_a_secret_version_without_passing_it_to_terraform() -> None:
@@ -62,3 +63,10 @@ def test_cloud_run_container_uses_granian_asgi_server() -> None:
         "exec granian --interface asgi --http 1 --host 0.0.0.0 "
         "--port ${PORT} staylong.api.main:app"
     ) in dockerfile
+
+
+def test_cloud_run_smoke_avoids_reserved_paths_ending_in_z() -> None:
+    smoke_tool = SMOKE_TOOL.read_text()
+
+    assert 'client.request("GET", "/health")' in smoke_tool
+    assert 'client.request("GET", "/healthz")' not in smoke_tool

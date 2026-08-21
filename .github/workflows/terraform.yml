@@ -215,7 +215,7 @@ jobs:
         run: |
           set -euo pipefail
           service_url="$(gcloud run services describe staylong --project="$PROJECT_ID" --region="$REGION" --format='value(status.url)')"
-          http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 "$service_url/healthz")"
+          http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 "$service_url/health")"
           echo "Anonymous health endpoint returned HTTP $http_status."
           test "$http_status" = 200
       - name: Probe the temporarily public Sydney health endpoint
@@ -226,7 +226,7 @@ jobs:
         run: |
           set -euo pipefail
           service_url="$(gcloud run services describe staylong-sydney --project="$PROJECT_ID" --region="$REGION" --format='value(status.url)')"
-          http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 "$service_url/healthz")"
+          http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 "$service_url/health")"
           echo "Anonymous Sydney health endpoint returned HTTP $http_status."
           test "$http_status" = 200
       - name: Revoke temporary public invocation
@@ -265,7 +265,7 @@ jobs:
           test -n "$STAYLONG_API_TOKEN"
           service_url="$(gcloud run services describe staylong-sydney-app-canary --project="$PROJECT_ID" --region=australia-southeast1 --format='value(status.url)')"
           for attempt in $(seq 1 12); do
-            http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "X-StayLong-API-Token: $STAYLONG_API_TOKEN" "$service_url/healthz")"
+            http_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --connect-timeout 10 --max-time 30 -H "X-StayLong-API-Token: $STAYLONG_API_TOKEN" "$service_url/health")"
             echo "Sydney same-image application canary attempt $attempt returned HTTP $http_status."
             if [[ "$http_status" == 200 ]]; then
               exit 0

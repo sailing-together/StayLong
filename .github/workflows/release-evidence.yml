@@ -113,7 +113,7 @@ jobs:
           import urllib.request
 
           request = urllib.request.Request(
-              f"{os.environ['SERVICE_URL']}/healthz",
+              f"{os.environ['SERVICE_URL']}/health",
               headers={"Accept": "application/json"},
           )
           with urllib.request.urlopen(request, timeout=15) as response:

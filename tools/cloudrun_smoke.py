@@ -79,7 +79,7 @@ def _expect(response: HttpResponse, status: int, message: str) -> Mapping[str, o
 
 def run_smoke(client: object, summary: str = "The bathroom entry needs a safer path.") -> str:
     """Verify health, auth and a minimal create/read case flow; return the case id."""
-    health = _expect(client.request("GET", "/healthz"), 200, "health check failed")
+    health = _expect(client.request("GET", "/health"), 200, "health check failed")
     if health.get("status") != "ok":
         raise SmokeTestError("health check returned an unexpected payload")
 
