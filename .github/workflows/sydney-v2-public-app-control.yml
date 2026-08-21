@@ -1,0 +1,141 @@
+name: Run StayLong Sydney v2 public application control
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Enter RUN_STAY_LONG_SYDNEY_PUBLIC_APP_CONTROL to create and destroy the public control"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: staylong-sydney-v2-public-app-control
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Create, test, and destroy public application control
+    runs-on: ubuntu-latest
+    environment: sandbox
+    env:
+      COMPONENT_PATH: infra/terraform/components/sydney-v2-public-app-control
+      PROJECT_CONFIG: stay-long-sydney-v2.json
+      ENVIRONMENT_CONFIG: stay-long-sydney-sandbox.json
+      SOURCE_SERVICE: staylong-sydney-v2
+      CONTROL_SERVICE: staylong-sydney-v2-public-app-control
+      REGION: australia-southeast1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm disposable public application control
+        run: test "${{ inputs.confirmation }}" = "RUN_STAY_LONG_SYDNEY_PUBLIC_APP_CONTROL"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@v3
+      - name: Install configuration validator dependency
+        run: python -m pip install jsonschema
+      - name: Validate fixed stay-long Sydney configuration
+        run: |
+          PYTHONPATH=src python tools/terraform_config.py \
+            --project-config "$PROJECT_CONFIG" \
+            --environment-config "$ENVIRONMENT_CONFIG" \
+            --output "${RUNNER_TEMP}/terraform-config.json"
+      - name: Authenticate as Terraform operator
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Resolve the affected revision's immutable image
+        id: image
+        run: |
+          set -euo pipefail
+          project_id="$(jq -r '.project_id' "${RUNNER_TEMP}/terraform-config.json")"
+          revision="$(gcloud run services describe "$SOURCE_SERVICE" \
+            --project="$project_id" \
+            --region="$REGION" \
+            --format='value(status.latestReadyRevisionName)')"
+          image_ref="$(gcloud run revisions describe "$revision" \
+            --project="$project_id" \
+            --region="$REGION" \
+            --format='value(status.imageDigest)')"
+          test -n "$image_ref"
+          case "$image_ref" in *@sha256:*) ;; *) exit 1 ;; esac
+          echo "ref=$image_ref" >> "$GITHUB_OUTPUT"
+      - name: Initialise and validate the isolated Terraform state
+        run: |
+          set -euo pipefail
+          state_bucket="$(jq -r '.state_bucket_name' "${RUNNER_TEMP}/terraform-config.json")"
+          test -n "$state_bucket"
+          terraform -chdir="$COMPONENT_PATH" init -input=false \
+            -backend-config="bucket=$state_bucket" \
+            -backend-config="prefix=staylong/sydney-sandbox/sydney-v2-public-app-control"
+          terraform -chdir="$COMPONENT_PATH" fmt -check -recursive
+          terraform -chdir="$COMPONENT_PATH" validate
+      - name: Plan and create the disposable public application control
+        run: |
+          set -euo pipefail
+          terraform -chdir="$COMPONENT_PATH" plan -input=false -out=control.tfplan \
+            -var="project_config=$PROJECT_CONFIG" \
+            -var="environment_config=$ENVIRONMENT_CONFIG" \
+            -var="image_ref=${{ steps.image.outputs.ref }}"
+          terraform -chdir="$COMPONENT_PATH" apply -input=false control.tfplan
+      - name: Resolve the public control URL
+        id: service
+        run: |
+          set -euo pipefail
+          project_id="$(jq -r '.project_id' "${RUNNER_TEMP}/terraform-config.json")"
+          service_url="$(gcloud run services describe "$CONTROL_SERVICE" \
+            --project="$project_id" \
+            --region="$REGION" \
+            --format='value(status.url)')"
+          test -n "$service_url"
+          echo "url=$service_url" >> "$GITHUB_OUTPUT"
+      - name: Wait for the public invocation path
+        env:
+          SERVICE_URL: ${{ steps.service.outputs.url }}
+        run: |
+          set -euo pipefail
+          healthy="false"
+          for attempt in {1..12}; do
+            http_status="$(curl --silent --show-error --output /dev/null \
+              --write-out '%{http_code}' --connect-timeout 10 --max-time 30 \
+              "$SERVICE_URL/healthz" || true)"
+            echo "Public invocation attempt=$attempt status=$http_status"
+            if [[ "$http_status" == "200" ]]; then
+              healthy="true"
+              break
+            fi
+            sleep 10
+          done
+          test "$healthy" = "true"
+      - name: Run authenticated StayLong application smoke
+        env:
+          SERVICE_URL: ${{ steps.service.outputs.url }}
+          STAYLONG_API_TOKEN: ${{ secrets.STAYLONG_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 tools/cloudrun_smoke.py \
+            --url "$SERVICE_URL" \
+            --token "$STAYLONG_API_TOKEN" \
+            --application-token-header X-StayLong-API-Token
+      - name: Destroy disposable public application control
+        if: ${{ always() }}
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+        run: |
+          set -euo pipefail
+          state_bucket="$(jq -r '.state_bucket_name' "${RUNNER_TEMP}/terraform-config.json")"
+          test -n "$state_bucket"
+          test -n "$IMAGE_REF"
+          terraform -chdir="$COMPONENT_PATH" init -input=false -reconfigure \
+            -backend-config="bucket=$state_bucket" \
+            -backend-config="prefix=staylong/sydney-sandbox/sydney-v2-public-app-control"
+          terraform -chdir="$COMPONENT_PATH" destroy -input=false -auto-approve \
+            -var="project_config=$PROJECT_CONFIG" \
+            -var="environment_config=$ENVIRONMENT_CONFIG" \
+            -var="image_ref=$IMAGE_REF"
