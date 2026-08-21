@@ -18,7 +18,7 @@ locals {
     from wsgiref.simple_server import make_server
 
     def app(environ, start_response):
-        if environ["PATH_INFO"] == "/healthz":
+        if environ["PATH_INFO"] in ("/", "/healthz"):
             start_response("200 OK", [("Content-Type", "application/json")])
             return [b'{"status":"ok"}']
         start_response("404 Not Found", [("Content-Type", "text/plain")])

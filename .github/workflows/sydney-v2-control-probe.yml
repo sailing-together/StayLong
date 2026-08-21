@@ -106,7 +106,8 @@ jobs:
             local phase="$1"
             local path="$2"
             local mode="$3"
-            local service_json="${RUNNER_TEMP}/${phase}-service.json"
+            local service_phase="${4:-$phase}"
+            local service_json="${RUNNER_TEMP}/${service_phase}-service.json"
             local trace_id="205445aa7843bc8bf206b12000100001"
             mapfile -t routes < <(jq -r '
               [
@@ -154,10 +155,12 @@ jobs:
           probe_phase "hello-before" "/" "require-200"
           apply_image "$app_image" "staylong-static" "true" "false"
           probe_phase "staylong-static" "/" "record-only"
+          probe_phase "staylong-static-healthz" "/healthz" "record-only" "staylong-static"
           apply_image "$app_image" "minimal-uvicorn" "false" "false" "true"
           probe_phase "minimal-uvicorn" "/healthz" "record-only"
           apply_image "$app_image" "minimal-wsgi" "false" "false" "false" "true"
           probe_phase "minimal-wsgi" "/healthz" "record-only"
+          probe_phase "minimal-wsgi-root" "/" "record-only" "minimal-wsgi"
           apply_image "$app_image" "staylong-h11" "false" "true"
           probe_phase "staylong-h11" "/healthz" "record-only"
           apply_image "$app_image" "staylong" "false" "false"

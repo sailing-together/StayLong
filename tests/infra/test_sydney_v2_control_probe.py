@@ -28,7 +28,7 @@ def test_control_probe_uses_stable_provider_and_explicit_public_ingress() -> Non
     assert "var.run_minimal_uvicorn" in main
     assert 'app.add_api_route("/healthz", lambda: {"status": "ok"})' in main
     assert "from wsgiref.simple_server import make_server" in main
-    assert 'if environ["PATH_INFO"] == "/healthz"' in main
+    assert 'if environ["PATH_INFO"] in ("/", "/healthz")' in main
     assert '"--http", "h11"' in main
     assert '"--loop", "asyncio"' in main
     assert 'name = "STAYLONG_API_TOKEN"' in main
@@ -73,8 +73,13 @@ def test_control_probe_switches_images_on_the_same_service_and_restores_hello() 
     assert 'apply_image "$HELLO_IMAGE" "hello-after" "false" "false"' in workflow
     assert 'probe_phase "hello-before" "/" "require-200"' in workflow
     assert 'probe_phase "staylong-static" "/" "record-only"' in workflow
+    assert (
+        'probe_phase "staylong-static-healthz" "/healthz" "record-only" "staylong-static"'
+        in workflow
+    )
     assert 'probe_phase "minimal-uvicorn" "/healthz" "record-only"' in workflow
     assert 'probe_phase "minimal-wsgi" "/healthz" "record-only"' in workflow
+    assert 'probe_phase "minimal-wsgi-root" "/" "record-only" "minimal-wsgi"' in workflow
     assert 'probe_phase "staylong-h11" "/healthz" "record-only"' in workflow
     assert 'probe_phase "staylong" "/healthz" "record-only"' in workflow
     assert 'probe_phase "hello-after" "/" "require-200"' in workflow
