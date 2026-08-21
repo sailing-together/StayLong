@@ -1,6 +1,6 @@
 # Release evidence and security checklist
 
-This document is the release-candidate evidence packet for StayLong. It separates reproducible repository checks from the one human-authorised Google Cloud action that cannot be performed from an unconfigured workspace.
+This document is the release evidence packet for the private StayLong Sydney sandbox service. It records reproducible repository checks and the verified Google Cloud deployment.
 
 ## Release candidate checks
 
@@ -10,27 +10,40 @@ This document is the release-candidate evidence packet for StayLong. It separate
 | Policy evaluation fixtures | `uv run python tools/policy_evaluations.py` | PASS in PR CI |
 | Terraform configuration, format and validate | `tools/terraform_config.py` and `terraform validate` | PASS in PR CI |
 | Repository and IaC security scan | Trivy filesystem scan for HIGH/CRITICAL vulnerabilities, secrets and misconfiguration | PASS in PR CI |
-| Cloud Run image and authenticated smoke test | `Dockerfile` plus `tools/cloudrun_smoke.py` | PASS in PR #25 and PR CI |
-| Live Cloud Run release evidence | Manual `release-evidence.yml` dispatch from `main` | REQUIRES HUMAN ACTION |
+| Cloud Run image and authenticated smoke test | `Dockerfile` plus `tools/cloudrun_smoke.py` | PASS in [deployment run 32467096845](https://github.com/sailing-together/StayLong/actions/runs/32467096845) |
+| Live Cloud Run release evidence | Terraform deployment from merged `main` commit `230fa684dbf2848e02ad07fd9e86ac334f31012d` | PASS on 21 August 2026 |
 
-The live evidence workflow captures the selected main commit, Cloud Run service URL, Artifact Registry image digest, health response, authenticated case-flow smoke result and the security scan as a downloadable GitHub Actions artifact. It never writes a service-account key or prints the API token.
+The deployment workflow authenticated through WIF, published an immutable image, applied the reviewed Terraform, minted an identity token and completed the private health and authenticated case-flow smoke test. It never wrote a service-account key or printed the API token.
+
+## Verified Sydney sandbox deployment
+
+| Item | Verified value |
+| --- | --- |
+| GCP project | `stay-long` |
+| Region | `australia-southeast1` |
+| Cloud Run service | `staylong-sydney-v2` |
+| Ready revision | `staylong-sydney-v2-00005-4pd` |
+| Traffic | 100% to the ready revision |
+| Deployed image | `australia-southeast1-docker.pkg.dev/stay-long/staylong-sydney/app:230fa684dbf2848e02ad07fd9e86ac334f31012d` |
+| Health evidence | Authenticated `GET /health` returned HTTP 200 at `2026-08-21T09:19:47Z` |
+| Invoker IAM | `serviceAccount:staylong-app-deployer@stay-long.iam.gserviceaccount.com` only |
+
+The earlier `/healthz` smoke failure was caused by a Cloud Run reserved URL path, not by the application server. Google documents that some paths ending in `z` are reserved and recommends avoiding all such paths. StayLong now uses `/health`; the regression coverage keeps production workflows and smoke tooling on this safe path. See the [Cloud Run known issues](https://docs.cloud.google.com/run/docs/known-issues) and [health check configuration](https://docs.cloud.google.com/run/docs/configuring/healthchecks).
 
 ## Security release checklist
 
 - [x] WIF is used for GitHub-to-Google authentication; no JSON service-account key is stored.
 - [x] Terraform lifecycle is restricted to the `sandbox` environment and requires an explicit destroy confirmation.
 - [x] Cloud Run starts as a non-root user and requires `STAYLONG_API_TOKEN` at runtime.
-- [x] Health is public, while case creation and concern retrieval require Bearer authentication.
+- [x] The Cloud Run service is private; both health and case-flow requests require Cloud Run IAM, while case creation and concern retrieval additionally require Bearer authentication.
 - [x] External actions remain approval-gated and the emergency route is deterministic.
 - [x] Synthetic demo data is schema-validated and contains no real personal data or credentials.
 - [x] PR CI runs Python, Terraform and Trivy checks before merge.
-- [ ] Capture live Cloud Run and Artifact Registry evidence with the protected sandbox environment.
+- [x] Capture live Cloud Run and Artifact Registry evidence from merged `main` through WIF and Terraform.
 
-## Human action required
+## Reproducing the release evidence
 
-- **Why:** Only the project owner can approve a protected GitHub Environment and provide the configured Google Cloud project/WIF variables and masked API token.
-- **Action:** In GitHub, open **Actions → Release evidence → Run workflow**, select `sandbox`, enter the deployed main commit SHA, approve the protected environment, and ensure the `sandbox` environment contains `GCP_PROJECT_ID`, `GCP_REGION`, `GCP_WIF_PROVIDER`, `GCP_TERRAFORM_PLANNER_SERVICE_ACCOUNT` and the masked `STAYLONG_API_TOKEN` secret.
+- **Automatic path:** Merge a reviewed application PR into `main`. The Sydney deployment workflow builds the exact merge commit, runs Terraform and performs the private authenticated smoke test.
+- **Manual evidence path:** In GitHub, open **Actions → Release evidence → Run workflow**, select `sandbox`, enter a deployed `main` commit SHA and approve the protected environment if prompted.
 - **Link:** [StayLong Actions](https://github.com/sailing-together/StayLong/actions/workflows/release-evidence.yml)
-- **Safe to continue after:** The workflow completes successfully and publishes the `staylong-release-evidence-*` artifact containing `release-evidence.json`, `trivy.json` and `cloudrun-smoke.txt`.
-
-Until that artifact exists, this task must remain In Progress; repository checks alone are not evidence of a live Cloud Run deployment.
+- **Expected evidence:** The workflow completes successfully and publishes the `staylong-release-evidence-*` artifact containing `release-evidence.json`, `trivy.json` and `cloudrun-smoke.txt`.
