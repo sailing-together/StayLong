@@ -14,6 +14,18 @@ locals {
     app.add_api_route("/healthz", lambda: {"status": "ok"})
     uvicorn.run(app, host="0.0.0.0", port=8080, loop="asyncio", http="h11")
   PY
+  minimal_wsgi_program    = <<-PY
+    from wsgiref.simple_server import make_server
+
+    def app(environ, start_response):
+        if environ["PATH_INFO"] == "/healthz":
+            start_response("200 OK", [("Content-Type", "application/json")])
+            return [b'{"status":"ok"}']
+        start_response("404 Not Found", [("Content-Type", "text/plain")])
+        return [b"not found"]
+
+    make_server("0.0.0.0", 8080, app).serve_forever()
+  PY
 }
 
 resource "google_cloud_run_v2_service" "control" {
@@ -28,15 +40,17 @@ resource "google_cloud_run_v2_service" "control" {
 
     containers {
       image = var.image_ref
-      command = var.run_static_server || var.run_minimal_uvicorn ? ["python"] : (
+      command = var.run_static_server || var.run_minimal_uvicorn || var.run_minimal_wsgi ? ["python"] : (
         var.run_uvicorn_h11 ? ["uvicorn"] : []
       )
       args = var.run_static_server ? ["-m", "http.server", "8080"] : (
         var.run_minimal_uvicorn ? ["-c", local.minimal_uvicorn_program] : (
-          var.run_uvicorn_h11 ? [
-            "staylong.api.main:app", "--host", "0.0.0.0", "--port", "8080",
-            "--http", "h11", "--loop", "asyncio"
-          ] : []
+          var.run_minimal_wsgi ? ["-c", local.minimal_wsgi_program] : (
+            var.run_uvicorn_h11 ? [
+              "staylong.api.main:app", "--host", "0.0.0.0", "--port", "8080",
+              "--http", "h11", "--loop", "asyncio"
+            ] : []
+          )
         )
       )
 
