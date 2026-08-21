@@ -83,12 +83,14 @@ jobs:
             local image_ref="$1"
             local phase="$2"
             local run_static_server="$3"
+            local run_uvicorn_h11="$4"
             local plan_file="${RUNNER_TEMP}/${phase}.tfplan"
             terraform -chdir="$COMPONENT_PATH" plan -input=false -out="$plan_file" \
               -var="project_config=$PROJECT_CONFIG" \
               -var="environment_config=$ENVIRONMENT_CONFIG" \
               -var="image_ref=$image_ref" \
-              -var="run_static_server=$run_static_server"
+              -var="run_static_server=$run_static_server" \
+              -var="run_uvicorn_h11=$run_uvicorn_h11"
             terraform -chdir="$COMPONENT_PATH" apply -input=false "$plan_file"
             gcloud run services describe "$SERVICE" \
               --project="${{ vars.GCP_PROJECT_ID }}" \
@@ -137,13 +139,15 @@ jobs:
             [[ "$mode" == "record-only" ]]
           }
 
-          apply_image "$HELLO_IMAGE" "hello-before" "false"
+          apply_image "$HELLO_IMAGE" "hello-before" "false" "false"
           probe_phase "hello-before" "/" "require-200"
-          apply_image "$app_image" "staylong-static" "true"
+          apply_image "$app_image" "staylong-static" "true" "false"
           probe_phase "staylong-static" "/" "record-only"
-          apply_image "$app_image" "staylong" "false"
+          apply_image "$app_image" "staylong-h11" "false" "true"
+          probe_phase "staylong-h11" "/healthz" "record-only"
+          apply_image "$app_image" "staylong" "false" "false"
           probe_phase "staylong" "/healthz" "record-only"
-          apply_image "$HELLO_IMAGE" "hello-after" "false"
+          apply_image "$HELLO_IMAGE" "hello-after" "false" "false"
           probe_phase "hello-after" "/" "require-200"
       - name: Destroy disposable control service
         if: ${{ always() }}
@@ -157,4 +161,5 @@ jobs:
             -var="project_config=$PROJECT_CONFIG" \
             -var="environment_config=$ENVIRONMENT_CONFIG" \
             -var="image_ref=$HELLO_IMAGE" \
-            -var="run_static_server=false"
+            -var="run_static_server=false" \
+            -var="run_uvicorn_h11=false"
