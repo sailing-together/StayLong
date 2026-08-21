@@ -18,7 +18,7 @@ def test_v2_deployment_adds_a_secret_version_without_passing_it_to_terraform() -
     assert "GCP_DEPLOY_SERVICE_ACCOUNT" in source
     assert "GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT" in source
     assert 'component_path="infra/terraform/components/sydney-v2-app"' in source
-    expected_image_expression = 'IMAGE_REF="${{ needs.build_and_publish.outputs.image_ref }}"'
+    expected_image_expression = 'IMAGE_REF="$(cat "$RUNNER_TEMP/image-ref/image-ref.txt")"'
     assert expected_image_expression in source
     assert "IMAGE_REF: $SYDNEY_REGION" not in source
     assert "--update-env-vars" not in source
@@ -56,9 +56,12 @@ def test_v2_deployment_scans_the_published_image_before_release_side_effects() -
 
     build_position = workflow.index("- name: Build and publish immutable Sydney v2 image")
     scan_position = workflow.index("- name: Scan immutable Sydney v2 image")
+    upload_position = workflow.index(
+        "- name: Preserve the scanned image reference for Terraform"
+    )
     secret_position = workflow.index("- name: Add a masked token version to Secret Manager")
 
-    assert build_position < scan_position < secret_position
+    assert build_position < scan_position < upload_position < secret_position
 
     scan_step = workflow[scan_position:secret_position]
     assert (
@@ -81,9 +84,35 @@ def test_v2_deployment_scans_and_applies_the_same_build_digest() -> None:
     assert '--metadata-file "$metadata_file"' in workflow
     assert "containerimage.digest" in workflow
     assert 'echo "image_ref=$image_repository@$digest" >> "$GITHUB_OUTPUT"' in workflow
-    assert "image_ref: ${{ steps.image.outputs.image_ref }}" in workflow
+    assert "image-ref: ${{ steps.image.outputs.image_ref }}" in workflow
     assert "needs: build_and_publish" in workflow
-    assert 'IMAGE_REF="${{ needs.build_and_publish.outputs.image_ref }}"' in workflow
+    assert "outputs:\n      image_ref:" not in workflow
+    assert "echo \"$image_repository@$digest\" > \"$RUNNER_TEMP/image-ref.txt\"" in workflow
+    assert (
+        "uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
+        " # v4"
+    ) in workflow
+    assert (
+        "uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093"
+        " # v4"
+    ) in workflow
+    assert workflow.count("name: sydney-v2-image-ref-${{ github.run_id }}") == 2
+    upload_start = workflow.index("- name: Preserve the scanned image reference")
+    upload_end = workflow.index("- name: Add a masked token version", upload_start)
+    download_start = workflow.index("- name: Restore the scanned image reference")
+    download_end = workflow.index(
+        "- name: Create or update the v2 service from the reviewed image",
+        download_start,
+    )
+    upload_step = workflow[upload_start:upload_end]
+    download_step = workflow[download_start:download_end]
+    assert "path: ${{ runner.temp }}/image-ref.txt" in upload_step
+    assert "path: ${{ runner.temp }}/image-ref" in download_step
+    assert "path: ${{ runner.temp }}/image-ref.txt" not in download_step
+    assert 'IMAGE_REF="$(cat \"$RUNNER_TEMP/image-ref/image-ref.txt\")"' in workflow
+    assert 'expected_repository="$SYDNEY_REGION-docker.pkg.dev/' in workflow
+    assert "grep -Eq '^sha256:[0-9a-f]{64}$'" in workflow
+    assert 'IMAGE_REF="${{ needs.build_and_publish.outputs.image_ref }}"' not in workflow
     assert 'app:${{ steps.revision.outputs.sha }}' not in workflow[
         workflow.index("jobs:") :
     ].split("Scan immutable Sydney v2 image", maxsplit=1)[1]
