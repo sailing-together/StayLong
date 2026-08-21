@@ -21,6 +21,7 @@ def test_control_probe_uses_stable_provider_and_explicit_public_ingress() -> Non
     assert 'args = var.run_static_server ? ["-m", "http.server", "8080"] : (' in main
     assert 'var.run_uvicorn_h11 ? ["uvicorn"]' in main
     assert '"--http", "h11"' in main
+    assert '"--loop", "asyncio"' in main
     assert 'name = "STAYLONG_API_TOKEN"' in main
     assert 'secret  = "staylong-api-token"' in main
     assert 'member   = "allUsers"' in main

@@ -23,7 +23,8 @@ resource "google_cloud_run_v2_service" "control" {
       command = var.run_static_server ? ["python"] : (var.run_uvicorn_h11 ? ["uvicorn"] : [])
       args = var.run_static_server ? ["-m", "http.server", "8080"] : (
         var.run_uvicorn_h11 ? [
-          "staylong.api.main:app", "--host", "0.0.0.0", "--port", "8080", "--http", "h11"
+          "staylong.api.main:app", "--host", "0.0.0.0", "--port", "8080",
+          "--http", "h11", "--loop", "asyncio"
         ] : []
       )
 
