@@ -24,6 +24,16 @@ resource "google_cloud_run_v2_service" "control" {
       ports {
         container_port = 8080
       }
+
+      env {
+        name = "STAYLONG_API_TOKEN"
+        value_source {
+          secret_key_ref {
+            secret  = "staylong-api-token"
+            version = "latest"
+          }
+        }
+      }
     }
   }
 }

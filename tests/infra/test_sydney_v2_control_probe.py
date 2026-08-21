@@ -13,6 +13,8 @@ def test_control_probe_uses_stable_provider_and_explicit_public_ingress() -> Non
     assert 'resource "google_cloud_run_v2_service" "control"' in main
     assert 'ingress             = "INGRESS_TRAFFIC_ALL"' in main
     assert 'image = "gcr.io/google-samples/hello-app:1.0"' in main
+    assert 'name = "STAYLONG_API_TOKEN"' in main
+    assert 'secret  = "staylong-api-token"' in main
     assert 'member   = "allUsers"' in main
     assert 'source  = "hashicorp/google"' in versions
     assert "google-beta" not in versions
