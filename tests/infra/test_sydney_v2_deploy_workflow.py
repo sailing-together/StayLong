@@ -18,13 +18,9 @@ def test_v2_deployment_adds_a_secret_version_without_passing_it_to_terraform() -
     assert "GCP_DEPLOY_SERVICE_ACCOUNT" in source
     assert "GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT" in source
     assert 'component_path="infra/terraform/components/sydney-v2-app"' in source
-    expected_image_expression = (
-        'IMAGE_REF="${SYDNEY_REGION}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}'
-        '/${SYDNEY_REPOSITORY}/app:${{ steps.revision.outputs.sha }}"'
-    )
+    expected_image_expression = 'IMAGE_REF="${{ needs.build_and_publish.outputs.image_ref }}"'
     assert expected_image_expression in source
     assert "IMAGE_REF: $SYDNEY_REGION" not in source
-    assert "needs.build_and_publish.outputs.image_ref" not in source
     assert "--update-env-vars" not in source
     assert "STAYLONG_API_TOKEN=" not in source
     assert "--project-config stay-long-sydney-v2.json" in source
@@ -52,6 +48,45 @@ def test_v2_image_digest_records_the_deployed_main_revision() -> None:
     assert "ARG BUILD_REVISION" in dockerfile
     assert "org.opencontainers.image.revision=$BUILD_REVISION" in dockerfile
     assert '--build-arg "BUILD_REVISION=${{ steps.revision.outputs.sha }}"' in workflow
+
+
+def test_v2_deployment_scans_the_published_image_before_release_side_effects() -> None:
+    """A vulnerable immutable image must never reach Secret Manager or Terraform."""
+    workflow = WORKFLOW.read_text()
+
+    build_position = workflow.index("- name: Build and publish immutable Sydney v2 image")
+    scan_position = workflow.index("- name: Scan immutable Sydney v2 image")
+    secret_position = workflow.index("- name: Add a masked token version to Secret Manager")
+
+    assert build_position < scan_position < secret_position
+
+    scan_step = workflow[scan_position:secret_position]
+    assert (
+        "uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25"
+        " # v0.36.0"
+    ) in scan_step
+    assert "scan-type: image" in scan_step
+    assert "image-ref: ${{ steps.image.outputs.image_ref }}" in scan_step
+    assert "scanners: vuln,secret,misconfig" in scan_step
+    assert "severity: HIGH,CRITICAL" in scan_step
+    assert 'exit-code: "1"' in scan_step
+    assert "ignore-unfixed: true" not in scan_step
+
+
+def test_v2_deployment_scans_and_applies_the_same_build_digest() -> None:
+    """Terraform must consume the exact digest emitted and scanned by buildx."""
+    workflow = WORKFLOW.read_text()
+
+    assert "id: image" in workflow
+    assert '--metadata-file "$metadata_file"' in workflow
+    assert "containerimage.digest" in workflow
+    assert 'echo "image_ref=$image_repository@$digest" >> "$GITHUB_OUTPUT"' in workflow
+    assert "image_ref: ${{ steps.image.outputs.image_ref }}" in workflow
+    assert "needs: build_and_publish" in workflow
+    assert 'IMAGE_REF="${{ needs.build_and_publish.outputs.image_ref }}"' in workflow
+    assert 'app:${{ steps.revision.outputs.sha }}' not in workflow[
+        workflow.index("jobs:") :
+    ].split("Scan immutable Sydney v2 image", maxsplit=1)[1]
 
 
 def test_cloud_run_container_uses_granian_asgi_server() -> None:
