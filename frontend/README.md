@@ -1,9 +1,15 @@
-# StayLong family workspace
+# StayLong Calm Companion
 
 The StayLong independent-living workspace is a React and TypeScript interface
-served by the StayLong API container. It lets an older person living alone
-create a real case-flow concern and see the API-returned case path. Trusted
-supporters are optional and require the person's choice.
+served by the StayLong API container. Its Calm Companion experience lets an
+older person living alone describe a real home concern, see the API-returned
+case path, and retain approval over sharing and follow-up. Trusted supporters
+are optional and require the person's choice.
+
+The normal first screen contains one primary action and no credential field.
+For sandbox demonstrations, the API token is available only after opening the
+secondary Demo settings panel. It stays in React state and is never written to
+browser storage.
 
 ## Local development
 
