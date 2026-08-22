@@ -11,7 +11,6 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
 function App() {
   const [composerOpen, setComposerOpen] = useState(false)
   const [demoSettingsOpen, setDemoSettingsOpen] = useState(false)
-  const [reviewOpen, setReviewOpen] = useState(false)
   const [accessToken, setAccessToken] = useState('')
   const [concernSummary, setConcernSummary] = useState('')
   const [caseRecord, setCaseRecord] = useState<CaseRecord | null>(null)
@@ -19,18 +18,45 @@ function App() {
   const [requestState, setRequestState] = useState<RequestState>('idle')
   const [message, setMessage] = useState('')
   const concernInput = useRef<HTMLTextAreaElement>(null)
+  const recordedConcernSection = useRef<HTMLElement>(null)
 
   useEffect(() => {
     document.title = 'StayLong | Independent living, coordinated'
   }, [])
 
   useEffect(() => {
-    if (composerOpen) concernInput.current?.focus()
+    if (composerOpen) {
+      concernInput.current?.focus()
+      concernInput.current?.closest('#workspace')?.scrollIntoView?.({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }
   }, [composerOpen])
+
+  const recordedConcern = concerns[0]?.summary
+  const hasCase = Boolean(caseRecord && recordedConcern)
+
+  useEffect(() => {
+    if (hasCase) recordedConcernSection.current?.focus()
+  }, [hasCase])
 
   function openComposer() {
     setComposerOpen(true)
-    document.querySelector('#workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function reviewRecordedConcern() {
+    recordedConcernSection.current?.focus()
+    recordedConcernSection.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }
+
+  function startCorrection() {
+    setConcernSummary(recordedConcern ?? concernSummary)
+    setCaseRecord(null)
+    setConcerns([])
+    setRequestState('idle')
+    setMessage('')
+    setComposerOpen(true)
   }
 
   async function createCase(event: FormEvent<HTMLFormElement>) {
@@ -62,6 +88,7 @@ function App() {
 
       setCaseRecord(createdCase)
       setConcerns((await concernsResponse.json()) as Concern[])
+      setComposerOpen(false)
       setRequestState('success')
       setMessage('Your concern is recorded. Nothing has been shared or booked.')
     } catch (error) {
@@ -69,9 +96,6 @@ function App() {
       setMessage(error instanceof Error ? error.message : 'Something went wrong.')
     }
   }
-
-  const recordedConcern = concerns[0]?.summary
-  const hasCase = Boolean(caseRecord && recordedConcern)
 
   return (
     <div className="app-shell">
@@ -104,9 +128,7 @@ function App() {
               <button
                 className="primary-action"
                 type="button"
-                onClick={() => setReviewOpen((current) => !current)}
-                aria-expanded={reviewOpen}
-                aria-controls="recorded-concern"
+                onClick={reviewRecordedConcern}
               >
                 Review what StayLong understood
               </button>
@@ -192,25 +214,34 @@ function App() {
               {!accessToken && (
                 <p className="demo-help">This sandbox demo needs a token in Demo settings.</p>
               )}
-              {message && (
-                <p className={`form-message ${requestState}`} role="status">
-                  {message}
-                </p>
-              )}
             </form>
           </section>
         )}
 
+        <p
+          className={`global-status ${message ? 'has-message' : ''} ${requestState}`}
+          role="status"
+          aria-live="polite"
+        >
+          {message}
+        </p>
+
         {hasCase && (
           <section
-            className={`recorded-concern ${reviewOpen ? 'is-open' : ''}`}
+            ref={recordedConcernSection}
+            className="recorded-concern"
             id="recorded-concern"
             aria-labelledby="recorded-concern-title"
+            tabIndex={-1}
           >
             <p className="section-label">Recorded from your words</p>
             <h2 id="recorded-concern-title">StayLong understood this concern</h2>
             <blockquote>{recordedConcern}</blockquote>
+            <p className="case-fact">Case status: {caseRecord?.status}</p>
             <p>Nothing has been shared or booked. You can correct this before continuing.</p>
+            <button className="secondary-action" type="button" onClick={startCorrection}>
+              Start again with a correction
+            </button>
           </section>
         )}
 
@@ -221,13 +252,12 @@ function App() {
             <p>StayLong keeps the work moving, while decisions remain yours.</p>
           </div>
           <ol className="path-list">
-            <li className={hasCase ? 'is-complete' : 'is-current'}>
+            <li>
               <span className="step-number">1</span>
               <div>
                 <strong>Tell us what is happening</strong>
-                <p>{hasCase ? 'Your concern is recorded.' : 'Describe the practical difficulty in your own words.'}</p>
+                <p>Describe the practical difficulty in your own words.</p>
               </div>
-              <span className="step-state">{hasCase ? 'Complete' : 'Current'}</span>
             </li>
             <li>
               <span className="step-number">2</span>
@@ -235,7 +265,6 @@ function App() {
                 <strong>Prepare for assessment</strong>
                 <p>Organise the facts, questions, and official pathway for human review.</p>
               </div>
-              <span className="step-state">Not started</span>
             </li>
             <li>
               <span className="step-number">3</span>
@@ -243,7 +272,6 @@ function App() {
                 <strong>Coordinate approved next steps</strong>
                 <p>Track agreed appointments, follow-up, and completion.</p>
               </div>
-              <span className="step-state">Not started</span>
             </li>
           </ol>
         </section>

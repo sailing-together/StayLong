@@ -3,6 +3,14 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
+function stubSuccessfulCase() {
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ case_id: 'case-123', status: 'open' }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ([{ concern_id: 'concern-1', case_id: 'case-123', summary: 'Getting to the bathroom at night is difficult.' }]) })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
 describe('Calm Companion workspace', () => {
   afterEach(() => {
     cleanup()
@@ -40,10 +48,7 @@ describe('Calm Companion workspace', () => {
   })
 
   it('creates a case through the authenticated API and renders returned facts', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ case_id: 'case-123', status: 'open' }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ([{ concern_id: 'concern-1', case_id: 'case-123', summary: 'Getting to the bathroom at night is difficult.' }]) })
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = stubSuccessfulCase()
 
     const user = userEvent.setup()
     render(<App />)
@@ -56,6 +61,9 @@ describe('Calm Companion workspace', () => {
     await waitFor(() => expect(screen.getByText('StayLong understood this concern')).toBeInTheDocument())
     expect(screen.getByText('Getting to the bathroom at night is difficult.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Review what StayLong understood' })).toBeInTheDocument()
+    expect(screen.getByText('Case status: open')).toBeInTheDocument()
+    expect(screen.queryByText('Not started')).not.toBeInTheDocument()
+    expect(screen.queryByText('Complete')).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/v1/cases', expect.objectContaining({
       method: 'POST',
       headers: expect.objectContaining({ Authorization: 'Bearer demo-token' }),
@@ -64,5 +72,28 @@ describe('Calm Companion workspace', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/cases/case-123/concerns', {
       headers: { Authorization: 'Bearer demo-token' },
     })
+  })
+
+  it('announces and focuses the result, then lets the person start again with a correction', async () => {
+    stubSuccessfulCase()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Tell StayLong' }))
+    await user.click(screen.getByRole('button', { name: 'Demo settings' }))
+    await user.type(screen.getByLabelText('Demo access token'), 'demo-token')
+    await user.type(screen.getByRole('textbox', { name: 'What is getting harder at home?' }), 'Getting to the bathroom at night is difficult.')
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+
+    const result = await screen.findByRole('region', { name: 'StayLong understood this concern' })
+    await waitFor(() => expect(result).toHaveFocus())
+    expect(screen.getByRole('status')).toHaveTextContent('Your concern is recorded.')
+
+    await user.click(screen.getByRole('button', { name: 'Start again with a correction' }))
+
+    const correctionInput = screen.getByRole('textbox', { name: 'What is getting harder at home?' })
+    expect(correctionInput).toHaveValue('Getting to the bathroom at night is difficult.')
+    expect(correctionInput).toHaveFocus()
+    expect(screen.queryByRole('region', { name: 'StayLong understood this concern' })).not.toBeInTheDocument()
   })
 })
