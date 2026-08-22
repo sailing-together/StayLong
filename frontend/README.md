@@ -13,14 +13,28 @@ browser storage.
 
 ## Local development
 
+Start the API in one terminal:
+
+```sh
+STAYLONG_API_TOKEN=demo-token uv run uvicorn staylong.api.main:app \
+  --app-dir src --host 127.0.0.1 --port 8000
+```
+
+Then start the React workspace from `frontend/`:
+
 ```sh
 npm ci
 npm run dev
 ```
 
-Use `VITE_API_BASE_URL` only when the API is hosted separately. The access
-token is intentionally held in React state and is never written to browser
-storage.
+Open the local URL, enter `demo-token` under **Demo settings**, and start a
+plan. Both `npm run dev` and `npm run preview` forward `/v1` requests to
+`http://127.0.0.1:8000` by default. Set `STAYLONG_API_PROXY_TARGET` when the
+local API uses a different origin. Use `VITE_API_BASE_URL` only when the API is
+hosted separately and supports browser cross-origin requests.
+
+The access token is intentionally held in React state and is never written to
+browser storage.
 
 ## Quality checks
 
