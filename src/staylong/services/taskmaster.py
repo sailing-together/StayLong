@@ -117,6 +117,11 @@ class TaskmasterWorkflow:
         self.calendar = calendar
         self._reminders = reminders or ReminderService()
 
+    @property
+    def repository(self) -> WorkflowRepository:
+        """Expose the persistence adapter for runtime wiring verification only."""
+        return self._repository
+
     def start(self, *, concern: str, now: datetime) -> WorkflowSnapshot:
         """Route danger before model use, otherwise begin the facts-only intake."""
         case_id = uuid4().hex

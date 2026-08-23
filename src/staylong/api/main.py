@@ -3,6 +3,7 @@
 import os
 
 from staylong.api.app import create_app
+from staylong.api.runtime import build_runtime_workflow
 
 
 def _runtime_token() -> str:
@@ -13,4 +14,4 @@ def _runtime_token() -> str:
     return token
 
 
-app = create_app(api_token=_runtime_token())
+app = create_app(api_token=_runtime_token(), workflow=build_runtime_workflow())

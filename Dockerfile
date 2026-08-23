@@ -23,7 +23,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 COPY --from=frontend-build /frontend/dist ./src/staylong/api/static
 
-RUN python -m pip install --no-cache-dir . \
+RUN python -m pip install --no-cache-dir '.[agents]' \
     && adduser -D -u 10001 -s /sbin/nologin staylong
 
 USER 10001
