@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "/": {
+      "targetKind": "existing-ui",
+      "projectId": "9cd482de-1637-427e-b520-0e87962dcbbb",
+      "baselineDraftId": "06254925-b1be-422b-b383-5478803e33d4",
+      "activeDraftId": "e9594730-98c6-403c-a932-c975080b5af1",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "frontend-public-brand-staylong-lockup.svg"
+      ],
+      "brandAssets": {
+        "logo": {
+          "assetKey": "frontend-public-brand-staylong-lockup.svg",
+          "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/9cd482de-1637-427e-b520-0e87962dcbbb/brand-assets/frontend-public-brand-staylong-lockup.svg/staylong-lockup.svg",
+          "sourcePath": "frontend/public/brand/staylong-lockup.svg"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "frontend/src/App.tsx",
+        "frontend/src/App.css",
+        "frontend/src/index.css",
+        "frontend/src/main.tsx",
+        "frontend/index.html",
+        "docs/product-brief.md"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "10d850626ff8414bdebe136deb2b9ce7b76d7026930c7d1e0540509802892f77",
+        "frontend/src/App.tsx": "4bace9e1f04f5f17a77a3e6591229e43c41f4b371fcae97f171dfd4a28ba42cb",
+        "frontend/src/App.css": "98c60b56ed758007429580cf7d31481fa55c4119e906ca16df528b274ba007b0",
+        "frontend/src/index.css": "7d08607c1465286273055f05a1c435ee4b3e1dc08155d94c48bd22c01baaa213",
+        "frontend/src/main.tsx": "6e9e5807fcbd48b75a96db5cbef36c996262196be42e6d4760dc86babbe61ad2",
+        "frontend/index.html": "f9c60317d852e3b68e7cb8026a70cd391e82455835bff82b6b857ac2a7689475",
+        "docs/product-brief.md": "f0fb16fff688dea615cf96ae28a41d22ccf623ffeff5a2adf59582046099bb4c"
+      },
+      "components": [],
+      "drafts": {
+        "06254925-b1be-422b-b383-5478803e33d4": {
+          "title": "StayLong Landing Page",
+          "visualDirection": "pixel-accurate current UI baseline",
+          "currentVersion": 1
+        },
+        "41022c94-13d6-4bca-ba5b-ed836930a57f": {
+          "title": "StayLong — Outcome-led product entry",
+          "visualDirection": "clear promise, assessment pathway and compact outcomes",
+          "parentDraftId": "06254925-b1be-422b-b383-5478803e33d4",
+          "currentVersion": 2
+        },
+        "98a9b722-ab8a-434f-bc59-63c34fe2e4d8": {
+          "title": "StayLong — Task-first workspace",
+          "visualDirection": "immediate step-by-step concern intake and progress",
+          "parentDraftId": "06254925-b1be-422b-b383-5478803e33d4",
+          "currentVersion": 2
+        },
+        "31e1fb24-5c22-4baa-9b06-c470c0ae8319": {
+          "title": "StayLong | Start your plan",
+          "visualDirection": "focused one-step flow with one clear question and minimal cognitive load",
+          "parentDraftId": "06254925-b1be-422b-b383-5478803e33d4",
+          "currentVersion": 1
+        },
+        "e9594730-98c6-403c-a932-c975080b5af1": {
+          "title": "StayLong | Guided Workspace",
+          "visualDirection": "guided coordination workspace with a functional Continuous Home Path and visible plan state",
+          "parentDraftId": "06254925-b1be-422b-b383-5478803e33d4",
+          "currentVersion": 1
+        }
+      },
+      "updatedAt": "2026-08-23T02:38:24Z"
+    }
+  }
+}

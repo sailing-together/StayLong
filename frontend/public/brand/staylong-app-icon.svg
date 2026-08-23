@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">StayLong app icon</title>
+  <desc id="desc">A compact StayLong home and continuous path symbol.</desc>
+  <rect width="128" height="128" rx="26" fill="#E8DCC7" />
+  <path
+    d="M58 76H32C27.6 76 24 72.4 24 68V46L64 22L104 46V68C104 72.4 100.4 76 96 76H78C69 76 62 79 62 84C62 90 75 92 88 92C98 92 106 95 110 100"
+    fill="none"
+    stroke="#283018"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="9"
+  />
+  <path
+    d="M58 76V56H76V76"
+    fill="none"
+    stroke="#71311D"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="7"
+  />
+</svg>

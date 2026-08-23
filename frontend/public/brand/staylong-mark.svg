@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 112" role="img" aria-labelledby="title desc">
+  <title id="title">StayLong continuous home path mark</title>
+  <desc id="desc">A home with an open terracotta doorway and a path continuing forward.</desc>
+  <path
+    d="M58 68H26C20.5 68 16 63.5 16 58V34L64 6L112 34V58C112 63.5 107.5 68 102 68H78C68 68 60 72 60 78C60 86 76 88 91 88C103 88 112 92 116 98"
+    fill="none"
+    stroke="#283018"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="10"
+  />
+  <path
+    d="M58 68V44H78V68"
+    fill="none"
+    stroke="#71311D"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="8"
+  />
+</svg>

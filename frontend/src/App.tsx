@@ -6,13 +6,47 @@ type CaseRecord = { case_id: string; status: string }
 type Concern = { concern_id: string; case_id: string; summary: string }
 type RequestState = 'idle' | 'saving' | 'success' | 'error'
 
+type Example = {
+  id: string
+  label: string
+  summary: string
+}
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
 
+const examples: Example[] = [
+  {
+    id: 'night-bathroom',
+    label: 'Night-time bathroom',
+    summary:
+      'I’m finding it harder to reach the bathroom safely at night. The hallway is dark and there are no rails near the toilet.',
+  },
+  {
+    id: 'front-steps',
+    label: 'Front steps',
+    summary:
+      'The steps at my front door are becoming difficult. I would like help understanding what could make entering and leaving home easier.',
+  },
+  {
+    id: 'shower-safety',
+    label: 'Shower safety',
+    summary:
+      'I feel unsteady getting into and out of the shower. I would like help preparing to discuss safer options at an assessment.',
+  },
+]
+
+const pathSteps = [
+  'Tell us what is difficult',
+  'Prepare for assessment',
+  'Approve next steps',
+  'Follow through',
+]
+
 function App() {
-  const [composerOpen, setComposerOpen] = useState(false)
   const [demoSettingsOpen, setDemoSettingsOpen] = useState(false)
   const [accessToken, setAccessToken] = useState('')
   const [concernSummary, setConcernSummary] = useState('')
+  const [selectedExample, setSelectedExample] = useState<string | null>(null)
   const [caseRecord, setCaseRecord] = useState<CaseRecord | null>(null)
   const [concerns, setConcerns] = useState<Concern[]>([])
   const [requestState, setRequestState] = useState<RequestState>('idle')
@@ -24,30 +58,33 @@ function App() {
     document.title = 'StayLong | Independent living, coordinated'
   }, [])
 
-  useEffect(() => {
-    if (composerOpen) {
-      concernInput.current?.focus()
-      concernInput.current?.closest('#workspace')?.scrollIntoView?.({
-        behavior: 'smooth',
-        block: 'start',
-      })
-    }
-  }, [composerOpen])
-
   const recordedConcern = concerns[0]?.summary
   const hasCase = Boolean(caseRecord && recordedConcern)
+  const activeStep = hasCase ? 2 : 1
 
   useEffect(() => {
     if (hasCase) recordedConcernSection.current?.focus()
   }, [hasCase])
 
-  function openComposer() {
-    setComposerOpen(true)
+  useEffect(() => {
+    if (!hasCase && requestState === 'idle' && concernSummary) concernInput.current?.focus()
+  }, [concernSummary, hasCase, requestState])
+
+  function chooseExample(example: Example) {
+    setSelectedExample(example.id)
+    setConcernSummary(example.summary)
+    concernInput.current?.focus()
+  }
+
+  function updateConcern(summary: string) {
+    setConcernSummary(summary)
+    const selected = examples.find((example) => example.id === selectedExample)
+    if (selected && summary !== selected.summary) setSelectedExample(null)
   }
 
   function reviewRecordedConcern() {
     recordedConcernSection.current?.focus()
-    recordedConcernSection.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+    recordedConcernSection.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
   }
 
   function startCorrection() {
@@ -56,7 +93,7 @@ function App() {
     setConcerns([])
     setRequestState('idle')
     setMessage('')
-    setComposerOpen(true)
+    setSelectedExample(null)
   }
 
   async function createCase(event: FormEvent<HTMLFormElement>) {
@@ -88,7 +125,6 @@ function App() {
 
       setCaseRecord(createdCase)
       setConcerns((await concernsResponse.json()) as Concern[])
-      setComposerOpen(false)
       setRequestState('success')
       setMessage('Your concern is recorded. Nothing has been shared or booked.')
     } catch (error) {
@@ -100,192 +136,160 @@ function App() {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to main content</a>
+
+      <aside className="emergency-bar" id="urgent-help" aria-label="Emergency guidance">
+        If anyone is in immediate danger, call 000.
+      </aside>
+
       <header className="site-header">
         <a className="wordmark" href="#main-content" aria-label="StayLong home">
-          StayLong
+          <img src="/brand/staylong-lockup.svg" alt="StayLong" />
         </a>
-        <nav aria-label="Main navigation">
-          <a href="#how-it-works">How it works</a>
-          <a href="#urgent-help">Urgent help</a>
-        </nav>
+        <p>Independent living, coordinated</p>
       </header>
 
-      <main id="main-content">
-        <section className="hero" aria-labelledby="page-title">
-          <div className="hero-copy">
-            <p className="context-line">Support for living independently at home</p>
-            <h1 id="page-title">What would make home easier today?</h1>
-            <p className="hero-intro">
-              Tell StayLong what is becoming difficult. We will organise the next
-              steps, keep track of follow-up, and ask before anything is shared.
-            </p>
-            {!composerOpen && !hasCase && (
-              <button className="primary-action" type="button" onClick={openComposer}>
-                Tell StayLong
-              </button>
-            )}
-            {hasCase && (
-              <button
-                className="primary-action"
-                type="button"
-                onClick={reviewRecordedConcern}
-              >
-                Review what StayLong understood
-              </button>
-            )}
-            <p className="control-promise">You decide who can help and what happens next.</p>
-          </div>
+      <main className="workspace" id="main-content">
+        <div className="mobile-step" aria-label="Current plan step">
+          <strong>Step {activeStep} of 4</strong>
+          <span>{pathSteps[activeStep - 1]}</span>
+        </div>
 
-          <aside className="next-step" aria-labelledby="next-step-title">
-            <p className="section-label">Your next step</p>
-            <h2 id="next-step-title">
-              {hasCase ? 'Check that we understood you correctly.' : 'Start in your own words.'}
-            </h2>
-            <p>
-              {hasCase
-                ? 'Your concern is saved. Review it before StayLong prepares any follow-up.'
-                : 'There is no form to get right. Describe what you have noticed and why it matters to you.'}
-            </p>
-            <div className="privacy-line">
-              <strong>Private by default</strong>
-              <span>Nothing is shared, booked, or paid for without your approval.</span>
-            </div>
-          </aside>
-        </section>
+        <aside className="path-rail">
+          <p className="eyebrow">Continuous Home Path</p>
+          <nav aria-label="Continuous Home Path">
+            <ol>
+              {pathSteps.map((step, index) => {
+                const stepNumber = index + 1
+                const state = stepNumber === activeStep ? 'active' : stepNumber < activeStep ? 'complete' : 'upcoming'
+                return (
+                  <li className={state} key={step} aria-current={state === 'active' ? 'step' : undefined}>
+                    <span className="path-number" aria-hidden="true">{stepNumber}</span>
+                    <span>
+                      <strong>{step}</strong>
+                      {state === 'active' && <small>Current step</small>}
+                    </span>
+                  </li>
+                )
+              })}
+            </ol>
+          </nav>
+          <p className="path-promise">You approve every external action before StayLong proceeds.</p>
+        </aside>
 
-        {composerOpen && !hasCase && (
-          <section className="composer-section" id="workspace" aria-labelledby="composer-title">
-            <form className="concern-form" onSubmit={createCase}>
-              <div className="form-heading">
-                <p className="section-label">Tell StayLong</p>
-                <h2 id="composer-title">What is getting harder at home?</h2>
-                <p>Use plain language. StayLong does not diagnose or provide medical advice.</p>
-              </div>
+        <div className="task-column">
+          {!hasCase ? (
+            <section className="task-panel" aria-labelledby="page-title">
+              <h1 id="page-title">What would make home easier today?</h1>
+              <p className="task-intro">
+                Choose a common example or describe what is becoming difficult in your own words.
+              </p>
 
-              <label htmlFor="concern-summary">What is getting harder at home?</label>
-              <textarea
-                ref={concernInput}
-                id="concern-summary"
-                value={concernSummary}
-                onChange={(event) => setConcernSummary(event.target.value)}
-                placeholder="For example: getting to the bathroom at night is becoming difficult."
-                rows={5}
-                maxLength={2000}
-                required
-              />
-              <p className="field-help">Only include information you are comfortable recording.</p>
+              <form onSubmit={createCase}>
+                <fieldset className="example-fieldset">
+                  <legend>Try an example</legend>
+                  <div className="example-options">
+                    {examples.map((example) => (
+                      <button
+                        key={example.id}
+                        type="button"
+                        className="example-option"
+                        aria-pressed={selectedExample === example.id}
+                        onClick={() => chooseExample(example)}
+                      >
+                        {example.label}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
 
-              <div className="consent-note">
-                <strong>You stay in control.</strong>
-                <p>Nothing is shared, booked, or paid for without your approval.</p>
-              </div>
-
-              <button
-                className="demo-settings-toggle"
-                type="button"
-                onClick={() => setDemoSettingsOpen((current) => !current)}
-                aria-expanded={demoSettingsOpen}
-                aria-controls="demo-settings"
-              >
-                Demo settings
-              </button>
-              {demoSettingsOpen && (
-                <div className="demo-settings" id="demo-settings">
-                  <label htmlFor="access-token">Demo access token</label>
-                  <input
-                    id="access-token"
-                    type="password"
-                    value={accessToken}
-                    onChange={(event) => setAccessToken(event.target.value)}
-                    autoComplete="off"
+                <div className="input-group">
+                  <label htmlFor="concern-summary">Describe what is becoming difficult</label>
+                  <textarea
+                    ref={concernInput}
+                    id="concern-summary"
+                    value={concernSummary}
+                    onChange={(event) => updateConcern(event.target.value)}
+                    placeholder="For example: Getting to the bathroom at night is becoming difficult."
+                    rows={4}
+                    maxLength={2000}
                     required
                   />
-                  <p className="field-help">Used only for this sandbox session and never saved.</p>
+                  <p className="field-help">Only include information you are comfortable recording.</p>
                 </div>
-              )}
 
-              <button
-                className="primary-action form-submit"
-                type="submit"
-                disabled={requestState === 'saving' || !concernSummary.trim() || !accessToken}
-              >
-                {requestState === 'saving' ? 'Starting your plan…' : 'Start my plan'}
-              </button>
-              {!accessToken && (
-                <p className="demo-help">This sandbox demo needs a token in Demo settings.</p>
-              )}
-            </form>
-          </section>
-        )}
+                <div className="form-actions">
+                  <button
+                    className="primary-action"
+                    type="submit"
+                    disabled={requestState === 'saving' || !concernSummary.trim() || !accessToken}
+                  >
+                    {requestState === 'saving' ? 'Starting your plan…' : 'Start my plan'}
+                  </button>
+                  <p><strong>You stay in control.</strong> Nothing is shared, booked, or paid for without your approval.</p>
+                </div>
 
-        <p
-          className={`global-status ${message ? 'has-message' : ''} ${requestState}`}
-          role="status"
-          aria-live="polite"
-        >
-          {message}
-        </p>
-
-        {hasCase && (
-          <section
-            ref={recordedConcernSection}
-            className="recorded-concern"
-            id="recorded-concern"
-            aria-labelledby="recorded-concern-title"
-            tabIndex={-1}
-          >
-            <p className="section-label">Recorded from your words</p>
-            <h2 id="recorded-concern-title">StayLong understood this concern</h2>
-            <blockquote>{recordedConcern}</blockquote>
-            <p className="case-fact">Case status: {caseRecord?.status}</p>
-            <p>Nothing has been shared or booked. You can correct this before continuing.</p>
-            <button className="secondary-action" type="button" onClick={startCorrection}>
-              Start again with a correction
-            </button>
-          </section>
-        )}
-
-        <section className="how-it-works" id="how-it-works" aria-labelledby="path-title">
-          <div className="path-intro">
-            <p className="section-label">Your independence plan</p>
-            <h2 id="path-title">Always know what is happening next.</h2>
-            <p>StayLong keeps the work moving, while decisions remain yours.</p>
-          </div>
-          <ol className="path-list">
-            <li>
-              <span className="step-number">1</span>
-              <div>
-                <strong>Tell us what is happening</strong>
-                <p>Describe the practical difficulty in your own words.</p>
+                <button
+                  className="demo-settings-toggle"
+                  type="button"
+                  onClick={() => setDemoSettingsOpen((current) => !current)}
+                  aria-expanded={demoSettingsOpen}
+                  aria-controls="demo-settings"
+                >
+                  Demo settings
+                </button>
+                {demoSettingsOpen && (
+                  <div className="demo-settings" id="demo-settings">
+                    <label htmlFor="access-token">Demo access token</label>
+                    <input
+                      id="access-token"
+                      type="password"
+                      value={accessToken}
+                      onChange={(event) => setAccessToken(event.target.value)}
+                      autoComplete="off"
+                      required
+                    />
+                    <p className="field-help">Used only for this sandbox session and never saved.</p>
+                  </div>
+                )}
+                {!accessToken && <p className="demo-help">This sandbox demo needs a token in Demo settings.</p>}
+              </form>
+            </section>
+          ) : (
+            <section
+              ref={recordedConcernSection}
+              className="task-panel recorded-concern"
+              aria-labelledby="recorded-concern-title"
+              tabIndex={-1}
+            >
+              <p className="eyebrow">Prepared from your words</p>
+              <h1 id="recorded-concern-title">StayLong understood this concern</h1>
+              <blockquote>{recordedConcern}</blockquote>
+              <p className="case-fact">Case status: {caseRecord?.status}</p>
+              <p>Nothing has been shared or booked. Check this before StayLong prepares any follow-up.</p>
+              <div className="recorded-actions">
+                <button className="primary-action" type="button" onClick={reviewRecordedConcern}>
+                  Review what StayLong understood
+                </button>
+                <button className="secondary-action" type="button" onClick={startCorrection}>
+                  Start again with a correction
+                </button>
               </div>
-            </li>
-            <li>
-              <span className="step-number">2</span>
-              <div>
-                <strong>Prepare for assessment</strong>
-                <p>Organise the facts, questions, and official pathway for human review.</p>
-              </div>
-            </li>
-            <li>
-              <span className="step-number">3</span>
-              <div>
-                <strong>Coordinate approved next steps</strong>
-                <p>Track agreed appointments, follow-up, and completion.</p>
-              </div>
-            </li>
-          </ol>
-        </section>
+            </section>
+          )}
 
-        <aside className="urgent-help" id="urgent-help" aria-labelledby="urgent-title">
-          <div>
-            <p className="section-label">Urgent help</p>
-            <h2 id="urgent-title">If anyone is in immediate danger, call 000.</h2>
-          </div>
-          <p>
-            StayLong coordinates non-urgent practical support. It is not an emergency,
-            medical, or crisis service.
+          <p className={`global-status ${message ? 'has-message' : ''} ${requestState}`} role="status" aria-live="polite">
+            {message}
           </p>
-        </aside>
+
+          <section className="plan-summary" aria-labelledby="plan-summary-title">
+            <p className="eyebrow" id="plan-summary-title">Your plan summary</p>
+            <dl>
+              <div><dt>Status</dt><dd>{hasCase ? 'Started' : 'Not started'}</dd></div>
+              <div><dt>Next</dt><dd>{hasCase ? 'Check the recorded concern' : 'Describe what is becoming difficult'}</dd></div>
+              <div><dt>Supporter</dt><dd>No one invited</dd></div>
+            </dl>
+          </section>
+        </div>
       </main>
 
       <footer className="site-footer">
