@@ -2,7 +2,9 @@
 
 import secrets
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -11,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.staticfiles import StaticFiles
 
 from staylong.services.cases import CaseRepository, InMemoryCaseRepository
+from staylong.services.taskmaster import TaskmasterWorkflow, WorkflowSnapshot
 
 
 class ConcernRequest(BaseModel):
@@ -32,6 +35,89 @@ class ConcernResponse(BaseModel):
     summary: str
 
 
+class WorkflowConcernRequest(BaseModel):
+    """One non-clinical concern for the approval-gated Taskmaster path."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    concern: str = Field(min_length=1, max_length=2_000)
+
+
+class WorkflowAnswersRequest(BaseModel):
+    """Plain-text answers to the workflow's permitted household questions."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    answers: dict[str, str]
+
+
+class ActionDecisionRequest(BaseModel):
+    """A human decision for exactly one proposed action revision."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action_revision: int = Field(ge=1)
+    decision: Literal["approve", "decline"]
+
+
+class MissingFactResponse(BaseModel):
+    key: str
+    question: str
+    reason: str
+
+
+class AssessmentPackResponse(BaseModel):
+    concern_summary: str
+    reported_difficulty: str
+    information_to_confirm: list[MissingFactResponse]
+    assessment_discussion_topics: list[str]
+    official_pathways: list[str]
+    proposed_next_step: str
+    boundary_note: str
+
+
+class ProposedActionResponse(BaseModel):
+    action_type: str
+    revision: int
+    title: str
+    starts_at: str
+    ends_at: str
+    boundary_note: str
+
+
+class ActionResultResponse(BaseModel):
+    case_id: str
+    action_type: str
+    action_revision: int
+    channel: str
+    payload: dict[str, str]
+
+
+class ReminderResponse(BaseModel):
+    reminder_id: str
+    action: str
+    due_at: datetime
+    status: str
+
+
+class TimelineEventResponse(BaseModel):
+    event_id: str
+    event_type: str
+    details: dict[str, str]
+    occurred_at: datetime
+
+
+class WorkflowResponse(BaseModel):
+    case_id: str
+    stage: str
+    questions: list[MissingFactResponse]
+    pack: AssessmentPackResponse | None = None
+    proposed_action: ProposedActionResponse | None = None
+    action_result: ActionResultResponse | None = None
+    reminder: ReminderResponse | None = None
+    timeline: list[TimelineEventResponse]
+
+
 APPLICATION_TOKEN_HEADER = "X-StayLong-API-Token"
 
 
@@ -39,6 +125,7 @@ def create_app(
     *,
     api_token: str,
     repository: CaseRepository | None = None,
+    workflow: TaskmasterWorkflow | None = None,
 ) -> FastAPI:
     """Create the API with an explicit token and injectable case repository."""
     if not api_token:
@@ -73,6 +160,14 @@ def create_app(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
+    def require_workflow() -> TaskmasterWorkflow:
+        if workflow is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="StayLong workflow is not available yet.",
+            )
+        return workflow
+
     @app.get("/health", include_in_schema=False)
     def health() -> dict[str, str]:
         return {"status": "ok"}
@@ -100,6 +195,109 @@ def create_app(
             for concern in cases.list_concerns(case_id=case_id)
         ]
 
+    @app.post(
+        "/v1/workflows",
+        response_model=WorkflowResponse,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def create_workflow(
+        request: WorkflowConcernRequest,
+        _: Callable[[], None] = Depends(require_auth),
+        taskmaster: TaskmasterWorkflow = Depends(require_workflow),
+    ) -> WorkflowResponse:
+        try:
+            return _workflow_response(taskmaster.start(concern=request.concern, now=_now()))
+        except Exception as error:
+            _raise_safe_intake_error(error)
+            raise
+
+    @app.post("/v1/workflows/{case_id}/answers", response_model=WorkflowResponse)
+    def answer_workflow(
+        case_id: str,
+        request: WorkflowAnswersRequest,
+        _: Callable[[], None] = Depends(require_auth),
+        taskmaster: TaskmasterWorkflow = Depends(require_workflow),
+    ) -> WorkflowResponse:
+        try:
+            return _workflow_response(
+                taskmaster.answer_intake(case_id=case_id, answers=request.answers, now=_now())
+            )
+        except KeyError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Plan not found.",
+            ) from None
+        except ValueError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(error),
+            ) from None
+
+    @app.post("/v1/workflows/{case_id}/action-decision", response_model=WorkflowResponse)
+    def decide_workflow_action(
+        case_id: str,
+        request: ActionDecisionRequest,
+        _: Callable[[], None] = Depends(require_auth),
+        taskmaster: TaskmasterWorkflow = Depends(require_workflow),
+    ) -> WorkflowResponse:
+        try:
+            return _workflow_response(
+                taskmaster.decide_action(
+                    case_id=case_id,
+                    action_revision=request.action_revision,
+                    approve=request.decision == "approve",
+                    now=_now(),
+                )
+            )
+        except KeyError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Plan not found.",
+            ) from None
+        except ValueError as error:
+            if "revision" in str(error).lower():
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This action has changed. Please review the current plan.",
+                ) from None
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(error),
+            ) from None
+
+    @app.post("/v1/workflows/{case_id}/demo-follow-up", response_model=WorkflowResponse)
+    def run_demo_follow_up(
+        case_id: str,
+        _: Callable[[], None] = Depends(require_auth),
+        taskmaster: TaskmasterWorkflow = Depends(require_workflow),
+    ) -> WorkflowResponse:
+        try:
+            return _workflow_response(taskmaster.run_demo_follow_up(case_id=case_id, now=_now()))
+        except KeyError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Plan not found.",
+            ) from None
+        except ValueError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(error),
+            ) from None
+
+    @app.get("/v1/workflows/{case_id}", response_model=WorkflowResponse)
+    def get_workflow(
+        case_id: str,
+        _: Callable[[], None] = Depends(require_auth),
+        taskmaster: TaskmasterWorkflow = Depends(require_workflow),
+    ) -> WorkflowResponse:
+        try:
+            return _workflow_response(taskmaster.get(case_id=case_id))
+        except KeyError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Plan not found.",
+            ) from None
+
     app.mount(
         "/",
         StaticFiles(directory=Path(__file__).parent / "static", html=True),
@@ -107,3 +305,89 @@ def create_app(
     )
 
     return app
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _raise_safe_intake_error(error: Exception) -> None:
+    """Map policy refusals to plain language without returning internal details."""
+    from staylong.agents.intake import MedicalTriageRefusalRequired
+
+    if isinstance(error, MedicalTriageRefusalRequired):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error),
+        ) from None
+    raise error
+
+
+def _workflow_response(snapshot: WorkflowSnapshot) -> WorkflowResponse:
+    """Serialize only the public, non-sensitive workflow view."""
+    return WorkflowResponse(
+        case_id=snapshot.case_id,
+        stage=snapshot.stage.value,
+        questions=[
+            MissingFactResponse(key=item.key, question=item.question, reason=item.reason)
+            for item in snapshot.questions
+        ],
+        pack=(
+            AssessmentPackResponse(
+                concern_summary=snapshot.pack.concern_summary,
+                reported_difficulty=snapshot.pack.reported_difficulty,
+                information_to_confirm=[
+                    MissingFactResponse(key=item.key, question=item.question, reason=item.reason)
+                    for item in snapshot.pack.information_to_confirm
+                ],
+                assessment_discussion_topics=list(snapshot.pack.assessment_discussion_topics),
+                official_pathways=list(snapshot.pack.official_pathways),
+                proposed_next_step=snapshot.pack.proposed_next_step,
+                boundary_note=snapshot.pack.boundary_note,
+            )
+            if snapshot.pack is not None
+            else None
+        ),
+        proposed_action=(
+            ProposedActionResponse(
+                action_type=snapshot.proposed_action.action_type,
+                revision=snapshot.proposed_action.revision,
+                title=snapshot.proposed_action.title,
+                starts_at=snapshot.proposed_action.starts_at,
+                ends_at=snapshot.proposed_action.ends_at,
+                boundary_note=snapshot.proposed_action.boundary_note,
+            )
+            if snapshot.proposed_action is not None
+            else None
+        ),
+        action_result=(
+            ActionResultResponse(
+                case_id=snapshot.action_result.case_id,
+                action_type=snapshot.action_result.action_type,
+                action_revision=snapshot.action_result.action_revision,
+                channel=snapshot.action_result.channel,
+                payload={**snapshot.action_result.payload, "sandbox": "true"},
+            )
+            if snapshot.action_result is not None
+            else None
+        ),
+        reminder=(
+            ReminderResponse(
+                reminder_id=snapshot.reminder.reminder_id,
+                action=snapshot.reminder.action,
+                due_at=snapshot.reminder.due_at,
+                status=snapshot.reminder.status.value,
+            )
+            if snapshot.reminder is not None
+            else None
+        ),
+        timeline=[
+            TimelineEventResponse(
+                event_id=event.event_id,
+                event_type=event.event_type,
+                details=dict(event.details),
+                occurred_at=event.occurred_at,
+            )
+            for event in snapshot.timeline
+        ],
+    )
