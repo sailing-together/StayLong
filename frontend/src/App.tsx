@@ -1,275 +1,33 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 
-type CaseRecord = { case_id: string; status: string }
-type Concern = { concern_id: string; case_id: string; summary: string }
-type RequestState = 'idle' | 'saving' | 'success' | 'error'
-
-type Example = {
-  id: string
-  label: string
-  summary: string
-}
+type Fact = { key: string; question: string; reason: string }
+type Pack = { concern_summary: string; reported_difficulty: string; assessment_discussion_topics: string[]; official_pathways: string[]; boundary_note: string }
+type Proposal = { action_type: string; revision: number; title: string; boundary_note: string }
+type Timeline = { event_id: string; event_type: string }
+type Workflow = { case_id: string; stage: string; questions: Fact[]; pack: Pack | null; proposed_action: Proposal | null; action_result: { channel: string; payload: Record<string, string> } | null; reminder: { status: string } | null; timeline: Timeline[] }
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
-
-const examples: Example[] = [
-  {
-    id: 'night-bathroom',
-    label: 'Night-time bathroom',
-    summary:
-      'I’m finding it harder to reach the bathroom safely at night. The hallway is dark and there are no rails near the toilet.',
-  },
-  {
-    id: 'front-steps',
-    label: 'Front steps',
-    summary:
-      'The steps at my front door are becoming difficult. I would like help understanding what could make entering and leaving home easier.',
-  },
-  {
-    id: 'shower-safety',
-    label: 'Shower safety',
-    summary:
-      'I feel unsteady getting into and out of the shower. I would like help preparing to discuss safer options at an assessment.',
-  },
-]
-
-const pathSteps = [
-  'Tell us what is difficult',
-  'Prepare for assessment',
-  'Approve next steps',
-  'Follow through',
-]
+const examples = [{ label: 'Night-time bathroom', summary: 'I’m finding it harder to reach the bathroom safely at night. The hallway is dark and there are no rails near the toilet.' }, { label: 'Front steps', summary: 'The steps at my front door are becoming difficult.' }, { label: 'Shower safety', summary: 'I feel unsteady getting into and out of the shower.' }]
+const pathSteps = ['Tell us what is difficult', 'Prepare for assessment', 'Approve next steps', 'Follow through']
 
 function App() {
-  const [concernSummary, setConcernSummary] = useState('')
-  const [selectedExample, setSelectedExample] = useState<string | null>(null)
-  const [caseRecord, setCaseRecord] = useState<CaseRecord | null>(null)
-  const [concerns, setConcerns] = useState<Concern[]>([])
-  const [requestState, setRequestState] = useState<RequestState>('idle')
+  const [concern, setConcern] = useState('')
+  const [workflow, setWorkflow] = useState<Workflow | null>(null)
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  const concernInput = useRef<HTMLTextAreaElement>(null)
-  const recordedConcernSection = useRef<HTMLElement>(null)
-
-  useEffect(() => {
-    document.title = 'StayLong | Independent living, coordinated'
-  }, [])
-
-  const recordedConcern = concerns[0]?.summary
-  const hasCase = Boolean(caseRecord && recordedConcern)
-  const activeStep = hasCase ? 2 : 1
-
-  useEffect(() => {
-    if (hasCase) recordedConcernSection.current?.focus()
-  }, [hasCase])
-
-  useEffect(() => {
-    if (!hasCase && requestState === 'idle' && concernSummary) concernInput.current?.focus()
-  }, [concernSummary, hasCase, requestState])
-
-  function chooseExample(example: Example) {
-    setSelectedExample(example.id)
-    setConcernSummary(example.summary)
-    concernInput.current?.focus()
+  useEffect(() => { document.title = 'StayLong | Independent living, coordinated' }, [])
+  const step = workflow?.stage === 'intake' ? 2 : workflow?.stage === 'awaiting_approval' ? 3 : workflow?.stage === 'follow_through' || workflow?.stage === 'declined' ? 4 : 1
+  async function request(path: string, body?: object) {
+    const response = await fetch(`${apiBaseUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+    if (!response.ok) throw new Error('StayLong could not continue your plan. Please try again.')
+    return response.json() as Promise<Workflow>
   }
-
-  function updateConcern(summary: string) {
-    setConcernSummary(summary)
-    const selected = examples.find((example) => example.id === selectedExample)
-    if (selected && summary !== selected.summary) setSelectedExample(null)
-  }
-
-  function reviewRecordedConcern() {
-    recordedConcernSection.current?.focus()
-    recordedConcernSection.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
-  }
-
-  function startCorrection() {
-    setConcernSummary(recordedConcern ?? concernSummary)
-    setCaseRecord(null)
-    setConcerns([])
-    setRequestState('idle')
-    setMessage('')
-    setSelectedExample(null)
-  }
-
-  async function createCase(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setRequestState('saving')
-    setMessage('')
-
-    try {
-      const response = await fetch(`${apiBaseUrl}/v1/cases`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ summary: concernSummary }),
-      })
-      if (!response.ok) {
-        throw new Error('StayLong could not start your plan. Please check the demo connection and try again.')
-      }
-
-      const createdCase = (await response.json()) as CaseRecord
-      const concernsResponse = await fetch(
-        `${apiBaseUrl}/v1/cases/${createdCase.case_id}/concerns`,
-      )
-      if (!concernsResponse.ok) {
-        throw new Error('Your plan was started, but StayLong could not load the concern yet.')
-      }
-
-      setCaseRecord(createdCase)
-      setConcerns((await concernsResponse.json()) as Concern[])
-      setRequestState('success')
-      setMessage('Your concern is recorded. Nothing has been shared or booked.')
-    } catch (error) {
-      setRequestState('error')
-      setMessage(error instanceof Error ? error.message : 'Something went wrong.')
-    }
-  }
-
-  return (
-    <div className="app-shell">
-      <a className="skip-link" href="#main-content">Skip to main content</a>
-
-      <aside className="emergency-bar" id="urgent-help" aria-label="Emergency guidance">
-        If anyone is in immediate danger, call 000.
-      </aside>
-
-      <header className="site-header">
-        <a className="wordmark" href="#main-content" aria-label="StayLong home">
-          <img src="/brand/staylong-lockup.svg" alt="StayLong" />
-        </a>
-        <p>Independent living, coordinated</p>
-      </header>
-
-      <main className="workspace" id="main-content">
-        <div className="mobile-step" aria-label="Current plan step">
-          <strong>Step {activeStep} of 4</strong>
-          <span>{pathSteps[activeStep - 1]}</span>
-        </div>
-
-        <aside className="path-rail">
-          <p className="eyebrow">Continuous Home Path</p>
-          <nav aria-label="Continuous Home Path">
-            <ol>
-              {pathSteps.map((step, index) => {
-                const stepNumber = index + 1
-                const state = stepNumber === activeStep ? 'active' : stepNumber < activeStep ? 'complete' : 'upcoming'
-                return (
-                  <li className={state} key={step} aria-current={state === 'active' ? 'step' : undefined}>
-                    <span className="path-number" aria-hidden="true">{stepNumber}</span>
-                    <span>
-                      <strong>{step}</strong>
-                      {state === 'active' && <small>Current step</small>}
-                    </span>
-                  </li>
-                )
-              })}
-            </ol>
-          </nav>
-          <p className="path-promise">You approve every external action before StayLong proceeds.</p>
-        </aside>
-
-        <div className="task-column">
-          {!hasCase ? (
-            <section className="task-panel" aria-labelledby="page-title">
-              <h1 id="page-title">What would make home easier today?</h1>
-              <p className="task-intro">
-                Choose a common example or describe what is becoming difficult in your own words.
-              </p>
-
-              <form onSubmit={createCase}>
-                <fieldset className="example-fieldset">
-                  <legend>Try an example</legend>
-                  <div className="example-options">
-                    {examples.map((example) => (
-                      <button
-                        key={example.id}
-                        type="button"
-                        className="example-option"
-                        aria-pressed={selectedExample === example.id}
-                        onClick={() => chooseExample(example)}
-                      >
-                        {example.label}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
-
-                <div className="input-group">
-                  <label htmlFor="concern-summary">Describe what is becoming difficult</label>
-                  <textarea
-                    ref={concernInput}
-                    id="concern-summary"
-                    value={concernSummary}
-                    onChange={(event) => updateConcern(event.target.value)}
-                    placeholder="For example: Getting to the bathroom at night is becoming difficult."
-                    rows={4}
-                    maxLength={2000}
-                    required
-                  />
-                  <p className="field-help">Only include information you are comfortable recording.</p>
-                </div>
-
-                <div className="form-actions">
-                  <button
-                    className="primary-action"
-                    type="submit"
-                    disabled={requestState === 'saving' || !concernSummary.trim()}
-                  >
-                    {requestState === 'saving' ? 'Starting your plan…' : 'Start my plan'}
-                  </button>
-                  <p><strong>You stay in control.</strong> Nothing is shared, booked, or paid for without your approval.</p>
-                </div>
-
-              </form>
-            </section>
-          ) : (
-            <section
-              ref={recordedConcernSection}
-              className="task-panel recorded-concern"
-              aria-labelledby="recorded-concern-title"
-              tabIndex={-1}
-            >
-              <p className="eyebrow">Prepared from your words</p>
-              <h1 id="recorded-concern-title">StayLong understood this concern</h1>
-              <blockquote>{recordedConcern}</blockquote>
-              <p className="case-fact">Case status: {caseRecord?.status}</p>
-              <p>Nothing has been shared or booked. Check this before StayLong prepares any follow-up.</p>
-              <div className="recorded-actions">
-                <button className="primary-action" type="button" onClick={reviewRecordedConcern}>
-                  Review what StayLong understood
-                </button>
-                <button className="secondary-action" type="button" onClick={startCorrection}>
-                  Start again with a correction
-                </button>
-              </div>
-            </section>
-          )}
-
-          <p className={`global-status ${message ? 'has-message' : ''} ${requestState}`} role="status" aria-live="polite">
-            {message}
-          </p>
-
-          <section className="plan-summary" aria-labelledby="plan-summary-title">
-            <p className="eyebrow" id="plan-summary-title">Your plan summary</p>
-            <dl>
-              <div><dt>Status</dt><dd>{hasCase ? 'Started' : 'Not started'}</dd></div>
-              <div><dt>Next</dt><dd>{hasCase ? 'Check the recorded concern' : 'Describe what is becoming difficult'}</dd></div>
-              <div><dt>Supporter</dt><dd>No one invited</dd></div>
-            </dl>
-          </section>
-        </div>
-      </main>
-
-      <footer className="site-footer">
-        <p>StayLong supports preparation, coordination, and follow-through.</p>
-        <p>It does not diagnose, decide eligibility, select providers, or make payments.</p>
-      </footer>
-    </div>
-  )
+  async function start(event: FormEvent) { event.preventDefault(); setBusy(true); try { setWorkflow(await request('/v1/workflows', { concern })); setMessage('Your concern is recorded. Nothing has been shared or booked.') } catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false) } }
+  async function prepare(event: FormEvent) { event.preventDefault(); if (!workflow) return; setBusy(true); try { setWorkflow(await request(`/v1/workflows/${workflow.case_id}/answers`, { answers })) } catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false) } }
+  async function decide(decision: 'approve' | 'decline') { if (!workflow?.proposed_action) return; setBusy(true); try { setWorkflow(await request(`/v1/workflows/${workflow.case_id}/action-decision`, { action_revision: workflow.proposed_action.revision, decision })) } catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false) } }
+  return <div className="app-shell"><a className="skip-link" href="#main-content">Skip to main content</a><aside className="emergency-bar">If anyone is in immediate danger, call 000.</aside><header className="site-header"><a className="wordmark" href="#main-content"><img src="/brand/staylong-lockup.svg" alt="StayLong" /></a><p>Independent living, coordinated</p></header><main className="workspace" id="main-content"><aside className="path-rail"><p className="eyebrow">Continuous Home Path</p><nav aria-label="Continuous Home Path"><ol>{pathSteps.map((item, index) => <li className={index + 1 === step ? 'active' : index + 1 < step ? 'complete' : 'upcoming'} key={item}><span className="path-number">{index + 1}</span><strong>{item}</strong></li>)}</ol></nav><p className="path-promise">You approve every external action before StayLong proceeds.</p></aside><div className="task-column"><p className="mobile-step">Step {step} of 4</p>{!workflow && <section className="task-panel"><h1>What would make home easier today?</h1><p className="task-intro">Choose an example or describe what is becoming difficult in your own words.</p><form onSubmit={start}><div className="example-options">{examples.map(example => <button className="example-option" type="button" key={example.label} onClick={() => setConcern(example.summary)}>{example.label}</button>)}</div><div className="input-group"><label htmlFor="concern">Describe what is becoming difficult</label><textarea id="concern" value={concern} onChange={event => setConcern(event.target.value)} required /></div><button className="primary-action" disabled={busy || !concern.trim()}>Start my plan</button></form></section>}{workflow?.stage === 'emergency' && <section className="task-panel"><h1>Call Triple Zero (000) now</h1><p>If anyone may be in immediate danger, call 000. StayLong will not prepare or run a plan for an emergency.</p></section>}{workflow?.stage === 'intake' && <section className="task-panel"><h1>A few details will help prepare your plan</h1><form onSubmit={prepare}>{workflow.questions.map(question => <div className="input-group" key={question.key}><label htmlFor={question.key}>{question.question}</label><input id={question.key} value={answers[question.key] ?? ''} onChange={event => setAnswers({ ...answers, [question.key]: event.target.value })} required /></div>)}<button className="primary-action" disabled={busy}>Prepare my plan</button></form></section>}{workflow?.stage === 'awaiting_approval' && workflow.pack && workflow.proposed_action && <section className="task-panel"><h1>Your assessment preparation pack</h1><p>{workflow.pack.reported_difficulty}</p><ul>{workflow.pack.assessment_discussion_topics.map(topic => <li key={topic}>{topic}</li>)}</ul><a href={workflow.pack.official_pathways[0]}>Open My Aged Care</a><hr /><h2>{workflow.proposed_action.title}</h2><p>{workflow.proposed_action.boundary_note}</p><button className="primary-action" disabled={busy} onClick={() => decide('approve')}>Approve this reminder</button><button className="secondary-action" disabled={busy} onClick={() => decide('decline')}>Not now</button></section>}{workflow?.stage === 'follow_through' && <section className="task-panel"><h1>Your next step is recorded</h1><p>Sandbox calendar action recorded</p><p>Reminder status: {workflow.reminder?.status}</p><ol aria-label="Plan timeline">{workflow.timeline.map(event => <li key={event.event_id}>{event.event_type}</li>)}</ol></section>}{workflow?.stage === 'declined' && <section className="task-panel"><h1>Your plan is waiting for you</h1><p>No calendar action was created. You can return when you are ready.</p></section>}<p className="global-status has-message" role="status">{message}</p></div></main><footer className="site-footer"><p>StayLong supports preparation, coordination, and follow-through.</p><p>It does not diagnose, decide eligibility, select providers, or make payments.</p></footer></div>
 }
-
 export default App
