@@ -69,7 +69,11 @@ async function start() {
 
   vite = spawn(process.execPath, [viteCli, ...process.argv.slice(2)], {
     cwd: frontendRoot,
-    env: { ...process.env, STAYLONG_API_PROXY_TARGET: apiTarget },
+    env: {
+      ...process.env,
+      STAYLONG_API_PROXY_TARGET: apiTarget,
+      STAYLONG_API_PROXY_TOKEN: apiToken,
+    },
     stdio: 'inherit',
   })
   vite.once('error', (error) => exitWithError(`could not start the UI: ${error.message}`))

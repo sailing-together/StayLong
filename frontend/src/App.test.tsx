@@ -70,13 +70,10 @@ describe('Calm Companion workspace', () => {
     expect(within(path).getByText('Follow through')).toBeInTheDocument()
   })
 
-  it('creates a case through the authenticated API and renders returned facts', async () => {
+  it('starts a plan without asking the person for development credentials', async () => {
     const fetchMock = stubSuccessfulCase()
 
-    const user = userEvent.setup()
     render(<App />)
-    await user.click(screen.getByRole('button', { name: 'Demo settings' }))
-    fireEvent.change(screen.getByLabelText('Demo access token'), { target: { value: 'demo-token' } })
     fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: 'Getting to the bathroom at night is difficult.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Start my plan' }))
 
@@ -88,12 +85,11 @@ describe('Calm Companion workspace', () => {
     expect(screen.queryByText('Complete')).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/v1/cases', expect.objectContaining({
       method: 'POST',
-      headers: expect.objectContaining({ Authorization: 'Bearer demo-token' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ summary: 'Getting to the bathroom at night is difficult.' }),
     }))
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/cases/case-123/concerns', {
-      headers: { Authorization: 'Bearer demo-token' },
-    })
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/cases/case-123/concerns')
+    expect(screen.queryByText('Demo settings')).not.toBeInTheDocument()
   })
 
   it('announces and focuses the result, then lets the person start again with a correction', async () => {
@@ -101,8 +97,6 @@ describe('Calm Companion workspace', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: 'Demo settings' }))
-    await user.type(screen.getByLabelText('Demo access token'), 'demo-token')
     await user.type(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), 'Getting to the bathroom at night is difficult.')
     await user.click(screen.getByRole('button', { name: 'Start my plan' }))
 

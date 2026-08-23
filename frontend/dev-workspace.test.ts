@@ -52,7 +52,6 @@ describe('npm run dev', () => {
     const response = await fetch(`http://127.0.0.1:${uiPort}/v1/cases`, {
       method: 'POST',
       headers: {
-        Authorization: 'Bearer demo-token',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ summary: 'Getting to the bathroom at night is difficult.' }),

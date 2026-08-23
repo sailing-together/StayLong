@@ -43,8 +43,6 @@ const pathSteps = [
 ]
 
 function App() {
-  const [demoSettingsOpen, setDemoSettingsOpen] = useState(false)
-  const [accessToken, setAccessToken] = useState('')
   const [concernSummary, setConcernSummary] = useState('')
   const [selectedExample, setSelectedExample] = useState<string | null>(null)
   const [caseRecord, setCaseRecord] = useState<CaseRecord | null>(null)
@@ -106,7 +104,6 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ summary: concernSummary }),
       })
@@ -117,7 +114,6 @@ function App() {
       const createdCase = (await response.json()) as CaseRecord
       const concernsResponse = await fetch(
         `${apiBaseUrl}/v1/cases/${createdCase.case_id}/concerns`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
       )
       if (!concernsResponse.ok) {
         throw new Error('Your plan was started, but StayLong could not load the concern yet.')
@@ -221,37 +217,13 @@ function App() {
                   <button
                     className="primary-action"
                     type="submit"
-                    disabled={requestState === 'saving' || !concernSummary.trim() || !accessToken}
+                    disabled={requestState === 'saving' || !concernSummary.trim()}
                   >
                     {requestState === 'saving' ? 'Starting your plan…' : 'Start my plan'}
                   </button>
                   <p><strong>You stay in control.</strong> Nothing is shared, booked, or paid for without your approval.</p>
                 </div>
 
-                <button
-                  className="demo-settings-toggle"
-                  type="button"
-                  onClick={() => setDemoSettingsOpen((current) => !current)}
-                  aria-expanded={demoSettingsOpen}
-                  aria-controls="demo-settings"
-                >
-                  Demo settings
-                </button>
-                {demoSettingsOpen && (
-                  <div className="demo-settings" id="demo-settings">
-                    <label htmlFor="access-token">Demo access token</label>
-                    <input
-                      id="access-token"
-                      type="password"
-                      value={accessToken}
-                      onChange={(event) => setAccessToken(event.target.value)}
-                      autoComplete="off"
-                      required
-                    />
-                    <p className="field-help">Used only for this sandbox session and never saved.</p>
-                  </div>
-                )}
-                {!accessToken && <p className="demo-help">This sandbox demo needs a token in Demo settings.</p>}
               </form>
             </section>
           ) : (

@@ -53,7 +53,7 @@ textarea, input { display: block; width: 100%; border: 2px solid color-mix(in sr
 textarea { min-height: 100px; resize: vertical; }
 textarea:focus, input:focus { border-color: var(--terracotta); }
 ::placeholder { color: color-mix(in srgb, var(--moss) 64%, var(--paper)); }
-.field-help, .demo-help { margin: 8px 0 0; font-size: .8rem; line-height: 1.45; }
+.field-help { margin: 8px 0 0; font-size: .8rem; line-height: 1.45; }
 .form-actions { display: flex; align-items: center; gap: 22px; margin-top: 14px; }
 .form-actions p { max-width: 315px; margin: 0; font-size: .78rem; line-height: 1.45; }
 .form-actions strong { display: block; }
@@ -63,10 +63,6 @@ textarea:focus, input:focus { border-color: var(--terracotta); }
 .primary-action:disabled { cursor: not-allowed; opacity: .5; }
 .secondary-action { border: 2px solid var(--moss); color: var(--moss); background: transparent; }
 .secondary-action:hover { color: var(--sand); background: var(--moss); }
-.demo-settings-toggle { min-height: 44px; margin-top: 22px; border: 0; padding: 0; color: var(--moss); background: transparent; cursor: pointer; font-size: .82rem; font-weight: 800; text-decoration: underline; text-underline-offset: 5px; }
-.demo-settings { margin-top: 8px; border: 1px solid var(--clay); border-radius: 18px; padding: 18px; background: color-mix(in srgb, var(--paper) 80%, transparent); }
-.demo-settings label { margin: 0 0 8px; font-size: .86rem; }
-.demo-help { color: var(--terracotta); font-weight: 650; }
 
 .global-status { min-height: 0; margin: 0; font-weight: 700; line-height: 1.5; }
 .global-status.has-message { margin-top: 20px; border-left: 5px solid var(--moss); border-radius: 0 14px 14px 0; padding: 14px 18px; background: var(--oat); }
