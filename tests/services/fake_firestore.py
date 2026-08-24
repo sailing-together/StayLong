@@ -33,6 +33,9 @@ class FakeDocument:
             raise AlreadyExists()
         self._data = data.copy()
 
+    def delete(self) -> None:
+        self._data = None
+
     def get(self) -> FakeSnapshot:
         return FakeSnapshot(self._data)
 

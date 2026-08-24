@@ -12,6 +12,9 @@ import hmac
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any
+
+from staylong.services.firestore_schema import public_case_access_document
 
 
 class PublicCaseAccessDenied(PermissionError):
@@ -57,8 +60,16 @@ class InMemoryPublicCaseAccessRepository:
     def __init__(self) -> None:
         self._access_by_case_id: dict[str, PublicCaseAccess] = {}
 
-    def claim(self, *, case_id: str, owner_key: str, expires_at: datetime) -> PublicCaseAccess:
+    def claim(
+        self,
+        *,
+        case_id: str,
+        owner_key: str,
+        expires_at: datetime,
+        created_at: datetime | None = None,
+    ) -> PublicCaseAccess:
         """Bind a newly created public case to exactly one temporary session."""
+        del created_at
         access = PublicCaseAccess(
             case_id=case_id,
             owner_key=owner_key,
@@ -89,3 +100,82 @@ class InMemoryPublicCaseAccessRepository:
         for case_id in expired_case_ids:
             del self._access_by_case_id[case_id]
         return expired_case_ids
+
+
+class FirestorePublicCaseAccessRepository:
+    """Firestore implementation of public-sandbox case ownership checks."""
+
+    def __init__(self, client: Any | None = None) -> None:
+        self._client = client or _new_firestore_client()
+
+    def claim(
+        self,
+        *,
+        case_id: str,
+        owner_key: str,
+        expires_at: datetime,
+        created_at: datetime | None = None,
+    ) -> PublicCaseAccess:
+        """Persist one case-to-session binding without overwriting another owner."""
+        access = PublicCaseAccess(
+            case_id=case_id,
+            owner_key=owner_key,
+            expires_at=expires_at,
+        )
+        reference = self._cases().document(case_id)
+        existing = reference.get()
+        if existing.exists:
+            saved_access = _public_case_access_from_document(existing.to_dict())
+            if saved_access != access:
+                raise ValueError(f"Public case {case_id!r} is already claimed.")
+            return saved_access
+        reference.create(
+            public_case_access_document(
+                case_id=case_id,
+                owner_key=owner_key,
+                expires_at=expires_at,
+                created_at=created_at or expires_at,
+            )
+        )
+        return access
+
+    def assert_owner(self, *, case_id: str, owner_key: str, now: datetime) -> PublicCaseAccess:
+        """Return access only when a matching, unexpired Firestore mapping exists."""
+        snapshot = self._cases().document(case_id).get()
+        if not snapshot.exists:
+            raise PublicCaseAccessDenied("Public sandbox case is unavailable.")
+        access = _public_case_access_from_document(snapshot.to_dict())
+        if access.expires_at <= now or not hmac.compare_digest(access.owner_key, owner_key):
+            raise PublicCaseAccessDenied("Public sandbox case is unavailable.")
+        return access
+
+    def delete_expired(self, *, now: datetime) -> tuple[str, ...]:
+        """Delete only expired public-sandbox access mappings."""
+        expired_case_ids: list[str] = []
+        for snapshot in self._cases().stream():
+            data = snapshot.to_dict()
+            if data.get("environment") != "public-sandbox":
+                continue
+            access = _public_case_access_from_document(data)
+            if access.expires_at <= now:
+                self._cases().document(access.case_id).delete()
+                expired_case_ids.append(access.case_id)
+        return tuple(expired_case_ids)
+
+    def _cases(self) -> Any:
+        return self._client.collection("public_sandbox_cases")
+
+
+def _public_case_access_from_document(data: dict[str, Any]) -> PublicCaseAccess:
+    return PublicCaseAccess(
+        case_id=data["case_id"],
+        owner_key=data["owner_key"],
+        expires_at=data["expires_at"],
+    )
+
+
+def _new_firestore_client() -> Any:
+    """Create the optional cloud client only when the durable adapter is selected."""
+    from google.cloud import firestore
+
+    return firestore.Client()

@@ -42,3 +42,20 @@ def case_schema(
             "created_at": created_at,
         },
     )
+
+
+def public_case_access_document(
+    *,
+    case_id: str,
+    owner_key: str,
+    expires_at: datetime,
+    created_at: datetime,
+) -> dict[str, object]:
+    """Serialize public-sandbox ownership without retaining a browser token."""
+    return {
+        "case_id": case_id,
+        "owner_key": owner_key,
+        "expires_at": expires_at,
+        "created_at": created_at,
+        "environment": "public-sandbox",
+    }
