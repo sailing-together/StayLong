@@ -91,6 +91,24 @@ def test_normal_concern_prepares_pack_and_exact_calendar_draft() -> None:
     )
 
 
+def test_answered_intake_builds_three_actionable_home_plan_tasks() -> None:
+    _, prepared = _prepared_workflow()
+
+    assert prepared.plan is not None
+    assert prepared.plan.title == "Your Home Independence Plan"
+    assert [task.title for task in prepared.plan.tasks] == [
+        "Arrange a My Aged Care assessment",
+        "Prepare your assessment notes",
+        "Confirm home access or permission",
+    ]
+    assert [task.owner for task in prepared.plan.tasks] == [
+        "You",
+        "You",
+        "You",
+    ]
+    assert {task.status for task in prepared.plan.tasks} == {"ready"}
+
+
 def test_unanswered_required_fact_keeps_workflow_in_intake() -> None:
     from staylong.services.taskmaster import WorkflowStage
 
@@ -108,6 +126,14 @@ def test_unanswered_required_fact_keeps_workflow_in_intake() -> None:
         "support_contacts",
     )
     assert snapshot.pack is None
+
+
+def test_emergency_route_does_not_create_a_home_plan() -> None:
+    workflow = _workflow()
+
+    snapshot = workflow.start(concern="My parent is unconscious. Should I wait?", now=NOW)
+
+    assert snapshot.plan is None
 
 
 def test_emergency_concern_bypasses_intake_provider_and_normal_actions() -> None:

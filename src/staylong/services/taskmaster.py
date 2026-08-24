@@ -16,6 +16,11 @@ from staylong.agents.intake import (
 from staylong.domain.models import ActionApproval, TimelineEvent
 from staylong.services.channels import CalendarDemoAdapter, CalendarDetails, DemoDispatchResult
 from staylong.services.events import EventRepository
+from staylong.services.home_plan import (
+    HomeIndependencePlan,
+    PlanTask,
+    build_home_independence_plan,
+)
 from staylong.services.reminders import Reminder, ReminderService, ReminderStatus
 
 
@@ -50,6 +55,7 @@ class WorkflowSnapshot:
     stage: WorkflowStage
     questions: tuple[MissingFact, ...] = ()
     pack: AssessmentPreparationPack | None = None
+    plan: HomeIndependencePlan | None = None
     proposed_action: ProposedAction | None = None
     action_result: DemoDispatchResult | None = None
     reminder: Reminder | None = None
@@ -176,6 +182,7 @@ class TaskmasterWorkflow:
         candidate_pack = snapshot._candidate_pack
         if candidate_pack is None:
             raise RuntimeError("The intake pack is unavailable for this workflow.")
+        plan = build_home_independence_plan(candidate_pack, now=now)
         proposal = ProposedAction(
             action_type=CalendarDemoAdapter.action_type,
             revision=1,
@@ -189,6 +196,7 @@ class TaskmasterWorkflow:
             concern=snapshot.concern,
             stage=WorkflowStage.AWAITING_APPROVAL,
             pack=candidate_pack,
+            plan=plan,
             proposed_action=proposal,
             timeline=snapshot.timeline,
         )
@@ -228,6 +236,7 @@ class TaskmasterWorkflow:
                     concern=snapshot.concern,
                     stage=WorkflowStage.DECLINED,
                     pack=snapshot.pack,
+                    plan=snapshot.plan,
                     proposed_action=snapshot.proposed_action,
                     timeline=snapshot.timeline,
                 ),
@@ -271,6 +280,7 @@ class TaskmasterWorkflow:
             concern=approved.concern,
             stage=WorkflowStage.FOLLOW_THROUGH,
             pack=approved.pack,
+            plan=approved.plan,
             proposed_action=approved.proposed_action,
             action_result=result,
             reminder=reminder,
@@ -308,6 +318,7 @@ class TaskmasterWorkflow:
             concern=snapshot.concern,
             stage=snapshot.stage,
             pack=snapshot.pack,
+            plan=snapshot.plan,
             proposed_action=snapshot.proposed_action,
             action_result=snapshot.action_result,
             reminder=reminder,
@@ -347,6 +358,7 @@ class TaskmasterWorkflow:
             stage=snapshot.stage,
             questions=snapshot.questions,
             pack=snapshot.pack,
+            plan=snapshot.plan,
             proposed_action=snapshot.proposed_action,
             action_result=snapshot.action_result,
             reminder=snapshot.reminder,
@@ -373,6 +385,7 @@ def _snapshot_document(snapshot: WorkflowSnapshot) -> dict[str, Any]:
         "stage": snapshot.stage.value,
         "questions": [_missing_fact_document(item) for item in snapshot.questions],
         "pack": _pack_document(snapshot.pack),
+        "plan": _plan_document(snapshot.plan),
         "proposed_action": _proposal_document(snapshot.proposed_action),
         "action_result": _action_result_document(snapshot.action_result),
         "reminder": _reminder_document(snapshot.reminder),
@@ -388,6 +401,7 @@ def _snapshot_from_document(data: Mapping[str, Any]) -> WorkflowSnapshot:
         stage=WorkflowStage(data["stage"]),
         questions=tuple(_missing_fact_from_document(item) for item in data.get("questions", [])),
         pack=_pack_from_document(data.get("pack")),
+        plan=_plan_from_document(data.get("plan")),
         proposed_action=_proposal_from_document(data.get("proposed_action")),
         action_result=_action_result_from_document(data.get("action_result")),
         reminder=_reminder_from_document(data.get("reminder")),
@@ -433,6 +447,52 @@ def _pack_from_document(data: Mapping[str, Any] | None) -> AssessmentPreparation
         official_pathways=tuple(data["official_pathways"]),
         proposed_next_step=data["proposed_next_step"],
         boundary_note=data["boundary_note"],
+    )
+
+
+def _plan_document(plan: HomeIndependencePlan | None) -> dict[str, Any] | None:
+    if plan is None:
+        return None
+    return {
+        "title": plan.title,
+        "stated_difficulty": plan.stated_difficulty,
+        "goal": plan.goal,
+        "official_pathway": plan.official_pathway,
+        "tasks": [
+            {
+                "task_id": task.task_id,
+                "title": task.title,
+                "description": task.description,
+                "owner": task.owner,
+                "due_at": task.due_at,
+                "status": task.status,
+                "blocker": task.blocker,
+            }
+            for task in plan.tasks
+        ],
+    }
+
+
+def _plan_from_document(data: Mapping[str, Any] | None) -> HomeIndependencePlan | None:
+    if data is None:
+        return None
+    return HomeIndependencePlan(
+        title=data["title"],
+        stated_difficulty=data["stated_difficulty"],
+        goal=data["goal"],
+        official_pathway=data["official_pathway"],
+        tasks=tuple(
+            PlanTask(
+                task_id=item["task_id"],
+                title=item["title"],
+                description=item["description"],
+                owner=item["owner"],
+                due_at=item["due_at"],
+                status=item["status"],
+                blocker=item.get("blocker"),
+            )
+            for item in data["tasks"]
+        ),
     )
 
 
