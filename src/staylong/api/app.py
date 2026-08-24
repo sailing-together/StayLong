@@ -136,6 +136,7 @@ class WorkflowResponse(BaseModel):
     proposed_actions: list[ProposedActionResponse] = []
     action_result: ActionResultResponse | None = None
     action_results: list[ActionResultResponse] = []
+    integration_mode: str = "sandbox"
     reminder: ReminderResponse | None = None
     timeline: list[TimelineEventResponse]
 
@@ -437,6 +438,7 @@ def _workflow_response(snapshot: WorkflowSnapshot) -> WorkflowResponse:
             )
             for result in snapshot.action_results
         ],
+        integration_mode=snapshot.integration_mode,
         reminder=(
             ReminderResponse(
                 reminder_id=snapshot.reminder.reminder_id,

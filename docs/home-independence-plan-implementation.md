@@ -241,7 +241,7 @@ Commit: `feat(integrations): add approval-gated Google action boundary`
 - Consumes the API workflow response from Task 3.
 - Renders `Home Independence Plan`, three tasks, action cards, explicit integration mode, and action history.
 
-- [ ] **Step 1: Write failing UI tests for the meaningful outcome**
+- [x] **Step 1: Write failing UI tests for the meaningful outcome**
 
 ```tsx
 it('shows three concrete plan tasks after intake', async () => {
@@ -259,15 +259,15 @@ it('approves only the calendar action and keeps the contact draft pending', asyn
 })
 ```
 
-- [ ] **Step 2: Run the targeted tests and verify the plan board does not yet exist**
+- [x] **Step 2: Run the targeted tests and verify the plan board does not yet exist**
 
 Run: `npm test -- --run src/App.test.tsx`
 
-- [ ] **Step 3: Implement typed client models, named-action requests, task cards and status announcements**
+- [x] **Step 3: Implement typed client models, named-action requests, task cards and status announcements**
 
-- [ ] **Step 4: Keep boundaries concise and make the result of each agent action primary content**
+- [x] **Step 4: Keep boundaries concise and make the result of each agent action primary content**
 
-- [ ] **Step 5: Run UI tests, production build and commit**
+- [x] **Step 5: Run UI tests, production build and commit**
 
 Run: `npm test -- --run src/App.test.tsx && npm run build`
 

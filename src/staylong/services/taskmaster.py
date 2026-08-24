@@ -1,7 +1,7 @@
 """Consent-governed orchestration for StayLong's single Taskmaster workflow."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any, Protocol
@@ -66,6 +66,7 @@ class WorkflowSnapshot:
     proposed_actions: tuple[ProposedAction, ...] = ()
     action_result: DemoDispatchResult | None = None
     action_results: tuple[DemoDispatchResult, ...] = ()
+    integration_mode: str = "sandbox"
     reminder: Reminder | None = None
     timeline: tuple[TimelineEvent, ...] = ()
     _candidate_pack: AssessmentPreparationPack | None = None
@@ -131,6 +132,7 @@ class TaskmasterWorkflow:
         self._event_repository = event_repository
         self.calendar = calendar
         self.contact_drafts = contact_drafts or ContactDraftDemoAdapter()
+        self.integration_mode = calendar.integration_mode
         self._reminders = reminders or ReminderService()
 
     @property
@@ -377,6 +379,7 @@ class TaskmasterWorkflow:
             proposed_actions=snapshot.proposed_actions,
             action_result=snapshot.action_result,
             action_results=snapshot.action_results,
+            integration_mode=snapshot.integration_mode,
             reminder=reminder,
             timeline=snapshot.timeline,
         )
@@ -426,6 +429,8 @@ class TaskmasterWorkflow:
         return self._save(updated)
 
     def _save(self, snapshot: WorkflowSnapshot) -> WorkflowSnapshot:
+        if snapshot.integration_mode != self.integration_mode:
+            snapshot = replace(snapshot, integration_mode=self.integration_mode)
         self._repository.save(snapshot)
         return snapshot
 
@@ -448,6 +453,7 @@ def _snapshot_document(snapshot: WorkflowSnapshot) -> dict[str, Any]:
         "proposed_actions": [_proposal_document(item) for item in snapshot.proposed_actions],
         "action_result": _action_result_document(snapshot.action_result),
         "action_results": [_action_result_document(item) for item in snapshot.action_results],
+        "integration_mode": snapshot.integration_mode,
         "reminder": _reminder_document(snapshot.reminder),
         "timeline": [_timeline_document(event) for event in snapshot.timeline],
         "candidate_pack": _pack_document(snapshot._candidate_pack),
@@ -470,6 +476,7 @@ def _snapshot_from_document(data: Mapping[str, Any]) -> WorkflowSnapshot:
         action_results=tuple(
             _action_result_from_document(item) for item in data.get("action_results", [])
         ),
+        integration_mode=data.get("integration_mode", "sandbox"),
         reminder=_reminder_from_document(data.get("reminder")),
         timeline=tuple(_timeline_from_document(item) for item in data.get("timeline", [])),
         _candidate_pack=_pack_from_document(data.get("candidate_pack")),

@@ -6,7 +6,7 @@
   --terracotta: #71311d;
   --ochre: #c08e3a;
   --moss: #283018;
-  --paper: #f4ede1;
+  --paper: #d4b895;
 }
 
 #root { min-height: 100vh; }
@@ -83,6 +83,36 @@ textarea:focus, input:focus { border-color: var(--terracotta); }
 .site-footer { display: flex; justify-content: space-between; gap: 30px; border-top: 1px solid color-mix(in srgb, var(--clay) 55%, transparent); padding: 28px 0 38px; font-size: .78rem; line-height: 1.55; }
 .site-footer p { max-width: 510px; margin: 0; }
 
+.plan-board { display: grid; gap: 18px; }
+.plan-heading, .concern-card, .task-list, .pack-card, .action-area, .timeline-card { border-radius: 24px; padding: clamp(22px, 3vw, 32px); }
+.plan-heading { color: var(--sand); background: var(--moss); }
+.plan-heading .eyebrow { color: var(--oat); }
+.plan-heading h1 { margin-bottom: 10px; }
+.plan-heading > p:last-child { max-width: 550px; margin-bottom: 0; font-size: 1.05rem; line-height: 1.5; }
+.concern-card { border-left: 7px solid var(--terracotta); background: var(--oat); }
+.concern-card .eyebrow { margin-bottom: 8px; }
+.concern-card > p:last-child { margin-bottom: 0; font-size: 1.15rem; font-weight: 650; line-height: 1.45; }
+.task-list { background: color-mix(in srgb, var(--sage) 78%, var(--sand)); }
+.task-list h2, .pack-card h2, .action-area h2, .timeline-card h2 { margin-bottom: 18px; font-size: 1.25rem; letter-spacing: -.02em; }
+.plan-task { display: grid; grid-template-columns: 42px 1fr; gap: 14px; border-top: 1px solid color-mix(in srgb, var(--moss) 25%, transparent); padding: 17px 0; }
+.plan-task:last-child { padding-bottom: 0; }
+.plan-task > span { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 50%; color: var(--sand); background: var(--moss); font-size: .8rem; font-weight: 800; }
+.plan-task h3, .action-card h3 { margin: 0 0 6px; font-size: 1rem; }
+.plan-task p { margin-bottom: 7px; line-height: 1.45; }
+.plan-task small, .action-state { color: var(--terracotta); font-weight: 800; }
+.pack-card { background: var(--oat); }
+.pack-card p { line-height: 1.5; }
+.pack-card a { color: var(--terracotta); font-weight: 800; }
+.action-area { background: var(--sage); }
+.action-area > .eyebrow { margin-bottom: 8px; }
+.action-card { margin-top: 14px; border: 2px solid color-mix(in srgb, var(--moss) 32%, transparent); border-radius: 18px; padding: 20px; background: var(--sand); }
+.action-card p { line-height: 1.5; }
+.action-card.completed { border-color: var(--moss); background: color-mix(in srgb, var(--sand) 75%, var(--sage)); }
+.action-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.timeline-card { background: color-mix(in srgb, var(--oat) 72%, var(--sand)); }
+.timeline-card ol { display: grid; gap: 9px; margin: 0; padding-left: 22px; }
+.timeline-card li { padding-left: 5px; font-size: .88rem; }
+
 @media (max-width: 840px) {
   .workspace { grid-template-columns: 1fr; gap: 22px; }
   .path-rail { display: none; }
@@ -105,4 +135,7 @@ textarea:focus, input:focus { border-color: var(--terracotta); }
   .primary-action { width: 100%; }
   .plan-summary dl div { grid-template-columns: 1fr; gap: 2px; }
   .site-footer { display: grid; }
+  .plan-heading, .concern-card, .task-list, .pack-card, .action-area, .timeline-card { border-radius: 20px; padding: 22px 20px; }
+  .action-buttons { display: grid; }
+  .action-buttons .primary-action, .action-buttons .secondary-action { width: 100%; }
 }

@@ -16,8 +16,12 @@ function workflow(stage: string, overrides: Record<string, unknown> = {}) {
     stage,
     questions: stage === 'intake' ? questions : [],
     pack: null,
+    plan: null,
     proposed_action: null,
+    proposed_actions: [],
     action_result: null,
+    action_results: [],
+    integration_mode: 'sandbox',
     reminder: null,
     timeline: [{ event_id: 'event-1', event_type: 'concern.created', details: {}, occurred_at: '2026-08-23T10:00:00Z' }],
     ...overrides,
@@ -34,17 +38,33 @@ const prepared = workflow('awaiting_approval', {
     proposed_next_step: 'prepare_assessment_pack',
     boundary_note: 'StayLong prepares and coordinates information only.',
   },
+  plan: {
+    title: 'Your Home Independence Plan',
+    stated_difficulty: 'The hallway is dark and there are no rails near the toilet.',
+    goal: 'Stay independent at home with a safer night-time bathroom routine.',
+    official_pathway: 'https://www.myagedcare.gov.au/',
+    tasks: [
+      { task_id: 'assessment', title: 'Arrange a My Aged Care assessment', description: 'Use your preparation pack to explain what is difficult.', owner: 'You', due_at: '2026-08-25T09:00:00Z', status: 'ready', blocker: null },
+      { task_id: 'notes', title: 'Prepare your assessment notes', description: 'Keep the practical details ready for the assessment.', owner: 'You', due_at: '2026-08-25T09:00:00Z', status: 'ready', blocker: null },
+      { task_id: 'permission', title: 'Confirm home access or permission', description: 'Confirm whether a landlord or building manager needs to be involved.', owner: 'You', due_at: '2026-08-25T09:00:00Z', status: 'ready', blocker: null },
+    ],
+  },
   proposed_action: {
     action_type: 'calendar.create', revision: 1, title: 'Review your assessment preparation pack',
     starts_at: '2026-08-24T10:00:00Z', ends_at: '2026-08-24T10:30:00Z',
     boundary_note: 'Sandbox action — no real calendar, provider or contact will be used.',
   },
+  proposed_actions: [
+    { action_type: 'calendar.create', revision: 1, title: 'Review your assessment preparation pack', starts_at: '2026-08-24T10:00:00Z', ends_at: '2026-08-24T10:30:00Z', boundary_note: 'Sandbox action — no real calendar, provider or contact will be used.' },
+    { action_type: 'contact_draft.create', revision: 1, title: 'Review your assessment contact draft', starts_at: '', ends_at: '', boundary_note: 'Sandbox draft — it will not be sent without a separate approval.' },
+  ],
 })
 
 const followedThrough = workflow('follow_through', {
   ...prepared,
   stage: 'follow_through',
   action_result: { case_id: 'case-123', action_type: 'calendar.create', action_revision: 1, channel: 'calendar', payload: { sandbox: 'true', title: 'Review your assessment preparation pack' } },
+  action_results: [{ case_id: 'case-123', action_type: 'calendar.create', action_revision: 1, channel: 'calendar', payload: { sandbox: 'true', title: 'Review your assessment preparation pack' } }],
   reminder: { reminder_id: 'reminder-1', action: 'Review the assessment preparation pack', due_at: '2026-08-24T10:00:00Z', status: 'pending' },
   timeline: [
     { event_id: 'event-1', event_type: 'concern.created', details: {}, occurred_at: '2026-08-23T10:00:00Z' },
@@ -93,10 +113,15 @@ describe('StayLong Continuous Home Path', () => {
     }
     await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
 
-    expect(await screen.findByRole('heading', { name: 'Your assessment preparation pack' })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
+    expect(screen.getByText('Arrange a My Aged Care assessment')).toBeVisible()
+    expect(screen.getByText('Prepare your assessment notes')).toBeVisible()
+    expect(screen.getByText('Confirm home access or permission')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Open My Aged Care' })).toHaveAttribute('href', 'https://www.myagedcare.gov.au/')
     expect(screen.getByText('Sandbox action — no real calendar, provider or contact will be used.')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Approve this reminder' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Add assessment reminder to calendar' })).toBeEnabled()
+    expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
+    expect(screen.getByText('Sandbox integrations')).toBeVisible()
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/v1/workflows', expect.objectContaining({ method: 'POST' }))
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/workflows/case-123/answers', expect.objectContaining({ method: 'POST' }))
   })
@@ -110,10 +135,10 @@ describe('StayLong Continuous Home Path', () => {
     await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
     for (const question of questions) await user.type(screen.getByRole('textbox', { name: question.question }), 'Answer')
     await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
-    await user.click(await screen.findByRole('button', { name: 'Approve this reminder' }))
+    await user.click(await screen.findByRole('button', { name: 'Add assessment reminder to calendar' }))
 
-    expect(await screen.findByRole('heading', { name: 'Your next step is recorded' })).toBeVisible()
-    expect(screen.getByText('Sandbox calendar action recorded')).toBeVisible()
+    expect(await screen.findByText('Calendar event created in sandbox')).toBeVisible()
+    expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
     const timeline = screen.getByRole('list', { name: 'Plan timeline' })
     expect(within(timeline).getByText('approval.granted')).toBeVisible()
     expect(within(timeline).getByText('reminder.scheduled')).toBeVisible()
