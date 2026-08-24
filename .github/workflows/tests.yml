@@ -54,6 +54,7 @@ jobs:
           set -euo pipefail
           docker run --detach --name staylong-smoke \
             --env STAYLONG_API_TOKEN=ci-smoke-token \
+            --env STAYLONG_LOCAL_DEMO=true \
             --publish 8080:8080 \
             staylong:test
           trap 'docker rm --force staylong-smoke' EXIT

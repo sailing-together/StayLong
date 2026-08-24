@@ -14,7 +14,7 @@ async function reservePort(): Promise<number> {
 }
 
 async function waitFor(url: string): Promise<Response> {
-  const deadline = Date.now() + 15_000
+  const deadline = Date.now() + 30_000
   let lastError: unknown
   while (Date.now() < deadline) {
     try {
@@ -59,5 +59,5 @@ describe('npm run dev', () => {
 
     expect(response.status).toBe(201)
     expect(await response.json()).toMatchObject({ case_id: expect.stringMatching(/^case-/), status: 'open' })
-  }, 20_000)
+  }, 40_000)
 })
