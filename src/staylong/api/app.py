@@ -56,6 +56,7 @@ class ActionDecisionRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    action_type: str = Field(min_length=1, max_length=100)
     action_revision: int = Field(ge=1)
     decision: Literal["approve", "decline"]
 
@@ -85,6 +86,24 @@ class ProposedActionResponse(BaseModel):
     boundary_note: str
 
 
+class PlanTaskResponse(BaseModel):
+    task_id: str
+    title: str
+    description: str
+    owner: str
+    due_at: datetime
+    status: str
+    blocker: str | None = None
+
+
+class HomeIndependencePlanResponse(BaseModel):
+    title: str
+    stated_difficulty: str
+    goal: str
+    official_pathway: str
+    tasks: list[PlanTaskResponse]
+
+
 class ActionResultResponse(BaseModel):
     case_id: str
     action_type: str
@@ -112,8 +131,11 @@ class WorkflowResponse(BaseModel):
     stage: str
     questions: list[MissingFactResponse]
     pack: AssessmentPackResponse | None = None
+    plan: HomeIndependencePlanResponse | None = None
     proposed_action: ProposedActionResponse | None = None
+    proposed_actions: list[ProposedActionResponse] = []
     action_result: ActionResultResponse | None = None
+    action_results: list[ActionResultResponse] = []
     reminder: ReminderResponse | None = None
     timeline: list[TimelineEventResponse]
 
@@ -244,6 +266,7 @@ def create_app(
             return _workflow_response(
                 taskmaster.decide_action(
                     case_id=case_id,
+                    action_type=request.action_type,
                     action_revision=request.action_revision,
                     approve=request.decision == "approve",
                     now=_now(),
@@ -348,6 +371,28 @@ def _workflow_response(snapshot: WorkflowSnapshot) -> WorkflowResponse:
             if snapshot.pack is not None
             else None
         ),
+        plan=(
+            HomeIndependencePlanResponse(
+                title=snapshot.plan.title,
+                stated_difficulty=snapshot.plan.stated_difficulty,
+                goal=snapshot.plan.goal,
+                official_pathway=snapshot.plan.official_pathway,
+                tasks=[
+                    PlanTaskResponse(
+                        task_id=task.task_id,
+                        title=task.title,
+                        description=task.description,
+                        owner=task.owner,
+                        due_at=task.due_at,
+                        status=task.status,
+                        blocker=task.blocker,
+                    )
+                    for task in snapshot.plan.tasks
+                ],
+            )
+            if snapshot.plan is not None
+            else None
+        ),
         proposed_action=(
             ProposedActionResponse(
                 action_type=snapshot.proposed_action.action_type,
@@ -360,6 +405,17 @@ def _workflow_response(snapshot: WorkflowSnapshot) -> WorkflowResponse:
             if snapshot.proposed_action is not None
             else None
         ),
+        proposed_actions=[
+            ProposedActionResponse(
+                action_type=action.action_type,
+                revision=action.revision,
+                title=action.title,
+                starts_at=action.starts_at,
+                ends_at=action.ends_at,
+                boundary_note=action.boundary_note,
+            )
+            for action in snapshot.proposed_actions
+        ],
         action_result=(
             ActionResultResponse(
                 case_id=snapshot.action_result.case_id,
@@ -371,6 +427,16 @@ def _workflow_response(snapshot: WorkflowSnapshot) -> WorkflowResponse:
             if snapshot.action_result is not None
             else None
         ),
+        action_results=[
+            ActionResultResponse(
+                case_id=result.case_id,
+                action_type=result.action_type,
+                action_revision=result.action_revision,
+                channel=result.channel,
+                payload={**result.payload, "sandbox": "true"},
+            )
+            for result in snapshot.action_results
+        ],
         reminder=(
             ReminderResponse(
                 reminder_id=snapshot.reminder.reminder_id,

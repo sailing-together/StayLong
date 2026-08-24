@@ -70,16 +70,28 @@ def test_proxy_authenticated_user_can_prepare_and_approve_workflow() -> None:
     )
     approved = client.post(
         f"/v1/workflows/{created.json()['case_id']}/action-decision",
-        json={"action_revision": 1, "decision": "approve"},
+        json={"action_type": "calendar.create", "action_revision": 1, "decision": "approve"},
         headers=HEADERS,
     )
 
     assert created.status_code == 201
     assert prepared.json()["stage"] == "awaiting_approval"
     assert prepared.json()["pack"]["official_pathways"] == ["https://www.myagedcare.gov.au/"]
+    assert [task["title"] for task in prepared.json()["plan"]["tasks"]] == [
+        "Arrange a My Aged Care assessment",
+        "Prepare your assessment notes",
+        "Confirm home access or permission",
+    ]
+    assert {action["action_type"] for action in prepared.json()["proposed_actions"]} == {
+        "calendar.create",
+        "contact_draft.create",
+    }
     assert approved.status_code == 200
     assert approved.json()["action_result"]["channel"] == "calendar"
     assert approved.json()["action_result"]["payload"]["sandbox"] == "true"
+    assert [result["action_type"] for result in approved.json()["action_results"]] == [
+        "calendar.create"
+    ]
 
 
 def test_workflow_routes_require_authentication() -> None:
@@ -99,6 +111,8 @@ def test_emergency_response_returns_no_normal_workflow_actions() -> None:
     assert response.json()["stage"] == "emergency"
     assert response.json()["pack"] is None
     assert response.json()["proposed_action"] is None
+    assert response.json()["plan"] is None
+    assert response.json()["proposed_actions"] == []
 
 
 def test_stale_action_revision_returns_a_plain_language_conflict() -> None:
@@ -112,7 +126,7 @@ def test_stale_action_revision_returns_a_plain_language_conflict() -> None:
 
     response = client.post(
         f"/v1/workflows/{case_id}/action-decision",
-        json={"action_revision": 2, "decision": "approve"},
+        json={"action_type": "calendar.create", "action_revision": 2, "decision": "approve"},
         headers=HEADERS,
     )
 
@@ -131,13 +145,14 @@ def test_declined_action_remains_visible_without_a_calendar_result() -> None:
 
     response = client.post(
         f"/v1/workflows/{case_id}/action-decision",
-        json={"action_revision": 1, "decision": "decline"},
+        json={"action_type": "calendar.create", "action_revision": 1, "decision": "decline"},
         headers=HEADERS,
     )
 
     assert response.status_code == 200
-    assert response.json()["stage"] == "declined"
+    assert response.json()["stage"] == "awaiting_approval"
     assert response.json()["action_result"] is None
+    assert response.json()["action_results"] == []
 
 
 def test_duplicate_approval_returns_the_original_sandbox_action() -> None:
@@ -151,12 +166,12 @@ def test_duplicate_approval_returns_the_original_sandbox_action() -> None:
 
     first = client.post(
         f"/v1/workflows/{case_id}/action-decision",
-        json={"action_revision": 1, "decision": "approve"},
+        json={"action_type": "calendar.create", "action_revision": 1, "decision": "approve"},
         headers=HEADERS,
     )
     duplicate = client.post(
         f"/v1/workflows/{case_id}/action-decision",
-        json={"action_revision": 1, "decision": "approve"},
+        json={"action_type": "calendar.create", "action_revision": 1, "decision": "approve"},
         headers=HEADERS,
     )
 
