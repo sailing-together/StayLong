@@ -2,17 +2,25 @@
 
 import secrets
 from collections.abc import Callable
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.staticfiles import StaticFiles
 
 from staylong.services.cases import CaseRepository, InMemoryCaseRepository
+from staylong.services.public_sessions import (
+    PublicCaseAccessDenied,
+    PublicCaseAccessRepository,
+    PublicSession,
+    new_public_session,
+    owner_key_for,
+)
 from staylong.services.taskmaster import TaskmasterWorkflow, WorkflowSnapshot
 
 
@@ -142,6 +150,17 @@ class WorkflowResponse(BaseModel):
 
 
 APPLICATION_TOKEN_HEADER = "X-StayLong-API-Token"
+PUBLIC_SESSION_COOKIE = "staylong_public_session"
+
+
+@dataclass(frozen=True)
+class PublicSandboxConfig:
+    """Explicit boundary for the temporary, anonymous public experience."""
+
+    session_secret: str
+    session_lifetime: timedelta
+    case_access: PublicCaseAccessRepository
+    cookie_secure: bool = True
 
 
 def create_app(
@@ -149,6 +168,7 @@ def create_app(
     api_token: str,
     repository: CaseRepository | None = None,
     workflow: TaskmasterWorkflow | None = None,
+    public_sandbox: PublicSandboxConfig | None = None,
 ) -> FastAPI:
     """Create the API with an explicit token and injectable case repository."""
     if not api_token:
@@ -190,6 +210,51 @@ def create_app(
                 detail="StayLong workflow is not available yet.",
             )
         return workflow
+
+    def public_session(request: Request, response: Response) -> PublicSession:
+        """Return the current anonymous browser session without persisting its token."""
+        if public_sandbox is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found.")
+
+        now = _now()
+        token = request.cookies.get(PUBLIC_SESSION_COOKIE)
+        if token:
+            return PublicSession(
+                token=token,
+                owner_key=owner_key_for(token, public_sandbox.session_secret),
+                expires_at=now + public_sandbox.session_lifetime,
+            )
+
+        session = new_public_session(
+            secret=public_sandbox.session_secret,
+            now=now,
+            lifetime=public_sandbox.session_lifetime,
+        )
+        response.set_cookie(
+            key=PUBLIC_SESSION_COOKIE,
+            value=session.token,
+            max_age=int(public_sandbox.session_lifetime.total_seconds()),
+            httponly=True,
+            secure=public_sandbox.cookie_secure,
+            samesite="lax",
+            path="/v1/public",
+        )
+        return session
+
+    def require_public_case(case_id: str, session: PublicSession) -> None:
+        """Hide both missing and other-session cases behind the same response."""
+        assert public_sandbox is not None
+        try:
+            public_sandbox.case_access.assert_owner(
+                case_id=case_id,
+                owner_key=session.owner_key,
+                now=_now(),
+            )
+        except PublicCaseAccessDenied:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Plan not found.",
+            ) from None
 
     @app.get("/health", include_in_schema=False)
     def health() -> dict[str, str]:
@@ -233,6 +298,112 @@ def create_app(
         except Exception as error:
             _raise_safe_intake_error(error)
             raise
+
+    @app.post(
+        "/v1/public/workflows",
+        response_model=WorkflowResponse,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def create_public_workflow(
+        request: WorkflowConcernRequest,
+        response: Response,
+        session: PublicSession = Depends(public_session),
+        taskmaster: TaskmasterWorkflow = Depends(require_workflow),
+    ) -> WorkflowResponse:
+        """Start one browser-owned sandbox case without a shared client secret."""
+        assert public_sandbox is not None
+        now = _now()
+        try:
+            snapshot = taskmaster.start(concern=request.concern, now=now)
+            public_sandbox.case_access.claim(
+                case_id=snapshot.case_id,
+                owner_key=session.owner_key,
+                expires_at=session.expires_at,
+                created_at=now,
+            )
+            return _workflow_response(snapshot)
+        except Exception as error:
+            _raise_safe_intake_error(error)
+            raise
+
+    @app.post("/v1/public/workflows/{case_id}/answers", response_model=WorkflowResponse)
+    def answer_public_workflow(
+        case_id: str,
+        request: WorkflowAnswersRequest,
+        response: Response,
+        session: PublicSession = Depends(public_session),
+        taskmaster: TaskmasterWorkflow = Depends(require_workflow),
+    ) -> WorkflowResponse:
+        del response
+        require_public_case(case_id, session)
+        try:
+            return _workflow_response(
+                taskmaster.answer_intake(case_id=case_id, answers=request.answers, now=_now())
+            )
+        except KeyError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Plan not found.",
+            ) from None
+        except ValueError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(error),
+            ) from None
+
+    @app.get("/v1/public/workflows/{case_id}", response_model=WorkflowResponse)
+    def get_public_workflow(
+        case_id: str,
+        response: Response,
+        session: PublicSession = Depends(public_session),
+        taskmaster: TaskmasterWorkflow = Depends(require_workflow),
+    ) -> WorkflowResponse:
+        del response
+        require_public_case(case_id, session)
+        try:
+            return _workflow_response(taskmaster.get(case_id=case_id))
+        except KeyError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Plan not found.",
+            ) from None
+
+    @app.post("/v1/public/workflows/{case_id}/action-decision", response_model=WorkflowResponse)
+    def decide_public_workflow_action(
+        case_id: str,
+        request: ActionDecisionRequest,
+        response: Response,
+        session: PublicSession = Depends(public_session),
+        taskmaster: TaskmasterWorkflow = Depends(require_workflow),
+    ) -> WorkflowResponse:
+        """Apply an explicitly approved sandbox action for the owning browser only."""
+        del response
+        require_public_case(case_id, session)
+        try:
+            return _workflow_response(
+                taskmaster.decide_action(
+                    case_id=case_id,
+                    action_type=request.action_type,
+                    action_revision=request.action_revision,
+                    approve=request.decision == "approve",
+                    now=_now(),
+                )
+            )
+        except KeyError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Plan not found.",
+            ) from None
+        except ValueError as error:
+            if "revision" in str(error).lower():
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This action has changed. Please review the current plan.",
+                ) from None
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=str(error),
+            ) from None
 
     @app.post("/v1/workflows/{case_id}/answers", response_model=WorkflowResponse)
     def answer_workflow(

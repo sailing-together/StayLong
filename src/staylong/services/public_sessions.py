@@ -12,7 +12,7 @@ import hmac
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Protocol
 
 from staylong.services.firestore_schema import public_case_access_document
 
@@ -37,6 +37,25 @@ class PublicCaseAccess:
     case_id: str
     owner_key: str
     expires_at: datetime
+
+
+class PublicCaseAccessRepository(Protocol):
+    """Persistence boundary for anonymous sandbox case ownership."""
+
+    def claim(
+        self,
+        *,
+        case_id: str,
+        owner_key: str,
+        expires_at: datetime,
+        created_at: datetime | None = None,
+    ) -> PublicCaseAccess: ...
+
+    def assert_owner(
+        self, *, case_id: str, owner_key: str, now: datetime
+    ) -> PublicCaseAccess: ...
+
+    def delete_expired(self, *, now: datetime) -> tuple[str, ...]: ...
 
 
 def owner_key_for(token: str, secret: str) -> str:
