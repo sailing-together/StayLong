@@ -40,6 +40,26 @@ validation run around every response rather than relying on prompt text.
 Cloud Run remains deployed in `australia-southeast2`; its service region is not
 the Vertex Gemini inference endpoint.
 
+## Optional Google action connections
+
+StayLong is safe by default: without Google OAuth configuration, every action
+adapter is in explicit `sandbox` mode and only records an inspectable local
+result. It does **not** pretend that an event or message was created in Google.
+
+To enable user-authorised Google actions in a non-demo environment, an operator
+must complete the OAuth consent flow outside the product, store the short-lived
+access token in Secret Manager, and inject it into Cloud Run as
+`STAYLONG_GOOGLE_OAUTH_ACCESS_TOKEN`. The operator must also set
+`STAYLONG_GOOGLE_ACTIONS_MODE=oauth` and `STAYLONG_GOOGLE_CALENDAR_ID`.
+Tokens must never be committed, put in Terraform variables/state, persisted in
+Firestore, returned from the API, or written to logs.
+
+With complete configuration, a separately approved `calendar.create` action
+creates one Google Calendar event. A separately approved
+`contact_draft.create` action creates an unsent Gmail draft only; StayLong has
+no send-mail action. Incomplete explicit OAuth configuration fails startup
+rather than silently falling back to sandbox mode.
+
 The detailed training-informed architecture choices are recorded in [official training guidance](official-training-guidance.md).
 
 ## Rules compliance matrix

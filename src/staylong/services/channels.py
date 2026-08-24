@@ -41,6 +41,7 @@ class CalendarDemoAdapter:
     """Record a calendar event only after the exact human approval is verified."""
 
     action_type = "calendar.create"
+    integration_mode = "sandbox"
 
     def __init__(self) -> None:
         self._items: list[DemoDispatchResult] = []
@@ -87,6 +88,7 @@ class ContactDraftDemoAdapter:
     """Create an inspectable, unsent contact draft after its own approval."""
 
     action_type = "contact_draft.create"
+    integration_mode = "sandbox"
 
     def __init__(self) -> None:
         self._items: list[DemoDispatchResult] = []

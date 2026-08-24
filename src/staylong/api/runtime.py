@@ -6,8 +6,8 @@ from typing import Any
 
 from staylong.agents.intake import IntakeAgent, build_vertex_adk_intake_agent
 from staylong.agents.vertex import AdkJsonExecutor, GoogleAdkJsonExecutor, VertexRuntimeConfig
-from staylong.services.channels import CalendarDemoAdapter
 from staylong.services.events import FirestoreEventRepository
+from staylong.services.google_actions import build_action_adapters
 from staylong.services.taskmaster import FirestoreWorkflowRepository, TaskmasterWorkflow
 
 IntakeBuilder = Callable[..., IntakeAgent]
@@ -29,9 +29,11 @@ def build_runtime_workflow(
     VertexRuntimeConfig.from_environment(values)
     adk_executor = executor or GoogleAdkJsonExecutor()
     intake_agent = intake_builder(executor=adk_executor, environment=values)
+    action_adapters = build_action_adapters(values)
     return TaskmasterWorkflow(
         intake_agent=intake_agent,
         repository=FirestoreWorkflowRepository(client=firestore_client),
         event_repository=FirestoreEventRepository(client=firestore_client),
-        calendar=CalendarDemoAdapter(),
+        calendar=action_adapters.calendar,
+        contact_drafts=action_adapters.contact_drafts,
     )

@@ -202,7 +202,7 @@ Commit: `feat(api): expose durable home plan actions`
 - Configured production Calendar adapter creates a user-authorised event; configured Gmail adapter creates a draft only.
 - Unconfigured runtime returns sandbox adapters labelled `sandbox`, never a fake Google success.
 
-- [ ] **Step 1: Write failing configuration tests**
+- [x] **Step 1: Write failing configuration tests**
 
 ```python
 def test_missing_google_oauth_configuration_selects_sandbox_adapters() -> None:
@@ -214,15 +214,15 @@ def test_google_adapter_requires_an_approved_action_before_api_call() -> None:
         adapter.create_event(..., approval=None, ...)
 ```
 
-- [ ] **Step 2: Run tests and verify missing configuration factory**
+- [x] **Step 2: Run tests and verify missing configuration factory**
 
 Run: `uv run pytest tests/services/test_google_actions.py tests/api/test_runtime_wiring.py -q`
 
-- [ ] **Step 3: Implement configuration parsing and adapter factory; keep OAuth tokens outside Firestore and logs**
+- [x] **Step 3: Implement configuration parsing and adapter factory; keep OAuth tokens outside Firestore and logs**
 
-- [ ] **Step 4: Add a narrow Google Calendar/Gmail draft dependency only if the adapter test needs it**
+- [x] **Step 4: Add a narrow Google Calendar/Gmail draft dependency only if the adapter test needs it**
 
-- [ ] **Step 5: Update deployment documentation with required manual OAuth consent and re-run tests**
+- [x] **Step 5: Update deployment documentation with required manual OAuth consent and re-run tests**
 
 Run: `uv run pytest tests/services/test_google_actions.py tests/api/test_runtime_wiring.py -q`
 

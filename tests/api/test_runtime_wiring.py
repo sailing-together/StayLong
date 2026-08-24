@@ -34,6 +34,7 @@ def test_runtime_uses_vertex_intake_and_firestore_storage() -> None:
 
     assert workflow.repository.__class__.__name__ == "FirestoreWorkflowRepository"
     assert builder.environment == VALID_ENVIRONMENT
+    assert workflow.calendar.integration_mode == "sandbox"
 
 
 def test_runtime_rejects_missing_vertex_configuration() -> None:
@@ -42,3 +43,24 @@ def test_runtime_rejects_missing_vertex_configuration() -> None:
 
     with pytest.raises(VertexConfigurationError):
         build_runtime_workflow({"STAYLONG_API_TOKEN": "token"})
+
+
+def test_runtime_uses_google_adapters_only_with_complete_oauth_configuration() -> None:
+    from staylong.api.runtime import build_runtime_workflow
+    from tests.services.fake_firestore import FakeFirestoreClient
+
+    environment = {
+        **VALID_ENVIRONMENT,
+        "STAYLONG_GOOGLE_ACTIONS_MODE": "oauth",
+        "STAYLONG_GOOGLE_OAUTH_ACCESS_TOKEN": "test-token",
+        "STAYLONG_GOOGLE_CALENDAR_ID": "primary",
+    }
+    workflow = build_runtime_workflow(
+        environment,
+        firestore_client=FakeFirestoreClient(),
+        executor=object(),
+        intake_builder=RecordedBuilder(),
+    )
+
+    assert workflow.calendar.integration_mode == "google_oauth"
+    assert workflow.contact_drafts.integration_mode == "google_oauth"
