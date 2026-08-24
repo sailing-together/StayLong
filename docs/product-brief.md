@@ -12,7 +12,7 @@ The need for coordinated home support is substantial. In 2023–24, around **835
 
 ## MVP
 
-For a concern such as difficulty reaching the bathroom at night, StayLong performs: concern → deterministic emergency check → non-clinical fact collection → assessment-preparation pack with official links → explicit approval → authorised Calendar coordination → asynchronous reminders/escalation → outcome and audit timeline. The older person can complete these steps alone or invite a supporter only for a specific approved task.
+For a concern such as difficulty reaching the bathroom at night, StayLong performs: concern → deterministic emergency check → non-clinical fact collection → a durable three-task Home Independence Plan and assessment-preparation pack → two separately approval-gated actions (Calendar reminder and unsent contact draft) → outcome and audit timeline. The older person can complete these steps alone or invite a supporter only for a specific approved task.
 
 Possible emergencies route immediately to Triple Zero (000), without a model call or delayed work. User-supplied photos are household context only, never a clinical risk diagnosis.
 

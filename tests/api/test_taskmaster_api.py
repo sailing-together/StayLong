@@ -177,3 +177,29 @@ def test_duplicate_approval_returns_the_original_sandbox_action() -> None:
 
     assert duplicate.status_code == 200
     assert duplicate.json()["action_result"] == first.json()["action_result"]
+
+
+def test_reloaded_plan_keeps_calendar_complete_and_contact_draft_pending() -> None:
+    client = _client()
+    case_id = client.post(
+        "/v1/workflows",
+        json={"concern": "The bathroom is difficult at night."},
+        headers=HEADERS,
+    ).json()["case_id"]
+    client.post(f"/v1/workflows/{case_id}/answers", json={"answers": ANSWERS}, headers=HEADERS)
+    client.post(
+        f"/v1/workflows/{case_id}/action-decision",
+        json={"action_type": "calendar.create", "action_revision": 1, "decision": "approve"},
+        headers=HEADERS,
+    )
+
+    reloaded = client.get(f"/v1/workflows/{case_id}", headers=HEADERS)
+
+    assert reloaded.status_code == 200
+    assert reloaded.json()["integration_mode"] == "sandbox"
+    assert [result["action_type"] for result in reloaded.json()["action_results"]] == [
+        "calendar.create"
+    ]
+    assert "contact_draft.create" in {
+        action["action_type"] for action in reloaded.json()["proposed_actions"]
+    }

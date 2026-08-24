@@ -55,7 +55,7 @@ async function start() {
     ],
     {
       cwd: repositoryRoot,
-      env: { ...process.env, STAYLONG_API_TOKEN: apiToken },
+      env: { ...process.env, STAYLONG_API_TOKEN: apiToken, STAYLONG_LOCAL_DEMO: 'true' },
       stdio: 'inherit',
     },
   )

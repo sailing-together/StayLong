@@ -287,7 +287,7 @@ Commit: `feat(ui): show home independence plan actions`
 
 - Demo accepts the existing night-time bathroom concern and shows one completed Calendar action plus one still-pending contact draft.
 
-- [ ] **Step 1: Add a failing end-to-end API test that asserts the full durable state after a restart**
+- [x] **Step 1: Add an end-to-end API test that asserts the full durable state after a restart**
 
 ```python
 def test_reloaded_plan_keeps_calendar_complete_and_contact_draft_pending() -> None:
@@ -296,25 +296,25 @@ def test_reloaded_plan_keeps_calendar_complete_and_contact_draft_pending() -> No
     assert snapshot.action_result_for("contact_draft.create") is None
 ```
 
-- [ ] **Step 2: Run the test and verify it fails before full workflow support**
+- [x] **Step 2: Run the test against the implemented full workflow support**
 
 Run: `uv run pytest tests/api/test_taskmaster_api.py -q`
 
-- [ ] **Step 3: Update the demo script and product brief to describe the implemented, not aspirational, behavior**
+- [x] **Step 3: Update the demo script and product brief to describe the implemented, not aspirational, behavior**
 
-- [ ] **Step 4: Run the complete quality suite**
+- [x] **Step 4: Run the complete quality suite**
 
 Run: `uv run pytest -q && (cd frontend && npm test && npm run build)`
 
-- [ ] **Step 5: Perform an authenticated local workflow replay and record its evidence without real household data**
+- [x] **Step 5: Perform an authenticated local workflow replay and record its evidence without real household data**
 
-- [ ] **Step 6: Commit docs and evidence**
+- [x] **Step 6: Commit docs and evidence**
 
 Commit: `docs: demonstrate home independence workflow`
 
 ## Plan review
 
-- [ ] All requirements in `docs/home-independence-plan-design.md` map to Tasks 1–6.
-- [ ] Tests are written before each production change.
-- [ ] Calendar and contact actions remain independently approval-gated and idempotent.
-- [ ] OAuth setup is documented as a manual user-controlled step.
+- [x] All requirements in `docs/home-independence-plan-design.md` map to Tasks 1–6.
+- [x] Tests are written before each production change.
+- [x] Calendar and contact actions remain independently approval-gated and idempotent.
+- [x] OAuth setup is documented as a manual user-controlled step.
