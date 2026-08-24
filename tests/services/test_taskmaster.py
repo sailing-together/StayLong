@@ -109,6 +109,42 @@ def test_answered_intake_builds_three_actionable_home_plan_tasks() -> None:
     assert {task.status for task in prepared.plan.tasks} == {"ready"}
 
 
+def test_approving_calendar_does_not_create_contact_draft() -> None:
+    workflow, prepared = _prepared_workflow()
+
+    completed = workflow.decide_action(
+        case_id=prepared.case_id,
+        action_type="calendar.create",
+        action_revision=1,
+        approve=True,
+        now=NOW,
+    )
+
+    assert [action.action_type for action in completed.proposed_actions] == [
+        "calendar.create",
+        "contact_draft.create",
+    ]
+    assert [result.action_type for result in completed.action_results] == ["calendar.create"]
+    assert len(workflow.calendar.sent_items) == 1
+    assert workflow.contact_drafts.sent_items == ()
+
+
+def test_contact_draft_requires_its_own_approval() -> None:
+    workflow, prepared = _prepared_workflow()
+
+    completed = workflow.decide_action(
+        case_id=prepared.case_id,
+        action_type="contact_draft.create",
+        action_revision=1,
+        approve=True,
+        now=NOW,
+    )
+
+    assert [result.action_type for result in completed.action_results] == ["contact_draft.create"]
+    assert workflow.calendar.sent_items == ()
+    assert len(workflow.contact_drafts.sent_items) == 1
+
+
 def test_unanswered_required_fact_keeps_workflow_in_intake() -> None:
     from staylong.services.taskmaster import WorkflowStage
 
@@ -157,7 +193,7 @@ def test_emergency_concern_bypasses_intake_provider_and_normal_actions() -> None
     assert provider.requests == []
 
 
-def test_declining_the_draft_records_no_calendar_action() -> None:
+def test_declining_calendar_keeps_the_contact_draft_available() -> None:
     from staylong.services.taskmaster import WorkflowStage
 
     workflow, prepared = _prepared_workflow()
@@ -168,8 +204,13 @@ def test_declining_the_draft_records_no_calendar_action() -> None:
         now=NOW,
     )
 
-    assert declined.stage is WorkflowStage.DECLINED
+    assert declined.stage is WorkflowStage.AWAITING_APPROVAL
     assert declined.action_result is None
+    assert declined.action_results == ()
+    assert [action.action_type for action in declined.proposed_actions] == [
+        "calendar.create",
+        "contact_draft.create",
+    ]
     assert tuple(event.event_type for event in declined.timeline) == (
         "concern.created",
         "assessment.pack.prepared",

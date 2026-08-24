@@ -83,6 +83,53 @@ class CalendarDemoAdapter:
         return result
 
 
+class ContactDraftDemoAdapter:
+    """Create an inspectable, unsent contact draft after its own approval."""
+
+    action_type = "contact_draft.create"
+
+    def __init__(self) -> None:
+        self._items: list[DemoDispatchResult] = []
+
+    @property
+    def sent_items(self) -> tuple[DemoDispatchResult, ...]:
+        return tuple(self._items)
+
+    def create_draft(
+        self,
+        *,
+        case_id: str,
+        revision: int,
+        approval: ActionApproval | None,
+        now: datetime,
+        details: MessageDetails,
+    ) -> DemoDispatchResult:
+        result = DemoDispatchResult(
+            case_id=case_id,
+            action_type=self.action_type,
+            action_revision=revision,
+            channel="contact_draft",
+            payload={
+                "recipient": details.recipient,
+                "subject": details.subject,
+                "body": details.body,
+                "delivery": "draft_only",
+            },
+        )
+        return execute_approved_tool_action(
+            case_id=case_id,
+            action_type=self.action_type,
+            action_revision=revision,
+            approval=approval,
+            now=now,
+            action=lambda: self._record(result),
+        )
+
+    def _record(self, result: DemoDispatchResult) -> DemoDispatchResult:
+        self._items.append(result)
+        return result
+
+
 class EmailDemoAdapter:
     """Record an email only after the exact human approval is verified."""
 

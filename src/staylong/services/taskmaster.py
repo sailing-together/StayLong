@@ -14,7 +14,13 @@ from staylong.agents.intake import (
     MissingFact,
 )
 from staylong.domain.models import ActionApproval, TimelineEvent
-from staylong.services.channels import CalendarDemoAdapter, CalendarDetails, DemoDispatchResult
+from staylong.services.channels import (
+    CalendarDemoAdapter,
+    CalendarDetails,
+    ContactDraftDemoAdapter,
+    DemoDispatchResult,
+    MessageDetails,
+)
 from staylong.services.events import EventRepository
 from staylong.services.home_plan import (
     HomeIndependencePlan,
@@ -57,7 +63,9 @@ class WorkflowSnapshot:
     pack: AssessmentPreparationPack | None = None
     plan: HomeIndependencePlan | None = None
     proposed_action: ProposedAction | None = None
+    proposed_actions: tuple[ProposedAction, ...] = ()
     action_result: DemoDispatchResult | None = None
+    action_results: tuple[DemoDispatchResult, ...] = ()
     reminder: Reminder | None = None
     timeline: tuple[TimelineEvent, ...] = ()
     _candidate_pack: AssessmentPreparationPack | None = None
@@ -115,12 +123,14 @@ class TaskmasterWorkflow:
         repository: WorkflowRepository,
         event_repository: EventRepository,
         calendar: CalendarDemoAdapter,
+        contact_drafts: ContactDraftDemoAdapter | None = None,
         reminders: ReminderService | None = None,
     ) -> None:
         self._intake_agent = intake_agent
         self._repository = repository
         self._event_repository = event_repository
         self.calendar = calendar
+        self.contact_drafts = contact_drafts or ContactDraftDemoAdapter()
         self._reminders = reminders or ReminderService()
 
     @property
@@ -191,6 +201,14 @@ class TaskmasterWorkflow:
             ends_at=(now + timedelta(days=1, minutes=30)).isoformat(),
             boundary_note="Sandbox action — no real calendar, provider or contact will be used.",
         )
+        contact_draft_proposal = ProposedAction(
+            action_type=ContactDraftDemoAdapter.action_type,
+            revision=1,
+            title="Review your assessment contact draft",
+            starts_at="",
+            ends_at="",
+            boundary_note="Sandbox draft — it will not be sent without a separate approval.",
+        )
         prepared = WorkflowSnapshot(
             case_id=snapshot.case_id,
             concern=snapshot.concern,
@@ -198,6 +216,7 @@ class TaskmasterWorkflow:
             pack=candidate_pack,
             plan=plan,
             proposed_action=proposal,
+            proposed_actions=(proposal, contact_draft_proposal),
             timeline=snapshot.timeline,
         )
         return self._save_with_event(
@@ -205,49 +224,64 @@ class TaskmasterWorkflow:
             event_type="assessment.pack.prepared",
             now=now,
             details={
-                "action_type": proposal.action_type,
-                "action_revision": str(proposal.revision),
+                "action_type": "plan.actions.prepared",
+                "action_revision": "1",
             },
         )
 
     def decide_action(
-        self, *, case_id: str, action_revision: int, approve: bool, now: datetime
+        self,
+        *,
+        case_id: str,
+        action_revision: int,
+        approve: bool,
+        now: datetime,
+        action_type: str | None = None,
     ) -> WorkflowSnapshot:
-        """Execute exactly the approved draft once; repeated approval returns the result."""
+        """Execute exactly one approved action; each action keeps its own approval."""
         snapshot = self.get(case_id=case_id)
-        if snapshot.stage is WorkflowStage.FOLLOW_THROUGH:
-            if (
-                snapshot.proposed_action is not None
-                and action_revision == snapshot.proposed_action.revision
-            ):
-                return snapshot
+        selected_type = action_type or CalendarDemoAdapter.action_type
+        proposal = next(
+            (item for item in snapshot.proposed_actions if item.action_type == selected_type),
+            snapshot.proposed_action if selected_type == CalendarDemoAdapter.action_type else None,
+        )
+        if proposal is None or proposal.revision != action_revision:
             raise ValueError("The action revision is stale.")
-        if (
-            snapshot.stage is not WorkflowStage.AWAITING_APPROVAL
-            or snapshot.proposed_action is None
-        ):
+        existing_result = next(
+            (
+                item
+                for item in snapshot.action_results
+                if item.action_type == selected_type and item.action_revision == action_revision
+            ),
+            None,
+        )
+        if existing_result is not None:
+            return snapshot
+        if snapshot.stage not in {WorkflowStage.AWAITING_APPROVAL, WorkflowStage.FOLLOW_THROUGH}:
             raise ValueError("There is no pending action for this workflow.")
-        if action_revision != snapshot.proposed_action.revision:
-            raise ValueError("The action revision is stale.")
         if not approve:
             return self._save_with_event(
                 WorkflowSnapshot(
                     case_id=snapshot.case_id,
                     concern=snapshot.concern,
-                    stage=WorkflowStage.DECLINED,
+                    stage=snapshot.stage,
                     pack=snapshot.pack,
                     plan=snapshot.plan,
                     proposed_action=snapshot.proposed_action,
+                    proposed_actions=snapshot.proposed_actions,
+                    action_result=snapshot.action_result,
+                    action_results=snapshot.action_results,
+                    reminder=snapshot.reminder,
                     timeline=snapshot.timeline,
                 ),
                 event_type="approval.declined",
                 now=now,
-                details={"action_revision": str(action_revision)},
+                details={"action_type": selected_type, "action_revision": str(action_revision)},
             )
 
         approval = ActionApproval(
             case_id=case_id,
-            action_type=snapshot.proposed_action.action_type,
+            action_type=selected_type,
             action_revision=action_revision,
             approved_by_contact_id="older-person",
             expires_at=now + timedelta(minutes=15),
@@ -257,24 +291,40 @@ class TaskmasterWorkflow:
             snapshot,
             event_type="approval.granted",
             now=now,
-            details={"action_revision": str(action_revision)},
+            details={"action_type": selected_type, "action_revision": str(action_revision)},
         )
-        result = self.calendar.create_event(
-            case_id=case_id,
-            revision=action_revision,
-            approval=approval,
-            now=now,
-            details=CalendarDetails(
-                title=approved.proposed_action.title,
-                starts_at=approved.proposed_action.starts_at,
-                ends_at=approved.proposed_action.ends_at,
-            ),
-        )
-        reminder = self._reminders.schedule(
-            case_id=case_id,
-            action="Review the assessment preparation pack",
-            due_at=now,
-        )
+        if selected_type == CalendarDemoAdapter.action_type:
+            result = self.calendar.create_event(
+                case_id=case_id,
+                revision=action_revision,
+                approval=approval,
+                now=now,
+                details=CalendarDetails(
+                    title=proposal.title,
+                    starts_at=proposal.starts_at,
+                    ends_at=proposal.ends_at,
+                ),
+            )
+            reminder = self._reminders.schedule(
+                case_id=case_id,
+                action="Review the assessment preparation pack",
+                due_at=now,
+            )
+            event_type = "calendar.action.recorded"
+        else:
+            result = self.contact_drafts.create_draft(
+                case_id=case_id,
+                revision=action_revision,
+                approval=approval,
+                now=now,
+                details=MessageDetails(
+                    recipient="",
+                    subject="Assessment preparation",
+                    body="A StayLong draft is ready for your review; it has not been sent.",
+                ),
+            )
+            reminder = approved.reminder
+            event_type = "contact_draft.created"
         completed = WorkflowSnapshot(
             case_id=approved.case_id,
             concern=approved.concern,
@@ -282,16 +332,20 @@ class TaskmasterWorkflow:
             pack=approved.pack,
             plan=approved.plan,
             proposed_action=approved.proposed_action,
+            proposed_actions=approved.proposed_actions,
             action_result=result,
+            action_results=(*approved.action_results, result),
             reminder=reminder,
             timeline=approved.timeline,
         )
         recorded = self._save_with_event(
             completed,
-            event_type="calendar.action.recorded",
+            event_type=event_type,
             now=now,
-            details={"channel": result.channel, "sandbox": "true"},
+            details={"action_type": selected_type, "channel": result.channel, "sandbox": "true"},
         )
+        if reminder is None:
+            return recorded
         return self._save_with_event(
             recorded,
             event_type="reminder.scheduled",
@@ -320,7 +374,9 @@ class TaskmasterWorkflow:
             pack=snapshot.pack,
             plan=snapshot.plan,
             proposed_action=snapshot.proposed_action,
+            proposed_actions=snapshot.proposed_actions,
             action_result=snapshot.action_result,
+            action_results=snapshot.action_results,
             reminder=reminder,
             timeline=snapshot.timeline,
         )
@@ -360,7 +416,9 @@ class TaskmasterWorkflow:
             pack=snapshot.pack,
             plan=snapshot.plan,
             proposed_action=snapshot.proposed_action,
+            proposed_actions=snapshot.proposed_actions,
             action_result=snapshot.action_result,
+            action_results=snapshot.action_results,
             reminder=snapshot.reminder,
             timeline=(*snapshot.timeline, event),
             _candidate_pack=snapshot._candidate_pack,
@@ -387,7 +445,9 @@ def _snapshot_document(snapshot: WorkflowSnapshot) -> dict[str, Any]:
         "pack": _pack_document(snapshot.pack),
         "plan": _plan_document(snapshot.plan),
         "proposed_action": _proposal_document(snapshot.proposed_action),
+        "proposed_actions": [_proposal_document(item) for item in snapshot.proposed_actions],
         "action_result": _action_result_document(snapshot.action_result),
+        "action_results": [_action_result_document(item) for item in snapshot.action_results],
         "reminder": _reminder_document(snapshot.reminder),
         "timeline": [_timeline_document(event) for event in snapshot.timeline],
         "candidate_pack": _pack_document(snapshot._candidate_pack),
@@ -403,7 +463,13 @@ def _snapshot_from_document(data: Mapping[str, Any]) -> WorkflowSnapshot:
         pack=_pack_from_document(data.get("pack")),
         plan=_plan_from_document(data.get("plan")),
         proposed_action=_proposal_from_document(data.get("proposed_action")),
+        proposed_actions=tuple(
+            _proposal_from_document(item) for item in data.get("proposed_actions", [])
+        ),
         action_result=_action_result_from_document(data.get("action_result")),
+        action_results=tuple(
+            _action_result_from_document(item) for item in data.get("action_results", [])
+        ),
         reminder=_reminder_from_document(data.get("reminder")),
         timeline=tuple(_timeline_from_document(item) for item in data.get("timeline", [])),
         _candidate_pack=_pack_from_document(data.get("candidate_pack")),
