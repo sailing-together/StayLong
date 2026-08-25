@@ -1,299 +1,70 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 
-type CaseRecord = { case_id: string; status: string }
-type Concern = { concern_id: string; case_id: string; summary: string }
-type RequestState = 'idle' | 'saving' | 'success' | 'error'
+type Fact = { key: string; question: string; reason: string }
+type Pack = { reported_difficulty: string; assessment_discussion_topics: string[]; official_pathways: string[] }
+type PlanTask = { task_id: string; title: string; description: string; status: string }
+type Plan = { title: string; stated_difficulty: string; goal: string; official_pathway: string; tasks: PlanTask[] }
+type Proposal = { action_type: string; revision: number; title: string; boundary_note: string }
+type ActionResult = { action_type: string; action_revision: number; channel: string }
+type Timeline = { event_id: string; event_type: string }
+type Workflow = { case_id: string; stage: string; questions: Fact[]; pack: Pack | null; plan: Plan | null; proposed_action: Proposal | null; proposed_actions: Proposal[]; action_results: ActionResult[]; timeline: Timeline[] }
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
+const examples = [
+  ['Night-time bathroom', 'I’m finding it harder to reach the bathroom safely at night. The hallway is dark and there are no rails near the toilet.'],
+  ['Front steps', 'The steps at my front door are becoming difficult.'],
+  ['Shower safety', 'I feel unsteady getting into and out of the shower.'],
+]
+const pathSteps = ['Tell us what is difficult', 'Prepare for assessment', 'Approve next steps', 'Follow through']
 
 function App() {
-  const [composerOpen, setComposerOpen] = useState(false)
-  const [demoSettingsOpen, setDemoSettingsOpen] = useState(false)
-  const [accessToken, setAccessToken] = useState('')
-  const [concernSummary, setConcernSummary] = useState('')
-  const [caseRecord, setCaseRecord] = useState<CaseRecord | null>(null)
-  const [concerns, setConcerns] = useState<Concern[]>([])
-  const [requestState, setRequestState] = useState<RequestState>('idle')
+  const [concern, setConcern] = useState('')
+  const [workflow, setWorkflow] = useState<Workflow | null>(null)
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  const concernInput = useRef<HTMLTextAreaElement>(null)
-  const recordedConcernSection = useRef<HTMLElement>(null)
-
-  useEffect(() => {
-    document.title = 'StayLong | Independent living, coordinated'
-  }, [])
-
-  useEffect(() => {
-    if (composerOpen) {
-      concernInput.current?.focus()
-      concernInput.current?.closest('#workspace')?.scrollIntoView?.({
-        behavior: 'smooth',
-        block: 'start',
-      })
-    }
-  }, [composerOpen])
-
-  const recordedConcern = concerns[0]?.summary
-  const hasCase = Boolean(caseRecord && recordedConcern)
-
-  useEffect(() => {
-    if (hasCase) recordedConcernSection.current?.focus()
-  }, [hasCase])
-
-  function openComposer() {
-    setComposerOpen(true)
+  useEffect(() => { document.title = 'StayLong | Independent living, coordinated' }, [])
+  const step = workflow?.stage === 'intake' ? 2 : workflow?.stage === 'awaiting_approval' ? 3 : workflow ? 4 : 1
+  const actions = workflow?.proposed_actions.length ? workflow.proposed_actions : workflow?.proposed_action ? [workflow.proposed_action] : []
+  async function request(path: string, body?: object) {
+    const response = await fetch(`${apiBaseUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+    if (!response.ok) throw new Error('StayLong could not continue your plan. Please try again.')
+    return response.json() as Promise<Workflow>
   }
-
-  function reviewRecordedConcern() {
-    recordedConcernSection.current?.focus()
-    recordedConcernSection.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  async function start(event: FormEvent) {
+    event.preventDefault(); setBusy(true)
+    try { setWorkflow(await request('/v1/workflows', { concern })); setMessage('Your concern is recorded. Nothing has been shared or booked.') }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false) }
   }
-
-  function startCorrection() {
-    setConcernSummary(recordedConcern ?? concernSummary)
-    setCaseRecord(null)
-    setConcerns([])
-    setRequestState('idle')
-    setMessage('')
-    setComposerOpen(true)
+  async function prepare(event: FormEvent) {
+    event.preventDefault(); if (!workflow) return; setBusy(true)
+    try { setWorkflow(await request(`/v1/workflows/${workflow.case_id}/answers`, { answers })); setMessage('Your plan is ready to review. Nothing has been shared or booked.') }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false) }
   }
-
-  async function createCase(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setRequestState('saving')
-    setMessage('')
-
+  async function decide(action: Proposal, decision: 'approve' | 'decline') {
+    if (!workflow) return; setBusy(true)
     try {
-      const response = await fetch(`${apiBaseUrl}/v1/cases`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ summary: concernSummary }),
-      })
-      if (!response.ok) {
-        throw new Error('StayLong could not start your plan. Please check the demo connection and try again.')
-      }
-
-      const createdCase = (await response.json()) as CaseRecord
-      const concernsResponse = await fetch(
-        `${apiBaseUrl}/v1/cases/${createdCase.case_id}/concerns`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      )
-      if (!concernsResponse.ok) {
-        throw new Error('Your plan was started, but StayLong could not load the concern yet.')
-      }
-
-      setCaseRecord(createdCase)
-      setConcerns((await concernsResponse.json()) as Concern[])
-      setComposerOpen(false)
-      setRequestState('success')
-      setMessage('Your concern is recorded. Nothing has been shared or booked.')
-    } catch (error) {
-      setRequestState('error')
-      setMessage(error instanceof Error ? error.message : 'Something went wrong.')
-    }
+      const next = await request(`/v1/workflows/${workflow.case_id}/action-decision`, { action_type: action.action_type, action_revision: action.revision, decision })
+      setWorkflow(next)
+      const result = next.action_results.find((item) => item.action_type === action.action_type && item.action_revision === action.revision)
+      setMessage(result ? '' : 'This action is waiting for you.')
+    } catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false) }
   }
-
-  return (
-    <div className="app-shell">
-      <a className="skip-link" href="#main-content">Skip to main content</a>
-      <header className="site-header">
-        <a className="wordmark" href="#main-content" aria-label="StayLong home">
-          StayLong
-        </a>
-        <nav aria-label="Main navigation">
-          <a href="#how-it-works">How it works</a>
-          <a href="#urgent-help">Urgent help</a>
-        </nav>
-      </header>
-
-      <main id="main-content">
-        <section className="hero" aria-labelledby="page-title">
-          <div className="hero-copy">
-            <p className="context-line">Support for living independently at home</p>
-            <h1 id="page-title">What would make home easier today?</h1>
-            <p className="hero-intro">
-              Tell StayLong what is becoming difficult. We will organise the next
-              steps, keep track of follow-up, and ask before anything is shared.
-            </p>
-            {!composerOpen && !hasCase && (
-              <button className="primary-action" type="button" onClick={openComposer}>
-                Tell StayLong
-              </button>
-            )}
-            {hasCase && (
-              <button
-                className="primary-action"
-                type="button"
-                onClick={reviewRecordedConcern}
-              >
-                Review what StayLong understood
-              </button>
-            )}
-            <p className="control-promise">You decide who can help and what happens next.</p>
-          </div>
-
-          <aside className="next-step" aria-labelledby="next-step-title">
-            <p className="section-label">Your next step</p>
-            <h2 id="next-step-title">
-              {hasCase ? 'Check that we understood you correctly.' : 'Start in your own words.'}
-            </h2>
-            <p>
-              {hasCase
-                ? 'Your concern is saved. Review it before StayLong prepares any follow-up.'
-                : 'There is no form to get right. Describe what you have noticed and why it matters to you.'}
-            </p>
-            <div className="privacy-line">
-              <strong>Private by default</strong>
-              <span>Nothing is shared, booked, or paid for without your approval.</span>
-            </div>
-          </aside>
-        </section>
-
-        {composerOpen && !hasCase && (
-          <section className="composer-section" id="workspace" aria-labelledby="composer-title">
-            <form className="concern-form" onSubmit={createCase}>
-              <div className="form-heading">
-                <p className="section-label">Tell StayLong</p>
-                <h2 id="composer-title">What is getting harder at home?</h2>
-                <p>Use plain language. StayLong does not diagnose or provide medical advice.</p>
-              </div>
-
-              <label htmlFor="concern-summary">What is getting harder at home?</label>
-              <textarea
-                ref={concernInput}
-                id="concern-summary"
-                value={concernSummary}
-                onChange={(event) => setConcernSummary(event.target.value)}
-                placeholder="For example: getting to the bathroom at night is becoming difficult."
-                rows={5}
-                maxLength={2000}
-                required
-              />
-              <p className="field-help">Only include information you are comfortable recording.</p>
-
-              <div className="consent-note">
-                <strong>You stay in control.</strong>
-                <p>Nothing is shared, booked, or paid for without your approval.</p>
-              </div>
-
-              <button
-                className="demo-settings-toggle"
-                type="button"
-                onClick={() => setDemoSettingsOpen((current) => !current)}
-                aria-expanded={demoSettingsOpen}
-                aria-controls="demo-settings"
-              >
-                Demo settings
-              </button>
-              {demoSettingsOpen && (
-                <div className="demo-settings" id="demo-settings">
-                  <label htmlFor="access-token">Demo access token</label>
-                  <input
-                    id="access-token"
-                    type="password"
-                    value={accessToken}
-                    onChange={(event) => setAccessToken(event.target.value)}
-                    autoComplete="off"
-                    required
-                  />
-                  <p className="field-help">Used only for this sandbox session and never saved.</p>
-                </div>
-              )}
-
-              <button
-                className="primary-action form-submit"
-                type="submit"
-                disabled={requestState === 'saving' || !concernSummary.trim() || !accessToken}
-              >
-                {requestState === 'saving' ? 'Starting your plan…' : 'Start my plan'}
-              </button>
-              {!accessToken && (
-                <p className="demo-help">This sandbox demo needs a token in Demo settings.</p>
-              )}
-            </form>
-          </section>
-        )}
-
-        <p
-          className={`global-status ${message ? 'has-message' : ''} ${requestState}`}
-          role="status"
-          aria-live="polite"
-        >
-          {message}
-        </p>
-
-        {hasCase && (
-          <section
-            ref={recordedConcernSection}
-            className="recorded-concern"
-            id="recorded-concern"
-            aria-labelledby="recorded-concern-title"
-            tabIndex={-1}
-          >
-            <p className="section-label">Recorded from your words</p>
-            <h2 id="recorded-concern-title">StayLong understood this concern</h2>
-            <blockquote>{recordedConcern}</blockquote>
-            <p className="case-fact">Case status: {caseRecord?.status}</p>
-            <p>Nothing has been shared or booked. You can correct this before continuing.</p>
-            <button className="secondary-action" type="button" onClick={startCorrection}>
-              Start again with a correction
-            </button>
-          </section>
-        )}
-
-        <section className="how-it-works" id="how-it-works" aria-labelledby="path-title">
-          <div className="path-intro">
-            <p className="section-label">Your independence plan</p>
-            <h2 id="path-title">Always know what is happening next.</h2>
-            <p>StayLong keeps the work moving, while decisions remain yours.</p>
-          </div>
-          <ol className="path-list">
-            <li>
-              <span className="step-number">1</span>
-              <div>
-                <strong>Tell us what is happening</strong>
-                <p>Describe the practical difficulty in your own words.</p>
-              </div>
-            </li>
-            <li>
-              <span className="step-number">2</span>
-              <div>
-                <strong>Prepare for assessment</strong>
-                <p>Organise the facts, questions, and official pathway for human review.</p>
-              </div>
-            </li>
-            <li>
-              <span className="step-number">3</span>
-              <div>
-                <strong>Coordinate approved next steps</strong>
-                <p>Track agreed appointments, follow-up, and completion.</p>
-              </div>
-            </li>
-          </ol>
-        </section>
-
-        <aside className="urgent-help" id="urgent-help" aria-labelledby="urgent-title">
-          <div>
-            <p className="section-label">Urgent help</p>
-            <h2 id="urgent-title">If anyone is in immediate danger, call 000.</h2>
-          </div>
-          <p>
-            StayLong coordinates non-urgent practical support. It is not an emergency,
-            medical, or crisis service.
-          </p>
-        </aside>
-      </main>
-
-      <footer className="site-footer">
-        <p>StayLong supports preparation, coordination, and follow-through.</p>
-        <p>It does not diagnose, decide eligibility, select providers, or make payments.</p>
-      </footer>
-    </div>
-  )
+  return <div className="app-shell"><a className="skip-link" href="#main-content">Skip to main content</a><aside className="emergency-bar">If anyone is in immediate danger, call 000.</aside><header className="site-header"><a className="wordmark" href="#main-content"><img src="/brand/staylong-lockup.svg" alt="StayLong" /></a><p>Independent living, coordinated</p></header><main className="workspace" id="main-content"><aside className="path-rail"><p className="eyebrow">Continuous Home Path</p><nav aria-label="Continuous Home Path"><ol>{pathSteps.map((item, index) => <li className={index + 1 === step ? 'active' : index + 1 < step ? 'complete' : 'upcoming'} key={item}><span className="path-number">{index + 1}</span><strong>{item}</strong></li>)}</ol></nav><p className="path-promise">You approve every external action before StayLong proceeds.</p></aside><div className="task-column"><p className="mobile-step">Step {step} of 4</p>{!workflow && <section className="task-panel"><p className="eyebrow">Start with what you notice</p><h1>What would make home easier today?</h1><p className="task-intro">Choose an example or describe what is becoming difficult in your own words.</p><form onSubmit={start}><div className="example-options">{examples.map(([label, summary]) => <button aria-pressed={concern === summary} className="example-option" key={label} onClick={() => setConcern(summary)} type="button">{label}</button>)}</div><div className="input-group"><label htmlFor="concern">Describe what is becoming difficult</label><textarea id="concern" onChange={(event) => setConcern(event.target.value)} required value={concern} /></div><button className="primary-action" disabled={busy || !concern.trim()}>Start my plan</button></form></section>}{workflow?.stage === 'emergency' && <section className="task-panel emergency-panel"><h1>Call Triple Zero (000) now</h1><p>If anyone may be in immediate danger, call 000. StayLong will not prepare or run a plan for an emergency.</p></section>}{workflow?.stage === 'intake' && <section className="task-panel"><p className="eyebrow">Prepare with confidence</p><h1>A few details will help prepare your plan</h1><form onSubmit={prepare}>{workflow.questions.map((question) => <div className="input-group" key={question.key}><label htmlFor={question.key}>{question.question}</label><input id={question.key} onChange={(event) => setAnswers({ ...answers, [question.key]: event.target.value })} required value={answers[question.key] ?? ''} /><p className="field-help">{question.reason}</p></div>)}<button className="primary-action" disabled={busy}>Prepare my plan</button></form></section>}{workflow?.plan && workflow.pack && <PlanBoard actions={actions} busy={busy} onDecision={decide} pack={workflow.pack} plan={workflow.plan} results={workflow.action_results} timeline={workflow.timeline} />}{message && <p className="global-status" role="status">{message}</p>}</div></main><footer className="site-footer"><p>StayLong supports preparation, coordination, and follow-through.</p><p>It does not diagnose, decide eligibility, select providers, or make payments.</p></footer></div>
 }
+
+function PlanBoard({ plan, pack, actions, results, timeline, busy, onDecision }: { plan: Plan; pack: Pack; actions: Proposal[]; results: ActionResult[]; timeline: Timeline[]; busy: boolean; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {
+  return <section className="plan-board"><div className="plan-heading"><p className="eyebrow">A plan you control</p><h1>{plan.title}</h1><p>{plan.goal}</p></div><section className="concern-card"><p className="eyebrow">What StayLong heard</p><p>{plan.stated_difficulty}</p></section><section className="task-list"><h2>Your practical next steps</h2>{plan.tasks.map((task, index) => <article className="plan-task" key={task.task_id}><span>{index + 1}</span><div><h3>{task.title}</h3><p>{task.description}</p><small>{task.status === 'ready' ? 'Ready when you are' : task.status}</small></div></article>)}</section><section className="pack-card"><h2>Assessment preparation</h2><p>{pack.reported_difficulty}</p><a href={pack.official_pathways[0] ?? plan.official_pathway}>Open My Aged Care</a></section><section className="action-area"><p className="eyebrow">Sandbox integrations</p><h2>Actions waiting for you</h2>{actions.map((action) => <ActionCard action={action} busy={busy} key={action.action_type} onDecision={onDecision} result={results.find((item) => item.action_type === action.action_type && item.action_revision === action.revision)} />)}</section>{timeline.length > 0 && <section className="timeline-card"><h2>Plan record</h2><ol aria-label="Plan timeline">{timeline.map((event) => <li key={event.event_id}>{event.event_type}</li>)}</ol></section>}</section>
+}
+
+function ActionCard({ action, result, busy, onDecision }: { action: Proposal; result?: ActionResult; busy: boolean; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {
+  if (result) return <article className="action-card completed"><h3>{action.title}</h3><p>{resultMessage(result)}</p></article>
+  const calendar = action.action_type === 'calendar.create'
+  return <article className="action-card"><h3>{action.title}</h3><p>{action.boundary_note}</p><p className="action-state">{calendar ? 'Calendar reminder waiting for approval' : 'Contact draft waiting for approval'}</p><div className="action-buttons"><button className="primary-action" disabled={busy} onClick={() => onDecision(action, 'approve')}>{calendar ? 'Add assessment reminder to calendar' : 'Create contact draft for review'}</button><button aria-label={`Keep ${action.title} for later`} className="secondary-action" disabled={busy} onClick={() => onDecision(action, 'decline')}>Not now</button></div></article>
+}
+
+function resultMessage(result: ActionResult) { return result.action_type === 'calendar.create' ? result.channel === 'google_calendar' ? 'Calendar event created' : 'Calendar event created in sandbox' : 'Contact draft created for your review — it has not been sent.' }
 
 export default App

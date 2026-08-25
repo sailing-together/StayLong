@@ -1,6 +1,6 @@
 # StayLong product brief
 
-StayLong helps older Australians who live alone remain independent at home for longer. It is a coordination agent that an older person can use independently, or with authorised trusted supporters they choose to invite. It turns a non-emergency home-living concern into a durable workflow: collect non-clinical facts, prepare for the relevant assessment, obtain approval, coordinate follow-up and prove completion.
+StayLong helps older Australians who live alone remain independent at home for longer. It is a consent-governed coordination layer that an older person can use independently, or with authorised trusted supporters they choose to invite. It turns a non-emergency home-living concern into a durable workflow: collect non-clinical facts, prepare for the relevant assessment, obtain approval, coordinate follow-up and prove completion.
 
 ## Australian policy context
 
@@ -12,7 +12,7 @@ The need for coordinated home support is substantial. In 2023–24, around **835
 
 ## MVP
 
-For a concern such as difficulty reaching the bathroom at night, StayLong performs: concern → deterministic emergency check → non-clinical fact collection → assessment-preparation pack with official links → explicit approval → authorised Calendar coordination → asynchronous reminders/escalation → outcome and audit timeline. The older person can complete these steps alone or invite a supporter only for a specific approved task.
+For a concern such as difficulty reaching the bathroom at night, StayLong performs: concern → deterministic emergency check → non-clinical fact collection → a durable three-task Home Independence Plan and assessment-preparation pack → two separately approval-gated actions (Calendar reminder and unsent contact draft) → outcome and audit timeline. The older person can complete these steps alone or invite a supporter only for a specific approved task.
 
 Possible emergencies route immediately to Triple Zero (000), without a model call or delayed work. User-supplied photos are household context only, never a clinical risk diagnosis.
 
@@ -23,3 +23,5 @@ Possible emergencies route immediately to Triple Zero (000), without a model cal
 ## Differentiation
 
 AskSafe Home supports a single safety decision around suspicious information. StayLong coordinates the ongoing work that helps a person living alone address an ageing-in-place concern at their own pace.
+
+StayLong sits between family care apps, provider operations software and My Aged Care. It does not manage day-to-day care delivery, run a provider's roster or billing operation, determine eligibility, or replace the government assessment and application process. Its role is to turn an older person's concern into an authorised, assessment-ready plan and follow agreed steps through to completion.

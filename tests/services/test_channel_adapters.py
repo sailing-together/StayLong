@@ -23,6 +23,7 @@ def _approval(action_type: str) -> ActionApproval:
     ("adapter_name", "action_type"),
     [
         ("calendar", "calendar.create"),
+        ("contact_draft", "contact_draft.create"),
         ("email", "message.email.send"),
         ("sms", "message.sms.send"),
     ],
@@ -32,12 +33,14 @@ def test_every_demo_channel_requires_matching_approval_before_side_effect(
 ) -> None:
     from staylong.services.channels import (
         CalendarDemoAdapter,
+        ContactDraftDemoAdapter,
         EmailDemoAdapter,
         SmsDemoAdapter,
     )
 
     adapter = {
         "calendar": CalendarDemoAdapter(),
+        "contact_draft": ContactDraftDemoAdapter(),
         "email": EmailDemoAdapter(),
         "sms": SmsDemoAdapter(),
     }[adapter_name]
@@ -53,6 +56,7 @@ def test_every_demo_channel_requires_matching_approval_before_side_effect(
     ("adapter", "action_type"),
     [
         ("calendar", "calendar.create"),
+        ("contact_draft", "contact_draft.create"),
         ("email", "message.email.send"),
         ("sms", "message.sms.send"),
     ],
@@ -60,12 +64,14 @@ def test_every_demo_channel_requires_matching_approval_before_side_effect(
 def test_matching_approval_records_a_demo_action(adapter: str, action_type: str) -> None:
     from staylong.services.channels import (
         CalendarDemoAdapter,
+        ContactDraftDemoAdapter,
         EmailDemoAdapter,
         SmsDemoAdapter,
     )
 
     channel = {
         "calendar": CalendarDemoAdapter(),
+        "contact_draft": ContactDraftDemoAdapter(),
         "email": EmailDemoAdapter(),
         "sms": SmsDemoAdapter(),
     }[adapter]
@@ -108,6 +114,18 @@ def _dispatch(adapter: object, approval: ActionApproval | None) -> object:
                 title="Aged-care assessment call",
                 starts_at="2026-08-18T10:00:00+10:00",
                 ends_at="2026-08-18T10:30:00+10:00",
+            ),
+        )
+    if adapter.__class__.__name__ == "ContactDraftDemoAdapter":
+        return adapter.create_draft(
+            case_id="case-001",
+            revision=1,
+            approval=approval,
+            now=NOW,
+            details=MessageDetails(
+                recipient="authorised@example.test",
+                subject="Assessment preparation",
+                body="Please review the draft pack.",
             ),
         )
     return adapter.send(

@@ -1,5 +1,7 @@
 """Validated Vertex AI configuration and bounded adapters for Google ADK."""
 
+import asyncio
+import json
 import os
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
@@ -78,6 +80,45 @@ class AdkJsonExecutor(Protocol):
     """Application-owned bridge from an ADK runner to JSON-compatible output."""
 
     def generate_json(self, *, agent: object, prompt: str) -> object: ...
+
+
+class GoogleAdkJsonExecutor:
+    """Run one isolated ADK turn and return only its final JSON object."""
+
+    def __init__(self, *, app_name: str = "staylong_intake") -> None:
+        self._app_name = app_name
+
+    def generate_json(self, *, agent: object, prompt: str) -> object:
+        return asyncio.run(self._generate_json(agent=agent, prompt=prompt))
+
+    async def _generate_json(self, *, agent: object, prompt: str) -> object:
+        """Create a per-request session so one household never inherits another's context."""
+        from google.adk.runners import Runner
+        from google.adk.sessions import InMemorySessionService
+        from google.genai import types
+
+        sessions = InMemorySessionService()
+        runner = Runner(agent=agent, app_name=self._app_name, session_service=sessions)
+        session = await sessions.create_session(
+            app_name=self._app_name,
+            user_id="staylong-workflow",
+        )
+        final_text: str | None = None
+        async for event in runner.run_async(
+            user_id="staylong-workflow",
+            session_id=session.id,
+            new_message=types.Content(role="user", parts=[types.Part(text=prompt)]),
+        ):
+            if event.is_final_response() and event.content is not None:
+                final_text = "".join(
+                    part.text or "" for part in event.content.parts if part.text is not None
+                )
+        if not final_text:
+            raise RuntimeError("Google ADK did not return a final JSON response.")
+        try:
+            return json.loads(final_text)
+        except json.JSONDecodeError as error:
+            raise RuntimeError("Google ADK returned malformed JSON.") from error
 
 
 @dataclass(frozen=True, slots=True)

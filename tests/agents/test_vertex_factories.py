@@ -193,3 +193,55 @@ def test_google_adk_factory_binds_validated_vertex_runtime_and_disables_tools(
     assert isinstance(agent.kwargs["model"], FakeGemini)
     assert agent.kwargs["model"].model == "gemini-3.6-flash"
     assert agent.kwargs["tools"] == []
+
+
+def test_google_adk_executor_returns_only_the_final_json_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A partial ADK event must not be mistaken for the structured intake output."""
+    from google.adk import runners, sessions
+    from google.genai import types
+
+    from staylong.agents.vertex import GoogleAdkJsonExecutor
+
+    class FakeSession:
+        id = "session-001"
+
+    class FakeSessions:
+        async def create_session(self, **kwargs: object) -> FakeSession:
+            assert kwargs["app_name"] == "staylong_intake"
+            return FakeSession()
+
+    class FakeEvent:
+        def __init__(self, text: str, final: bool) -> None:
+            self.content = type("Content", (), {"parts": [type("Part", (), {"text": text})()]})()
+            self._final = final
+
+        def is_final_response(self) -> bool:
+            return self._final
+
+    class FakeRunner:
+        def __init__(self, **kwargs: object) -> None:
+            assert kwargs["app_name"] == "staylong_intake"
+
+        async def run_async(self, **kwargs: object):
+            assert kwargs["session_id"] == "session-001"
+            yield FakeEvent('{"ignore": true}', False)
+            yield FakeEvent('{"accepted": true}', True)
+
+    class FakePart:
+        def __init__(self, *, text: str) -> None:
+            self.text = text
+
+    class FakeContent:
+        def __init__(self, **kwargs: object) -> None:
+            self.kwargs = kwargs
+
+    monkeypatch.setattr(runners, "Runner", FakeRunner)
+    monkeypatch.setattr(sessions, "InMemorySessionService", FakeSessions)
+    monkeypatch.setattr(types, "Part", FakePart)
+    monkeypatch.setattr(types, "Content", FakeContent)
+
+    result = GoogleAdkJsonExecutor().generate_json(agent=object(), prompt="A concern")
+
+    assert result == {"accepted": True}

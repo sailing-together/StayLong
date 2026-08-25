@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 112" role="img" aria-labelledby="title desc">
+  <title id="title">StayLong logo</title>
+  <desc id="desc">StayLong wordmark beside a home with an open doorway and a continuing path.</desc>
+  <g transform="translate(4 4) scale(.9)">
+    <path
+      d="M58 68H26C20.5 68 16 63.5 16 58V34L64 6L112 34V58C112 63.5 107.5 68 102 68H78C68 68 60 72 60 78C60 86 76 88 91 88C103 88 112 92 116 98"
+      fill="none"
+      stroke="#283018"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="10"
+    />
+    <path
+      d="M58 68V44H78V68"
+      fill="none"
+      stroke="#71311D"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="8"
+    />
+  </g>
+  <text
+    x="132"
+    y="76"
+    fill="#283018"
+    font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+    font-size="58"
+    font-weight="700"
+    letter-spacing="-2"
+  >StayLong</text>
+</svg>

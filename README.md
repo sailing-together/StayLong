@@ -4,11 +4,11 @@ See the [product brief](docs/product-brief.md) for policy context, MVP workflow 
 
 > Help older Australians live independently at home for longer.
 
-StayLong is an event-driven coordination agent for older Australians living alone. It turns a home-living concern into an accountable plan: prepare for the right formal assessment, coordinate approved next steps, and follow up until every approved action is complete. The older person can work independently or invite an authorised supporter for a specific task.
+StayLong is a consent-governed, event-driven coordination layer for older Australians living alone. It turns a home-living concern into an accountable, assessment-ready plan, coordinates approved next steps, and follows up until every approved action is complete. The older person can work independently or invite an authorised supporter for a specific task.
 
 ## What it is—and is not
 
-StayLong helps families prepare, coordinate and track. It does **not** diagnose health conditions, prescribe home modifications, determine AT-HM eligibility, submit government forms, select a provider, or make payments. Human confirmation is required before every external action or information disclosure.
+StayLong helps older people and their chosen supporters prepare, coordinate and track. It sits between family care apps, provider operations software and My Aged Care: it does **not** deliver care, diagnose health conditions, prescribe home modifications, determine AT-HM eligibility, submit government forms, select a provider, or make payments. Human confirmation is required before every external action or information disclosure.
 
 ## Competition fit
 

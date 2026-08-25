@@ -6,11 +6,15 @@ class AlreadyExists(Exception):
 
 
 class FakeSnapshot:
-    def __init__(self, data: dict[str, object]) -> None:
+    def __init__(self, data: dict[str, object] | None) -> None:
         self._data = data
 
+    @property
+    def exists(self) -> bool:
+        return self._data is not None
+
     def to_dict(self) -> dict[str, object]:
-        return self._data.copy()
+        return {} if self._data is None else self._data.copy()
 
 
 class FakeDocument:
@@ -28,6 +32,12 @@ class FakeDocument:
         if self._data is not None:
             raise AlreadyExists()
         self._data = data.copy()
+
+    def delete(self) -> None:
+        self._data = None
+
+    def get(self) -> FakeSnapshot:
+        return FakeSnapshot(self._data)
 
 
 class FakeCollection:

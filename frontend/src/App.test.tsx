@@ -1,99 +1,158 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
-function stubSuccessfulCase() {
+const concern = 'Getting to the bathroom at night is difficult.'
+const questions = [
+  { key: 'assessment_status', question: 'Has a My Aged Care assessment been arranged?', reason: 'This helps prepare the right next step.' },
+  { key: 'housing_tenure', question: 'Is the home owned or rented?', reason: 'Permission requirements may affect planning.' },
+  { key: 'support_contacts', question: 'Would you like to involve anyone now?', reason: 'StayLong only shares information when invited.' },
+]
+
+function workflow(stage: string, overrides: Record<string, unknown> = {}) {
+  return {
+    case_id: 'case-123',
+    stage,
+    questions: stage === 'intake' ? questions : [],
+    pack: null,
+    plan: null,
+    proposed_action: null,
+    proposed_actions: [],
+    action_result: null,
+    action_results: [],
+    integration_mode: 'sandbox',
+    reminder: null,
+    timeline: [{ event_id: 'event-1', event_type: 'concern.created', details: {}, occurred_at: '2026-08-23T10:00:00Z' }],
+    ...overrides,
+  }
+}
+
+const prepared = workflow('awaiting_approval', {
+  pack: {
+    concern_summary: concern,
+    reported_difficulty: 'The hallway is dark and there are no rails near the toilet.',
+    information_to_confirm: [],
+    assessment_discussion_topics: ['Describe the night-time bathroom route.'],
+    official_pathways: ['https://www.myagedcare.gov.au/'],
+    proposed_next_step: 'prepare_assessment_pack',
+    boundary_note: 'StayLong prepares and coordinates information only.',
+  },
+  plan: {
+    title: 'Your Home Independence Plan',
+    stated_difficulty: 'The hallway is dark and there are no rails near the toilet.',
+    goal: 'Stay independent at home with a safer night-time bathroom routine.',
+    official_pathway: 'https://www.myagedcare.gov.au/',
+    tasks: [
+      { task_id: 'assessment', title: 'Arrange a My Aged Care assessment', description: 'Use your preparation pack to explain what is difficult.', owner: 'You', due_at: '2026-08-25T09:00:00Z', status: 'ready', blocker: null },
+      { task_id: 'notes', title: 'Prepare your assessment notes', description: 'Keep the practical details ready for the assessment.', owner: 'You', due_at: '2026-08-25T09:00:00Z', status: 'ready', blocker: null },
+      { task_id: 'permission', title: 'Confirm home access or permission', description: 'Confirm whether a landlord or building manager needs to be involved.', owner: 'You', due_at: '2026-08-25T09:00:00Z', status: 'ready', blocker: null },
+    ],
+  },
+  proposed_action: {
+    action_type: 'calendar.create', revision: 1, title: 'Review your assessment preparation pack',
+    starts_at: '2026-08-24T10:00:00Z', ends_at: '2026-08-24T10:30:00Z',
+    boundary_note: 'Sandbox action — no real calendar, provider or contact will be used.',
+  },
+  proposed_actions: [
+    { action_type: 'calendar.create', revision: 1, title: 'Review your assessment preparation pack', starts_at: '2026-08-24T10:00:00Z', ends_at: '2026-08-24T10:30:00Z', boundary_note: 'Sandbox action — no real calendar, provider or contact will be used.' },
+    { action_type: 'contact_draft.create', revision: 1, title: 'Review your assessment contact draft', starts_at: '', ends_at: '', boundary_note: 'Sandbox draft — it will not be sent without a separate approval.' },
+  ],
+})
+
+const followedThrough = workflow('follow_through', {
+  ...prepared,
+  stage: 'follow_through',
+  action_result: { case_id: 'case-123', action_type: 'calendar.create', action_revision: 1, channel: 'calendar', payload: { sandbox: 'true', title: 'Review your assessment preparation pack' } },
+  action_results: [{ case_id: 'case-123', action_type: 'calendar.create', action_revision: 1, channel: 'calendar', payload: { sandbox: 'true', title: 'Review your assessment preparation pack' } }],
+  reminder: { reminder_id: 'reminder-1', action: 'Review the assessment preparation pack', due_at: '2026-08-24T10:00:00Z', status: 'pending' },
+  timeline: [
+    { event_id: 'event-1', event_type: 'concern.created', details: {}, occurred_at: '2026-08-23T10:00:00Z' },
+    { event_id: 'event-2', event_type: 'assessment.pack.prepared', details: {}, occurred_at: '2026-08-23T10:01:00Z' },
+    { event_id: 'event-3', event_type: 'approval.granted', details: {}, occurred_at: '2026-08-23T10:02:00Z' },
+    { event_id: 'event-4', event_type: 'calendar.action.recorded', details: { sandbox: 'true' }, occurred_at: '2026-08-23T10:02:00Z' },
+    { event_id: 'event-5', event_type: 'reminder.scheduled', details: {}, occurred_at: '2026-08-23T10:02:00Z' },
+  ],
+})
+
+function stubWorkflowFetches() {
   const fetchMock = vi.fn()
-    .mockResolvedValueOnce({ ok: true, json: async () => ({ case_id: 'case-123', status: 'open' }) })
-    .mockResolvedValueOnce({ ok: true, json: async () => ([{ concern_id: 'concern-1', case_id: 'case-123', summary: 'Getting to the bathroom at night is difficult.' }]) })
+    .mockResolvedValueOnce({ ok: true, json: async () => workflow('intake') })
+    .mockResolvedValueOnce({ ok: true, json: async () => prepared })
+    .mockResolvedValueOnce({ ok: true, json: async () => followedThrough })
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
 
-describe('Calm Companion workspace', () => {
+describe('StayLong Continuous Home Path', () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllGlobals()
   })
 
-  it('uses the independent-living product title', () => {
+  it('opens with one calm, independent-living task and transparent progress', () => {
     render(<App />)
 
     expect(document.title).toBe('StayLong | Independent living, coordinated')
+    expect(screen.getByRole('heading', { name: 'What would make home easier today?' })).toBeVisible()
+    expect(screen.getByRole('navigation', { name: 'Continuous Home Path' })).toBeVisible()
+    expect(screen.getByText('If anyone is in immediate danger, call 000.')).toBeVisible()
   })
 
-  it('gives the older person one calm next action before showing the composer', async () => {
+  it('shows an assessment pack and exact sandbox action before approval', async () => {
+    const user = userEvent.setup()
+    const fetchMock = stubWorkflowFetches()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Night-time bathroom' }))
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
+
+    for (const question of questions) {
+      await user.type(screen.getByRole('textbox', { name: question.question }), 'A clear answer')
+    }
+    await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
+
+    expect(await screen.findByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
+    expect(screen.getByText('Arrange a My Aged Care assessment')).toBeVisible()
+    expect(screen.getByText('Prepare your assessment notes')).toBeVisible()
+    expect(screen.getByText('Confirm home access or permission')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Open My Aged Care' })).toHaveAttribute('href', 'https://www.myagedcare.gov.au/')
+    expect(screen.getByText('Sandbox action — no real calendar, provider or contact will be used.')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Add assessment reminder to calendar' })).toBeEnabled()
+    expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
+    expect(screen.getByText('Sandbox integrations')).toBeVisible()
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/v1/workflows', expect.objectContaining({ method: 'POST' }))
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/workflows/case-123/answers', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('records one approved sandbox action and visible follow-through timeline', async () => {
+    const user = userEvent.setup()
+    const fetchMock = stubWorkflowFetches()
+    render(<App />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
+    for (const question of questions) await user.type(screen.getByRole('textbox', { name: question.question }), 'Answer')
+    await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
+    await user.click(await screen.findByRole('button', { name: 'Add assessment reminder to calendar' }))
+
+    expect(await screen.findByText('Calendar event created in sandbox')).toBeVisible()
+    expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
+    const timeline = screen.getByRole('list', { name: 'Plan timeline' })
+    expect(within(timeline).getByText('approval.granted')).toBeVisible()
+    expect(within(timeline).getByText('reminder.scheduled')).toBeVisible()
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/v1/workflows/case-123/action-decision', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('shows the deterministic 000 route without normal workflow controls', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => workflow('emergency') }))
     const user = userEvent.setup()
     render(<App />)
-
-    expect(screen.getByRole('heading', { name: 'What would make home easier today?' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Tell StayLong' })).toBeInTheDocument()
-    expect(screen.queryByLabelText('Demo access token')).not.toBeInTheDocument()
-    expect(screen.queryByRole('textbox', { name: 'What is getting harder at home?' })).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Tell StayLong' }))
-
-    expect(screen.getByRole('textbox', { name: 'What is getting harder at home?' })).toBeInTheDocument()
-    expect(screen.getAllByText('Nothing is shared, booked, or paid for without your approval.')).toHaveLength(2)
-  })
-
-  it('keeps safety routing and the transparent three-stage path visible', () => {
-    render(<App />)
-
-    expect(screen.getByText('If anyone is in immediate danger, call 000.')).toBeInTheDocument()
-    expect(screen.getByText('Tell us what is happening')).toBeInTheDocument()
-    expect(screen.getByText('Prepare for assessment')).toBeInTheDocument()
-    expect(screen.getByText('Coordinate approved next steps')).toBeInTheDocument()
-  })
-
-  it('creates a case through the authenticated API and renders returned facts', async () => {
-    const fetchMock = stubSuccessfulCase()
-
-    const user = userEvent.setup()
-    render(<App />)
-    await user.click(screen.getByRole('button', { name: 'Tell StayLong' }))
-    await user.click(screen.getByRole('button', { name: 'Demo settings' }))
-    fireEvent.change(screen.getByLabelText('Demo access token'), { target: { value: 'demo-token' } })
-    fireEvent.change(screen.getByRole('textbox', { name: 'What is getting harder at home?' }), { target: { value: 'Getting to the bathroom at night is difficult.' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Start my plan' }))
-
-    await waitFor(() => expect(screen.getByText('StayLong understood this concern')).toBeInTheDocument())
-    expect(screen.getByText('Getting to the bathroom at night is difficult.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Review what StayLong understood' })).toBeInTheDocument()
-    expect(screen.getByText('Case status: open')).toBeInTheDocument()
-    expect(screen.queryByText('Not started')).not.toBeInTheDocument()
-    expect(screen.queryByText('Complete')).not.toBeInTheDocument()
-    expect(fetchMock).toHaveBeenNthCalledWith(1, '/v1/cases', expect.objectContaining({
-      method: 'POST',
-      headers: expect.objectContaining({ Authorization: 'Bearer demo-token' }),
-      body: JSON.stringify({ summary: 'Getting to the bathroom at night is difficult.' }),
-    }))
-    expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/cases/case-123/concerns', {
-      headers: { Authorization: 'Bearer demo-token' },
-    })
-  })
-
-  it('announces and focuses the result, then lets the person start again with a correction', async () => {
-    stubSuccessfulCase()
-    const user = userEvent.setup()
-    render(<App />)
-
-    await user.click(screen.getByRole('button', { name: 'Tell StayLong' }))
-    await user.click(screen.getByRole('button', { name: 'Demo settings' }))
-    await user.type(screen.getByLabelText('Demo access token'), 'demo-token')
-    await user.type(screen.getByRole('textbox', { name: 'What is getting harder at home?' }), 'Getting to the bathroom at night is difficult.')
+    await user.type(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), 'My parent is unconscious. Should I wait?')
     await user.click(screen.getByRole('button', { name: 'Start my plan' }))
 
-    const result = await screen.findByRole('region', { name: 'StayLong understood this concern' })
-    await waitFor(() => expect(result).toHaveFocus())
-    expect(screen.getByRole('status')).toHaveTextContent('Your concern is recorded.')
-
-    await user.click(screen.getByRole('button', { name: 'Start again with a correction' }))
-
-    const correctionInput = screen.getByRole('textbox', { name: 'What is getting harder at home?' })
-    expect(correctionInput).toHaveValue('Getting to the bathroom at night is difficult.')
-    expect(correctionInput).toHaveFocus()
-    expect(screen.queryByRole('region', { name: 'StayLong understood this concern' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Call Triple Zero (000) now' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Prepare my plan' })).not.toBeInTheDocument()
   })
 })

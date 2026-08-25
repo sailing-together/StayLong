@@ -12,6 +12,7 @@ This document is the release evidence packet for the private StayLong Sydney san
 | Repository and IaC security scan | Trivy filesystem scan for HIGH/CRITICAL vulnerabilities, secrets and misconfiguration | PASS in PR CI |
 | Cloud Run image and authenticated smoke test | `Dockerfile` plus `tools/cloudrun_smoke.py` | PASS in [deployment run 32467096845](https://github.com/sailing-together/StayLong/actions/runs/32467096845) |
 | Live Cloud Run release evidence | Terraform deployment from merged `main` commit `230fa684dbf2848e02ad07fd9e86ac334f31012d` | PASS on 21 August 2026 |
+| Home Independence Plan regression | API reload after Calendar approval retains the completed Calendar action and pending contact draft | PASS locally before PR update |
 
 The deployment workflow authenticated through WIF, published an immutable image, applied the reviewed Terraform, minted an identity token and completed the private health and authenticated case-flow smoke test. It never wrote a service-account key or printed the API token.
 
@@ -47,3 +48,12 @@ The earlier `/healthz` smoke failure was caused by a Cloud Run reserved URL path
 - **Manual evidence path:** In GitHub, open **Actions → Release evidence → Run workflow**, select `sandbox`, enter a deployed `main` commit SHA and approve the protected environment if prompted.
 - **Link:** [StayLong Actions](https://github.com/sailing-together/StayLong/actions/workflows/release-evidence.yml)
 - **Expected evidence:** The workflow completes successfully and publishes the `staylong-release-evidence-*` artifact containing `release-evidence.json`, `trivy.json` and `cloudrun-smoke.txt`.
+
+## Local workflow replay evidence
+
+The local workspace command starts an isolated in-memory demo runtime only when
+`STAYLONG_LOCAL_DEMO=true` is set by `frontend/scripts/dev-workspace.mjs`. It
+does not read Vertex, Firestore, OAuth or Cloud Run credentials. The automated
+workspace test verifies that the local API becomes healthy before the UI proxy
+accepts an authenticated case request. This is developer-demo evidence only;
+it is not a substitute for the private Cloud Run evidence above.
