@@ -207,7 +207,12 @@ git commit -m "feat: add anonymous public sandbox API"
 
 - PublicSandboxConfig includes a 24-hour session lifetime and a
   `max_cases_per_session` default of 2.
-- cleanup_expired_public_cases(now) deletes access mapping, workflow snapshot and event timeline.
+- `WorkflowRepository.delete(case_id)` deletes a workflow snapshot and is
+  safe when the case is already absent.
+- `EventRepository.delete_for_case(case_id)` deletes every timeline event for
+  a case and is safe when none remain.
+- cleanup_expired_public_cases(now) deletes the workflow snapshot and event
+  timeline before its access mapping, so each retry remains safe.
 - POST /internal/public-sandbox/cleanup accepts only a Cloud Scheduler OIDC request.
 - Lifecycle telemetry emits event names and counts only; concern text and
   credentials are prohibited from telemetry payloads.
@@ -234,8 +239,10 @@ Expected: FAIL because limits and cleanup do not exist.
 
 - [ ] **Step 3: Implement limits and protected cleanup**
 
-Enforce the two-case limit server-side before calling Vertex. Delete mapping,
-snapshot and event records idempotently after the 24-hour retention period.
+Enforce the two-case limit server-side before calling Vertex. After the
+24-hour retention period, delete the workflow snapshot and its event records,
+then delete the access mapping. Each repository deletion must be idempotent so
+the scheduled job may safely retry after an interruption.
 The cleanup endpoint rejects anonymous calls and is invoked only by the
 dedicated scheduler identity. Record only aggregate lifecycle event names and
 counts, never concern text or session credentials.

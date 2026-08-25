@@ -100,9 +100,10 @@ Cloud Run public invocation does not grant access to another session's data.
   Vertex AI or ADK; it is not merely a user-interface restriction.
 - Existing concern length limits remain in force. A public endpoint never
   accepts credentials, attachments or payment details.
-- Cleanup is idempotent: a retry may safely remove an already-expired case,
-  and an expired, missing or foreign case always receives the same generic 404
-  response.
+- Cleanup is idempotent and follows a fixed order: delete a case's workflow
+  snapshot and timeline events first, then delete its public access mapping.
+  A retry may safely repeat any step, and an expired, missing or foreign case
+  always receives the same generic 404 response.
 - Safe operational telemetry is limited to aggregate lifecycle events such as
   `case_created`, `quota_rejected` and `expired_case_deleted`. It must never
   include concern text, browser cookies, tokens or other visitor content.
@@ -114,6 +115,15 @@ account, authenticated with an OIDC token, may invoke it. Anonymous public
 requests and the public Cloud Run invoker role never grant cleanup access.
 Terraform creates this identity and binding; the sandbox UI cannot call the
 route directly.
+
+### Cleanup repository contract
+
+The cleanup service uses explicit persistence boundaries rather than reaching
+into repository internals. `WorkflowRepository.delete(case_id)` removes a
+workflow snapshot and succeeds when it is already absent.
+`EventRepository.delete_for_case(case_id)` removes all timeline events for the
+case and also succeeds when none remain. These contracts make scheduled retry
+safe for both in-memory tests and Firestore.
 
 ## Safety and action boundary
 
