@@ -90,14 +90,30 @@ Cloud Run public invocation does not grant access to another session's data.
 
 - Sandbox data contains only non-clinical information entered for the demo.
 - Cases receive an `expires_at` timestamp at creation. The cleanup worker
-  deletes expired sandbox cases and their related approval, task and audit
-  documents.
-- The initial retention target is 24 hours. The exact value is configured by
-  Terraform and shown in the privacy copy.
-- A session may create a small fixed number of cases during its lifetime. The
-  limit is enforced server-side, not only in the interface.
+  deletes expired sandbox cases and their related workflow, approval, task and
+  audit documents.
+- The initial retention period is **24 hours**, configured by Terraform and
+  stated in the public privacy copy. It supports a judge returning to the same
+  browser while keeping the sandbox deliberately temporary.
+- An anonymous browser session may create **at most two cases** during that
+  24-hour lifetime. The quota is enforced server-side before a request reaches
+  Vertex AI or ADK; it is not merely a user-interface restriction.
 - Existing concern length limits remain in force. A public endpoint never
   accepts credentials, attachments or payment details.
+- Cleanup is idempotent: a retry may safely remove an already-expired case,
+  and an expired, missing or foreign case always receives the same generic 404
+  response.
+- Safe operational telemetry is limited to aggregate lifecycle events such as
+  `case_created`, `quota_rejected` and `expired_case_deleted`. It must never
+  include concern text, browser cookies, tokens or other visitor content.
+
+### Cleanup authorization
+
+The cleanup route is internal. Only the dedicated Cloud Scheduler service
+account, authenticated with an OIDC token, may invoke it. Anonymous public
+requests and the public Cloud Run invoker role never grant cleanup access.
+Terraform creates this identity and binding; the sandbox UI cannot call the
+route directly.
 
 ## Safety and action boundary
 
