@@ -217,7 +217,7 @@ git commit -m "feat: add anonymous public sandbox API"
 - Lifecycle telemetry emits event names and counts only; concern text and
   credentials are prohibited from telemetry payloads.
 
-- [ ] **Step 1: Write failing limit and cleanup tests**
+- [x] **Step 1: Write failing limit and cleanup tests**
 
 ~~~python
 def test_public_session_cannot_create_more_than_the_configured_case_limit(client) -> None:
@@ -231,13 +231,13 @@ def test_cleanup_deletes_expired_access_and_workflow_records() -> None:
     assert workflow_repository.load("expired-case") is None
 ~~~
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: uv run pytest tests/api/test_public_sandbox_cleanup.py -q
 
 Expected: FAIL because limits and cleanup do not exist.
 
-- [ ] **Step 3: Implement limits and protected cleanup**
+- [x] **Step 3: Implement limits and protected cleanup**
 
 Enforce the two-case limit server-side before calling Vertex. After the
 24-hour retention period, delete the workflow snapshot and its event records,
@@ -247,13 +247,13 @@ The cleanup endpoint rejects anonymous calls and is invoked only by the
 dedicated scheduler identity. Record only aggregate lifecycle event names and
 counts, never concern text or session credentials.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: uv run pytest tests/api/test_public_sandbox_cleanup.py -q
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ~~~bash
 git add src/staylong/services/public_sessions.py src/staylong/services/taskmaster.py src/staylong/api/app.py tests/api/test_public_sandbox_cleanup.py
@@ -274,7 +274,7 @@ git commit -m "feat: expire public sandbox cases"
 - The page displays: Public sandbox — temporary data, no real bookings or messages.
 - The integration label uses workflow.integration_mode rather than hard-coded text.
 
-- [ ] **Step 1: Write failing frontend tests**
+- [x] **Step 1: Write failing frontend tests**
 
 ~~~tsx
 it("uses the public endpoint with credentials and names the public sandbox boundary", async () => {
@@ -290,25 +290,25 @@ it("labels a connected integration only when the workflow reports google_oauth",
 })
 ~~~
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: npm --prefix frontend test -- App.test.tsx
 
 Expected: FAIL because public mode and live integration labels are missing.
 
-- [ ] **Step 3: Implement minimal public mode**
+- [x] **Step 3: Implement minimal public mode**
 
 Keep private API mode intact. Public requests include cookie credentials and
 never read a token. Add clear temporary-data and no-real-actions copy using
 the existing accessible visual system.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: npm --prefix frontend test -- App.test.tsx && npm --prefix frontend run lint && npm --prefix frontend run build
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ~~~bash
 git add frontend/src/App.tsx frontend/src/App.test.tsx frontend/src/App.css
@@ -405,7 +405,7 @@ def test_public_sandbox_smoke_never_requires_or_prints_an_api_token() -> None:
     assert "session_b" in source
 ~~~
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: uv run pytest tests/tools/test_public_sandbox_smoke.py -q
 
@@ -424,7 +424,7 @@ Run: uv run pytest -q && npm --prefix frontend test && npm --prefix frontend run
 
 Expected: all suites PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ~~~bash
 git add .github/workflows README.md docs/release-evidence.md tools tests/tools
