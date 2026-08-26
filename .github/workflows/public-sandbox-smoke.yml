@@ -1,0 +1,56 @@
+name: Run StayLong public sandbox smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Enter RUN_PUBLIC_SANDBOX_SMOKE to run the anonymous cookie-session smoke"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: staylong-public-sandbox-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Anonymous cookie-session smoke against the public sandbox service
+    runs-on: ubuntu-latest
+    environment: sandbox
+    env:
+      PROJECT_CONFIG: stay-long-sydney-v2.json
+      ENVIRONMENT_CONFIG: stay-long-sydney-sandbox.json
+      REGION: australia-southeast1
+      SERVICE: staylong-sydney-public-sandbox
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm public sandbox smoke
+        run: test "${{ inputs.confirmation }}" = "RUN_PUBLIC_SANDBOX_SMOKE"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install smoke script dependency
+        run: pip install requests
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Resolve the public sandbox URL
+        id: service
+        run: |
+          set -euo pipefail
+          service_url="$(gcloud run services describe "$SERVICE" \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region="$REGION" \
+            --format='value(status.url)')"
+          test -n "$service_url"
+          echo "url=$service_url" >> "$GITHUB_OUTPUT"
+      - name: Run public sandbox anonymous smoke
+        run: |
+          python tools/public_sandbox_smoke.py --url "${{ steps.service.outputs.url }}"
