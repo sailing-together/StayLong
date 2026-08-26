@@ -395,7 +395,7 @@ git commit -m "feat: provision public StayLong sandbox"
 - Smoke script uses two cookie sessions to test isolation, reload continuity and a sandbox-only approved action.
 - Documentation names the URL, retention policy, permitted demo data and teardown command.
 
-- [ ] **Step 1: Write failing smoke-script test**
+- [x] **Step 1: Write failing smoke-script test**
 
 ~~~python
 def test_public_sandbox_smoke_never_requires_or_prints_an_api_token() -> None:
@@ -411,14 +411,14 @@ Run: uv run pytest tests/tools/test_public_sandbox_smoke.py -q
 
 Expected: FAIL because the smoke script does not exist.
 
-- [ ] **Step 3: Implement release controls and smoke script**
+- [x] **Step 3: Implement release controls and smoke script**
 
 The smoke uses no auth header, verifies the cookie, creates a case in session A,
 rejects case access from session B, approves a sandbox action and asserts a
 sandbox result. The deployment outputs the generated URL. Teardown is manual,
 explicit and scoped only to the public-sandbox component.
 
-- [ ] **Step 4: Run complete local verification**
+- [x] **Step 4: Run complete local verification**
 
 Run: uv run pytest -q && npm --prefix frontend test && npm --prefix frontend run lint && npm --prefix frontend run build && terraform -chdir=infra/terraform fmt -check -recursive
 
