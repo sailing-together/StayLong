@@ -139,3 +139,13 @@ textarea:focus, input:focus { border-color: var(--terracotta); }
   .action-buttons { display: grid; }
   .action-buttons .primary-action, .action-buttons .secondary-action { width: 100%; }
 }
+
+.sandbox-notice {
+  background: #fff8e1;
+  border-left: 4px solid #f59e0b;
+  color: #78350f;
+  font-size: 0.875rem;
+  margin: 0;
+  padding: 0.5rem 1rem;
+  text-align: center;
+}
