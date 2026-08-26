@@ -34,7 +34,7 @@
 - owner_key_for(token: str, secret: str) -> str
 - PublicCaseAccessRepository.claim, assert_owner and delete_expired
 
-- [ ] **Step 1: Write failing unit tests**
+- [x] **Step 1: Write failing unit tests**
 
 ~~~python
 def test_owner_key_is_stable_but_does_not_contain_the_raw_cookie_token() -> None:
@@ -49,13 +49,13 @@ def test_case_access_rejects_a_different_or_expired_session() -> None:
         repository.assert_owner(case_id="case-1", owner_key="two", now=NOW)
 ~~~
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: uv run pytest tests/services/test_public_sessions.py -q
 
 Expected: FAIL because the public-session module does not exist.
 
-- [ ] **Step 3: Implement minimal primitives**
+- [x] **Step 3: Implement minimal primitives**
 
 ~~~python
 def owner_key_for(token: str, secret: str) -> str:
@@ -69,13 +69,13 @@ def new_public_session(*, secret: str, now: datetime, lifetime: timedelta) -> Pu
 Implement PublicCaseAccessDenied and reject unknown and expired ownership
 records with the same error type.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: uv run pytest tests/services/test_public_sessions.py -q
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ~~~bash
 git add src/staylong/services/public_sessions.py tests/services/test_public_sessions.py
@@ -97,7 +97,7 @@ git commit -m "feat: add public sandbox session ownership"
 - Mapping fields are owner_key, expires_at, created_at and environment=public-sandbox.
 - delete_expired(now) returns deleted case IDs for workflow/event cleanup.
 
-- [ ] **Step 1: Write failing Firestore-contract tests**
+- [x] **Step 1: Write failing Firestore-contract tests**
 
 ~~~python
 def test_firestore_access_document_contains_no_raw_session_token() -> None:
@@ -109,25 +109,25 @@ def test_firestore_access_document_contains_no_raw_session_token() -> None:
     assert document["environment"] == "public-sandbox"
 ~~~
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: uv run pytest tests/services/test_public_session_firestore.py -q
 
 Expected: FAIL because no Firestore serialization contract exists.
 
-- [ ] **Step 3: Implement Firestore persistence**
+- [x] **Step 3: Implement Firestore persistence**
 
 Keep public access mapping out of household and consent documents. Query only
 expired public-sandbox mappings, check both owner equality and expiry before
 returning access, and store no raw cookie value.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: uv run pytest tests/services/test_public_session_firestore.py -q
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ~~~bash
 git add src/staylong/services/public_sessions.py src/staylong/services/firestore_schema.py tests/services/test_public_session_firestore.py
@@ -149,7 +149,7 @@ git commit -m "feat: persist public sandbox case ownership"
 - A public workflow is claimed by its session immediately after TaskmasterWorkflow.start.
 - Answers and action decisions assert ownership before workflow execution.
 
-- [ ] **Step 1: Write failing API tests**
+- [x] **Step 1: Write failing API tests**
 
 ~~~python
 def test_public_workflow_sets_an_httponly_session_cookie_and_needs_no_bearer_token(client) -> None:
@@ -168,26 +168,26 @@ def test_private_workflow_route_still_requires_bearer_authentication(client) -> 
     assert client.post("/v1/workflows", json={"concern": "Night bathroom access."}).status_code == 401
 ~~~
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: uv run pytest tests/api/test_public_sandbox_api.py -q
 
 Expected: FAIL because public endpoints and cookie handling do not exist.
 
-- [ ] **Step 3: Implement isolated public routes**
+- [x] **Step 3: Implement isolated public routes**
 
 Add public create, answer and action-decision routes under /v1/public. Set the
 cookie as Secure, HttpOnly and SameSite=Lax with matching expiry. Return a
 generic 404 for unknown, foreign and expired cases. Do not weaken private
 bearer authentication.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: uv run pytest tests/api/test_public_sandbox_api.py tests/api/test_app.py tests/api/test_taskmaster_api.py -q
 
 Expected: PASS, including private-authentication coverage.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ~~~bash
 git add src/staylong/api/app.py src/staylong/api/main.py tests/api/test_public_sandbox_api.py
@@ -333,7 +333,7 @@ git commit -m "feat: expose public sandbox experience"
 - Outputs are public_url, service_name and cleanup_scheduler_job.
 - Runtime environment includes STAYLONG_PUBLIC_SANDBOX=true and STAYLONG_GOOGLE_ACTIONS_MODE=sandbox, but no private API token.
 
-- [ ] **Step 1: Write failing infrastructure tests**
+- [x] **Step 1: Write failing infrastructure tests**
 
 ~~~python
 def test_public_sandbox_is_dedicated_and_has_no_private_api_token() -> None:
@@ -350,13 +350,13 @@ def test_public_sandbox_schedules_authenticated_cleanup() -> None:
     assert "/internal/public-sandbox/cleanup" in source
 ~~~
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: uv run pytest tests/infra/test_public_sandbox_component.py -q
 
 Expected: FAIL because the component does not exist.
 
-- [ ] **Step 3: Implement Terraform component**
+- [x] **Step 3: Implement Terraform component**
 
 Use existing modules where possible. Give its dedicated runtime identity only
 Vertex, Firestore, Logging and scheduler-invoker access required by this
@@ -364,13 +364,13 @@ design. Create a separate session-HMAC Secret Manager secret; never reuse the
 private API token. Use Cloud Scheduler OIDC to invoke cleanup. Configure
 scale-to-zero and a conservative maximum instance count.
 
-- [ ] **Step 4: Run GREEN**
+- [x] **Step 4: Run GREEN**
 
 Run: uv run pytest tests/infra/test_public_sandbox_component.py -q && terraform -chdir=infra/terraform fmt -check -recursive && terraform -chdir=infra/terraform/components/public-sandbox init -backend=false && terraform -chdir=infra/terraform/components/public-sandbox validate
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ~~~bash
 git add infra/terraform tests/infra/test_public_sandbox_component.py
