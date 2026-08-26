@@ -81,6 +81,9 @@ class WorkflowRepository(Protocol):
     def get(self, *, case_id: str) -> WorkflowSnapshot:
         """Load a workflow or raise KeyError when it does not exist."""
 
+    def delete(self, *, case_id: str) -> None:
+        """Delete a workflow snapshot; safe when the case is already absent."""
+
 
 class InMemoryWorkflowRepository:
     """Local/test storage with the same contract as the Firestore adapter."""
@@ -93,6 +96,9 @@ class InMemoryWorkflowRepository:
 
     def get(self, *, case_id: str) -> WorkflowSnapshot:
         return self._snapshots[case_id]
+
+    def delete(self, *, case_id: str) -> None:
+        self._snapshots.pop(case_id, None)
 
 
 class FirestoreWorkflowRepository:
@@ -109,6 +115,9 @@ class FirestoreWorkflowRepository:
         if not document.exists:
             raise KeyError(case_id)
         return _snapshot_from_document(document.to_dict())
+
+    def delete(self, *, case_id: str) -> None:
+        self._documents().document(case_id).delete()
 
     def _documents(self) -> Any:
         return self._client.collection("taskmaster_workflows")
@@ -139,6 +148,11 @@ class TaskmasterWorkflow:
     def repository(self) -> WorkflowRepository:
         """Expose the persistence adapter for runtime wiring verification only."""
         return self._repository
+
+    @property
+    def event_repository(self) -> EventRepository:
+        """Expose the event adapter for runtime wiring and cleanup."""
+        return self._event_repository
 
     def start(self, *, concern: str, now: datetime) -> WorkflowSnapshot:
         """Route danger before model use, otherwise begin the facts-only intake."""

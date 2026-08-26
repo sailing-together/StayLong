@@ -12,9 +12,13 @@ import hmac
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from staylong.services.firestore_schema import public_case_access_document
+
+if TYPE_CHECKING:
+    from staylong.services.events import EventRepository
+    from staylong.services.taskmaster import WorkflowRepository
 
 
 class PublicCaseAccessDenied(PermissionError):
@@ -56,6 +60,10 @@ class PublicCaseAccessRepository(Protocol):
     ) -> PublicCaseAccess: ...
 
     def delete_expired(self, *, now: datetime) -> tuple[str, ...]: ...
+
+    def count_active_for_owner(self, *, owner_key: str, now: datetime) -> int: ...
+
+    def list_expired(self, *, now: datetime) -> tuple[str, ...]: ...
 
 
 def owner_key_for(token: str, secret: str) -> str:
@@ -120,6 +128,22 @@ class InMemoryPublicCaseAccessRepository:
             del self._access_by_case_id[case_id]
         return expired_case_ids
 
+    def count_active_for_owner(self, *, owner_key: str, now: datetime) -> int:
+        """Count unexpired cases belonging to this session key."""
+        return sum(
+            1
+            for access in self._access_by_case_id.values()
+            if access.owner_key == owner_key and access.expires_at > now
+        )
+
+    def list_expired(self, *, now: datetime) -> tuple[str, ...]:
+        """Return expired case IDs without deleting them."""
+        return tuple(
+            case_id
+            for case_id, access in self._access_by_case_id.items()
+            if access.expires_at <= now
+        )
+
 
 class FirestorePublicCaseAccessRepository:
     """Firestore implementation of public-sandbox case ownership checks."""
@@ -181,8 +205,46 @@ class FirestorePublicCaseAccessRepository:
                 expired_case_ids.append(access.case_id)
         return tuple(expired_case_ids)
 
+    def count_active_for_owner(self, *, owner_key: str, now: datetime) -> int:
+        """Count unexpired Firestore mappings for one session key."""
+        return sum(
+            1
+            for snapshot in self._cases()
+                .where("owner_key", "==", owner_key)
+                .stream()
+            if _public_case_access_from_document(snapshot.to_dict()).expires_at > now
+        )
+
+    def list_expired(self, *, now: datetime) -> tuple[str, ...]:
+        """Return expired case IDs without deleting their access mappings."""
+        result: list[str] = []
+        for snapshot in self._cases().stream():
+            data = snapshot.to_dict()
+            if data.get("environment") != "public-sandbox":
+                continue
+            access = _public_case_access_from_document(data)
+            if access.expires_at <= now:
+                result.append(access.case_id)
+        return tuple(result)
+
     def _cases(self) -> Any:
         return self._client.collection("public_sandbox_cases")
+
+
+def cleanup_expired_public_cases(
+    *,
+    case_access: PublicCaseAccessRepository,
+    workflow_repository: "WorkflowRepository",
+    event_repository: "EventRepository",
+    now: datetime,
+) -> tuple[str, ...]:
+    """Delete workflow and event data before access mappings so retries are safe."""
+    expired_ids = case_access.list_expired(now=now)
+    for case_id in expired_ids:
+        event_repository.delete_for_case(case_id)
+        workflow_repository.delete(case_id=case_id)
+    case_access.delete_expired(now=now)
+    return expired_ids
 
 
 def _public_case_access_from_document(data: dict[str, Any]) -> PublicCaseAccess:

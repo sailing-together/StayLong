@@ -18,6 +18,7 @@ from staylong.services.public_sessions import (
     PublicCaseAccessDenied,
     PublicCaseAccessRepository,
     PublicSession,
+    cleanup_expired_public_cases,
     new_public_session,
     owner_key_for,
 )
@@ -161,6 +162,7 @@ class PublicSandboxConfig:
     session_lifetime: timedelta
     case_access: PublicCaseAccessRepository
     cookie_secure: bool = True
+    max_cases_per_session: int = 2
 
 
 def create_app(
@@ -313,6 +315,14 @@ def create_app(
         """Start one browser-owned sandbox case without a shared client secret."""
         assert public_sandbox is not None
         now = _now()
+        active = public_sandbox.case_access.count_active_for_owner(
+            owner_key=session.owner_key, now=now
+        )
+        if active >= public_sandbox.max_cases_per_session:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Public sandbox case limit reached. Please wait for your session to expire.",
+            )
         try:
             snapshot = taskmaster.start(concern=request.concern, now=now)
             public_sandbox.case_access.claim(
@@ -492,6 +502,21 @@ def create_app(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Plan not found.",
             ) from None
+
+    @app.post("/internal/public-sandbox/cleanup", include_in_schema=False)
+    def run_public_sandbox_cleanup(
+        _: None = Depends(require_auth),
+        taskmaster_wf: TaskmasterWorkflow = Depends(require_workflow),
+    ) -> dict[str, int]:
+        """Expire public-sandbox cases; called by Cloud Scheduler via OIDC."""
+        assert public_sandbox is not None
+        deleted = cleanup_expired_public_cases(
+            case_access=public_sandbox.case_access,
+            workflow_repository=taskmaster_wf.repository,
+            event_repository=taskmaster_wf.event_repository,
+            now=_now(),
+        )
+        return {"deleted": len(deleted)}
 
     app.mount(
         "/",

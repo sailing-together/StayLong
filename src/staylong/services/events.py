@@ -14,6 +14,9 @@ class EventRepository(Protocol):
     def list_events(self, *, case_id: str) -> tuple[TimelineEvent, ...]:
         """Return persisted events belonging to a case."""
 
+    def delete_for_case(self, case_id: str) -> None:
+        """Delete every timeline event for a case; safe when none remain."""
+
 
 class InMemoryEventRepository:
     """Small event repository adapter for local development and tests."""
@@ -29,6 +32,11 @@ class InMemoryEventRepository:
 
     def list_events(self, *, case_id: str) -> tuple[TimelineEvent, ...]:
         return tuple(event for event in self._events_by_id.values() if event.case_id == case_id)
+
+    def delete_for_case(self, case_id: str) -> None:
+        to_delete = [eid for eid, e in self._events_by_id.items() if e.case_id == case_id]
+        for eid in to_delete:
+            del self._events_by_id[eid]
 
 
 class IdempotentEventProcessor:
@@ -62,6 +70,10 @@ class FirestoreEventRepository:
             _event_from_document(document.to_dict())
             for document in self._event_documents().where("case_id", "==", case_id).stream()
         )
+
+    def delete_for_case(self, case_id: str) -> None:
+        for snapshot in self._event_documents().where("case_id", "==", case_id).stream():
+            snapshot.reference.delete()
 
     def _event_documents(self) -> Any:
         return self._client.collection("events")
