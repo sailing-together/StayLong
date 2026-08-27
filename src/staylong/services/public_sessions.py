@@ -234,8 +234,8 @@ class FirestorePublicCaseAccessRepository:
 def cleanup_expired_public_cases(
     *,
     case_access: PublicCaseAccessRepository,
-    workflow_repository: "WorkflowRepository",
-    event_repository: "EventRepository",
+    workflow_repository: WorkflowRepository,
+    event_repository: EventRepository,
     now: datetime,
 ) -> tuple[str, ...]:
     """Delete workflow and event data before access mappings so retries are safe."""
