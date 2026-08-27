@@ -67,10 +67,60 @@ it is not a substitute for the private Cloud Run evidence above.
 - [x] Cases and their event records are deleted after the 24-hour retention period by the scheduled cleanup job.
 - [x] The smoke script (`tools/public_sandbox_smoke.py`) uses two `requests.Session()` instances, never reads `STAYLONG_API_TOKEN`, and asserts the sandbox action result carries `payload.sandbox == "true"`.
 - [x] The React frontend displays the sandbox notice banner and routes requests through `/v1/public/*` with `credentials: include` when `VITE_STAYLONG_API_MODE=public-sandbox`.
-- [x] Teardown is manual, explicit, and scoped to the `public-sandbox` Terraform component only.
+- [x] Teardown automation is manual, explicit, and scoped to the `public-sandbox` Terraform component only.
+- [ ] A live public-sandbox deployment and downloaded evidence artifact have been captured from merged `main`.
 
-## Reproducing the public sandbox smoke evidence
+## Reproducing public sandbox deployment and evidence
 
-- **Automatic path:** The `public-sandbox-smoke` workflow (`public-sandbox-smoke.yml`) runs two anonymous cookie sessions against the deployed `staylong-sydney-public-sandbox` Cloud Run service, verifies isolation, and reports pass/fail with no token ever printed.
-- **Manual path:** `python tools/public_sandbox_smoke.py --url <PUBLIC_SANDBOX_URL>`
-- **Link:** [StayLong Actions — public sandbox smoke](https://github.com/sailing-together/StayLong/actions/workflows/public-sandbox-smoke.yml)
+### One-time human setup
+
+Configure these repository variables before dispatching the control workflow:
+
+- `GCP_PROJECT_ID`
+- `GCP_WIF_PROVIDER`
+- `GCP_DEPLOY_SERVICE_ACCOUNT`
+- `GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT`
+
+The GitHub `sandbox` environment must require reviewers. In Google Cloud, the
+WIF provider must trust only `sailing-together/StayLong`; remote Terraform
+state, the `staylong-sydney` Artifact Registry repository, and the separately
+scoped deployer and Terraform-operator identities must already exist. No
+service-account key is stored in GitHub.
+
+### Deploy and verify
+
+1. Merge the reviewed change into `main`.
+2. Open **Actions → Control StayLong public sandbox → Run workflow**.
+3. Select `deploy`, provide a commit SHA reachable from `main`, and enter
+   `DEPLOY_PUBLIC_SANDBOX` exactly.
+4. Approve the protected `sandbox` environment when GitHub requests it.
+5. Download `public-sandbox-deploy-evidence-<run-id>`. Its JSON records the
+   repository, source commit, immutable image digest, Terraform component and
+   state prefix, public Cloud Run URL, anonymous smoke result, workflow run URL,
+   and timestamp. The artifact also contains the smoke output and image
+   reference where those steps completed.
+
+The deploy workflow runs Python, React, Terraform/schema and Trivy security
+gates before Terraform apply. It then runs the token-free two-session public
+smoke against Terraform's `public_url`; this proves the anonymous isolation and
+real sandbox workflow in the deployed service.
+
+### Smoke-only verification
+
+For a deployed service, **Actions → Run StayLong public sandbox smoke** accepts
+only `RUN_PUBLIC_SANDBOX_SMOKE`. It uses WIF to resolve
+`staylong-public-sandbox` in `australia-southeast1`, then runs
+`tools/public_sandbox_smoke.py` without a shared API token.
+
+- **Local path:** `python tools/public_sandbox_smoke.py --url <PUBLIC_SANDBOX_URL>`
+- **Workflow link:** [StayLong Actions — public sandbox smoke](https://github.com/sailing-together/StayLong/actions/workflows/public-sandbox-smoke.yml)
+
+### Explicit teardown
+
+To remove the public service, scheduler, isolated runtime identities and session
+secret, open **Actions → Control StayLong public sandbox → Run workflow**, select
+`destroy`, and enter `DESTROY_PUBLIC_SANDBOX` exactly. Approve the protected
+environment and download `public-sandbox-destroy-evidence-<run-id>`. Destruction
+is limited to `infra/terraform/components/public-sandbox`; it does not delete
+the remote state bucket, Artifact Registry repository, WIF provider, or private
+StayLong services.

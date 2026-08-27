@@ -22,10 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: sandbox
     env:
-      PROJECT_CONFIG: stay-long-sydney-v2.json
-      ENVIRONMENT_CONFIG: stay-long-sydney-sandbox.json
       REGION: australia-southeast1
-      SERVICE: staylong-sydney-public-sandbox
+      SERVICE: staylong-public-sandbox
     steps:
       - uses: actions/checkout@v4
       - name: Confirm public sandbox smoke
