@@ -1,0 +1,275 @@
+name: Control StayLong public sandbox
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Deploy or destroy the public sandbox"
+        required: true
+        type: choice
+        options: [deploy, destroy]
+      commit_sha:
+        description: "Commit reachable from main (required for deploy)"
+        required: false
+        type: string
+      confirmation:
+        description: "Enter DEPLOY_PUBLIC_SANDBOX or DESTROY_PUBLIC_SANDBOX"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: staylong-public-sandbox-control
+  cancel-in-progress: false
+
+env:
+  COMPONENT_PATH: infra/terraform/components/public-sandbox
+  PROJECT_CONFIG: staylong-public-sandbox.json
+  ENVIRONMENT_CONFIG: sandbox.json
+  STATE_PREFIX: staylong/sandbox/public-sandbox
+  REGION: australia-southeast1
+  REPOSITORY: staylong-sydney
+  SERVICE: staylong-public-sandbox
+
+jobs:
+  deploy:
+    if: ${{ inputs.operation == 'deploy' }}
+    name: Build, deploy, and verify public sandbox
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - name: Confirm public sandbox deployment
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = "DEPLOY_PUBLIC_SANDBOX"
+          test -n "$COMMIT_SHA"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha }}
+      - name: Verify deployment revision belongs to main
+        id: revision
+        run: |
+          set -euo pipefail
+          deployment_sha="$(git rev-parse HEAD)"
+          git fetch origin main
+          git merge-base --is-ancestor "$deployment_sha" origin/main
+          echo "sha=$deployment_sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: hashicorp/setup-terraform@v3
+      - name: Install checked-in development dependencies
+        run: uv sync --extra dev --extra agents
+      - name: Install checked-in frontend dependencies
+        run: npm --prefix frontend ci
+      - name: Run Python quality gates
+        run: |
+          uv run ruff check .
+          uv run pytest
+      - name: Run frontend quality gates
+        run: |
+          npm --prefix frontend run lint
+          npm --prefix frontend test
+          npm --prefix frontend run build
+      - name: Validate public sandbox Terraform configuration
+        run: |
+          PYTHONPATH=src python tools/terraform_config.py \
+            --project-config "$PROJECT_CONFIG" \
+            --environment-config "$ENVIRONMENT_CONFIG" \
+            --output "$RUNNER_TEMP/terraform-config.json"
+          terraform fmt -check -recursive infra/terraform
+      - name: Scan repository and infrastructure
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          format: table
+      - name: Authenticate to publish the image
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - uses: docker/setup-buildx-action@v3
+      - name: Build and publish immutable public sandbox image
+        id: image
+        run: |
+          set -euo pipefail
+          image_repository="$REGION-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/$REPOSITORY/app"
+          image_tag_ref="$image_repository:${{ steps.revision.outputs.sha }}"
+          metadata_file="$RUNNER_TEMP/build-metadata.json"
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+          docker buildx build \
+            --build-arg "BUILD_REVISION=${{ steps.revision.outputs.sha }}" \
+            --tag "$image_tag_ref" \
+            --metadata-file "$metadata_file" \
+            --push .
+          digest="$(jq -er '."containerimage.digest"' "$metadata_file")"
+          printf '%s\n' "$digest" | grep -Eq '^sha256:[0-9a-f]{64}$'
+          image_ref="$image_repository@$digest"
+          echo "image_ref=$image_ref" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$image_ref" > "$RUNNER_TEMP/image-ref.txt"
+      - name: Scan immutable public sandbox image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ steps.image.outputs.image_ref }}
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          format: table
+      - name: Authenticate to mutate public sandbox infrastructure
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}
+      - name: Apply reviewed public sandbox Terraform plan
+        run: |
+          set -euo pipefail
+          state_bucket="$(jq -er '.state_bucket_name' "$RUNNER_TEMP/terraform-config.json")"
+          terraform -chdir="$COMPONENT_PATH" init -input=false \
+            -backend-config="bucket=$state_bucket" \
+            -backend-config="prefix=$STATE_PREFIX"
+          terraform -chdir="$COMPONENT_PATH" fmt -check -recursive
+          terraform -chdir="$COMPONENT_PATH" validate
+          terraform -chdir="$COMPONENT_PATH" plan -input=false -out=tfplan \
+            -var="project_config=$PROJECT_CONFIG" \
+            -var="environment_config=$ENVIRONMENT_CONFIG" \
+            -var="image_ref=${{ steps.image.outputs.image_ref }}"
+          terraform -chdir="$COMPONENT_PATH" apply -input=false tfplan
+      - name: Resolve deployed public sandbox URL
+        id: service
+        run: |
+          set -euo pipefail
+          service_url="$(terraform -chdir="$COMPONENT_PATH" output -raw public_url)"
+          test -n "$service_url"
+          echo "url=$service_url" >> "$GITHUB_OUTPUT"
+      - name: Run public sandbox anonymous smoke
+        id: smoke
+        run: |
+          set -euo pipefail
+          python -m pip install requests
+          python tools/public_sandbox_smoke.py --url "${{ steps.service.outputs.url }}" \
+            | tee "$RUNNER_TEMP/public-sandbox-smoke.txt"
+      - name: Create deploy evidence
+        if: ${{ always() }}
+        env:
+          SMOKE_RESULT: ${{ steps.smoke.outcome }}
+          PUBLIC_URL: ${{ steps.service.outputs.url }}
+          IMAGE_REF: ${{ steps.image.outputs.image_ref }}
+          COMMIT_SHA: ${{ steps.revision.outputs.sha }}
+        run: |
+          set -euo pipefail
+          evidence_dir="$RUNNER_TEMP/public-sandbox-evidence"
+          mkdir -p "$evidence_dir"
+          jq -n \
+            --arg operation deploy \
+            --arg result "$SMOKE_RESULT" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg commit_sha "$COMMIT_SHA" \
+            --arg image_ref "$IMAGE_REF" \
+            --arg terraform_component "$COMPONENT_PATH" \
+            --arg state_prefix "$STATE_PREFIX" \
+            --arg public_url "$PUBLIC_URL" \
+            --arg workflow_run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg recorded_at "$(date --utc +%Y-%m-%dT%H:%M:%SZ)" \
+            '{operation: $operation, result: $result, repository: $repository, commit_sha: $commit_sha, image_ref: $image_ref, terraform_component: $terraform_component, state_prefix: $state_prefix, public_url: $public_url, workflow_run_url: $workflow_run_url, recorded_at: $recorded_at}' \
+            > "$evidence_dir/deploy-evidence.json"
+          test -f "$RUNNER_TEMP/image-ref.txt" && cp "$RUNNER_TEMP/image-ref.txt" "$evidence_dir/" || true
+          test -f "$RUNNER_TEMP/public-sandbox-smoke.txt" && cp "$RUNNER_TEMP/public-sandbox-smoke.txt" "$evidence_dir/" || true
+      - name: Upload deploy evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: public-sandbox-deploy-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/public-sandbox-evidence
+          if-no-files-found: error
+          retention-days: 30
+
+  destroy:
+    if: ${{ inputs.operation == 'destroy' }}
+    name: Destroy public sandbox
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - name: Confirm public sandbox destruction
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = "DESTROY_PUBLIC_SANDBOX"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@v3
+      - name: Validate public sandbox Terraform configuration
+        run: |
+          python -m pip install jsonschema
+          PYTHONPATH=src python tools/terraform_config.py \
+            --project-config "$PROJECT_CONFIG" \
+            --environment-config "$ENVIRONMENT_CONFIG" \
+            --output "$RUNNER_TEMP/terraform-config.json"
+      - name: Authenticate to destroy public sandbox infrastructure
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}
+      - name: Apply reviewed public sandbox destroy plan
+        run: |
+          set -euo pipefail
+          state_bucket="$(jq -er '.state_bucket_name' "$RUNNER_TEMP/terraform-config.json")"
+          terraform -chdir="$COMPONENT_PATH" init -input=false \
+            -backend-config="bucket=$state_bucket" \
+            -backend-config="prefix=$STATE_PREFIX"
+          terraform -chdir="$COMPONENT_PATH" fmt -check -recursive
+          terraform -chdir="$COMPONENT_PATH" validate
+          terraform -chdir="$COMPONENT_PATH" plan -destroy -input=false -out=tfplan \
+            -var="project_config=$PROJECT_CONFIG" \
+            -var="environment_config=$ENVIRONMENT_CONFIG" \
+            -var="image_ref=gcr.io/google-samples/hello-app@sha256:9d06f9448b1f377e8ed6e977f9f3f14f2c9f23f0b690aad8c29d90dca69d632a"
+          terraform -chdir="$COMPONENT_PATH" apply -input=false tfplan
+      - name: Create destroy evidence
+        if: ${{ always() }}
+        env:
+          DESTROY_RESULT: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          evidence_dir="$RUNNER_TEMP/public-sandbox-destroy-evidence"
+          mkdir -p "$evidence_dir"
+          jq -n \
+            --arg operation destroy \
+            --arg result "$DESTROY_RESULT" \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg source_revision "$GITHUB_SHA" \
+            --arg terraform_component "$COMPONENT_PATH" \
+            --arg state_prefix "$STATE_PREFIX" \
+            --arg workflow_run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg recorded_at "$(date --utc +%Y-%m-%dT%H:%M:%SZ)" \
+            '{operation: $operation, result: $result, repository: $repository, source_revision: $source_revision, terraform_component: $terraform_component, state_prefix: $state_prefix, workflow_run_url: $workflow_run_url, recorded_at: $recorded_at}' \
+            > "$evidence_dir/destroy-evidence.json"
+      - name: Upload destroy evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: public-sandbox-destroy-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/public-sandbox-destroy-evidence
+          if-no-files-found: error
+          retention-days: 30
