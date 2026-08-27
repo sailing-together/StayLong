@@ -14,7 +14,7 @@ GITHUB_FEDERATION_VARIABLES = Path(
 )
 BOOTSTRAP_STATE_ROOT = Path("infra/terraform/bootstrap/state/main.tf")
 SYDNEY_PLATFORM_ROOT = Path("infra/terraform/components/sydney-platform/main.tf")
-DEPLOY_WORKFLOW = Path(".github/workflows/deploy.yml")
+DEPLOY_WORKFLOW = Path(".github/workflows/deploy-sydney-v2.yml")
 CLOUD_RUN_SERVICE_MODULE = Path(
     "infra/terraform/modules/base/cloud_run_service/main.tf"
 )
@@ -116,12 +116,14 @@ def test_identity_bootstrap_enables_managed_identity_apis_before_bucket_iam() ->
     assert expected_binding in federation_source
 
 
-def test_deployment_builds_directly_to_artifact_registry_without_cloud_build_queue() -> None:
+def test_v2_deployment_builds_directly_to_artifact_registry_and_applies_with_terraform() -> None:
     source = DEPLOY_WORKFLOW.read_text()
 
     assert "docker/setup-buildx-action@v3" in source
     assert "docker buildx build" in source
     assert "gcloud builds submit" not in source
+    assert "terraform -chdir=\"$component_path\" apply -input=false tfplan" in source
+    assert "gcloud run services update" not in source
 
 
 def test_sydney_platform_creates_runtime_identity_before_cloud_run_deployment() -> None:

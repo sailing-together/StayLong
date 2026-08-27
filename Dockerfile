@@ -8,7 +8,7 @@ RUN npm ci
 COPY frontend ./
 RUN npm run build
 
-FROM python:3.12-alpine3.23@sha256:31a768b01976652c222e318fe5bd6e7c252f056cbf489c88fa256f1bf0af58e3 AS runtime
+FROM python:3.12-alpine3.24@sha256:d09d15e60962ca365d1cd544a48773bac9d33f2fb1b00f2aa0deec78ade7dc31 AS runtime
 
 ARG BUILD_REVISION=unknown
 LABEL org.opencontainers.image.revision=$BUILD_REVISION
@@ -23,7 +23,8 @@ COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 COPY --from=frontend-build /frontend/dist ./src/staylong/api/static
 
-RUN python -m pip install --no-cache-dir '.[agents]' \
+RUN apk upgrade --no-cache \
+    && python -m pip install --no-cache-dir '.[agents]' \
     && adduser -D -u 10001 -s /sbin/nologin staylong
 
 USER 10001
