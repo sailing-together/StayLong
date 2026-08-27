@@ -14,6 +14,16 @@ def test_public_sandbox_is_dedicated_and_has_no_private_api_token() -> None:
     assert "STAYLONG_API_TOKEN" not in source
 
 
+def test_public_sandbox_enables_vertex_gemma_privacy_guard() -> None:
+    source = (COMPONENT / "main.tf").read_text()
+    assert 'name  = "STAYLONG_GEMMA_ENABLED"' in source
+    assert 'value = "true"' in source
+    assert 'name  = "GOOGLE_CLOUD_PROJECT"' in source
+    assert 'name  = "GOOGLE_CLOUD_LOCATION"' in source
+    assert 'value = "global"' in source
+    assert 'name  = "GOOGLE_GENAI_USE_VERTEXAI"' in source
+
+
 def test_public_sandbox_schedules_authenticated_cleanup() -> None:
     source = (COMPONENT / "main.tf").read_text()
     assert "google_cloud_scheduler_job" in source

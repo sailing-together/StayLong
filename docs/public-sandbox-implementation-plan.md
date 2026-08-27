@@ -6,7 +6,7 @@
 
 **Architecture:** A dedicated Cloud Run service runs the normal Vertex AI/ADK and Firestore workflow behind a separate public-sandbox API boundary. An opaque HttpOnly session cookie becomes a one-way ownership key; each workflow case belongs to exactly one active session and expires after a bounded retention period. Terraform owns the isolated service, runtime identity, public invoker policy and cleanup trigger; the private service remains private.
 
-**Tech Stack:** Python 3.12, FastAPI, Pydantic, Google ADK, Vertex AI, Firestore, Cloud Run, Cloud Scheduler, Terraform, GitHub Actions WIF, React, TypeScript, Vitest and pytest.
+**Tech Stack:** Python 3.12, FastAPI, Pydantic, Google ADK, Vertex AI Gemini, Vertex AI Gemma privacy guard, Firestore, Cloud Run, Cloud Scheduler, Terraform, GitHub Actions WIF, React, TypeScript, Vitest and pytest.
 
 **Spec:** [public-sandbox-design.md](public-sandbox-design.md)
 

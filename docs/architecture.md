@@ -16,6 +16,7 @@ flowchart LR
     R --> ADK["Google ADK intake / coordinator"]
   end
   ADK --> V["Vertex AI Gemini 3.5+"]
+  API --> G["Vertex AI Gemma privacy guard"]
   ADK --> F[("Firestore case state")]
   ADK --> Q["Cloud Tasks / Pub/Sub"]
   Q --> ADK
@@ -37,6 +38,7 @@ The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded
 | Cloud Run web/API service | Authenticated web UI, API, webhook receiver and ADK entry point. |
 | Google ADK | Plans and executes a bounded workflow through typed tools. |
 | Vertex AI Gemini | Extracts structured concerns, drafts plain-language summaries and proposes next permitted actions. |
+| Vertex AI Gemma privacy guard | Detects and redacts unnecessary PII before concern text is persisted or reaches an action boundary; it cannot make workflow or safety decisions. |
 | Firestore | Stores household consent, concern records, task state, approvals, action history and idempotency keys. |
 | Cloud Tasks | Schedules due-date checks, reminder retries and escalation work. |
 | Pub/Sub | Carries event notifications such as `concern.created`, `approval.granted`, `task.overdue` and `assessment.outcome.recorded`. |
@@ -63,6 +65,8 @@ The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded
 - The model receives a minimum typed context envelope rather than unrestricted household history. Versioned preparation packs are case artifacts visible to the approver.
 
 The design rationale and MVP priorities are recorded in [training-informed improvements](training-informed-improvements.md).
+
+Gemma is enabled with `STAYLONG_GEMMA_ENABLED=true` in the sandbox runtime. Its response is schema-validated (`redacted_text` plus `detected_categories`); malformed or empty output is rejected before the workflow continues. The privacy layer is separate from deterministic emergency routing and the Gemini/ADK planning agent.
 
 ## Security and privacy boundaries
 
