@@ -158,7 +158,8 @@ def test_sydney_v2_runtime_injects_vertex_project_environment_variable() -> None
     assert re.search(
         r"GOOGLE_CLOUD_PROJECT\s*=\s*local\.config\.project_id", component
     )
-    assert re.search(r"GOOGLE_CLOUD_LOCATION\s*=\s*local\.config\.region", component)
+    assert re.search(r'GOOGLE_CLOUD_LOCATION\s*=\s*"global"', component)
+    assert re.search(r'GOOGLE_GENAI_USE_VERTEXAI\s*=\s*"true"', component)
 
     cloud_run_module = Path(
         "infra/terraform/modules/base/cloud_run_service/main.tf"
