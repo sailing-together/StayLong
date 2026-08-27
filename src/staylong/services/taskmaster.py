@@ -14,6 +14,7 @@ from staylong.agents.intake import (
     MissingFact,
 )
 from staylong.domain.models import ActionApproval, TimelineEvent
+from staylong.privacy.gemma import PrivacyRedaction
 from staylong.services.channels import (
     CalendarDemoAdapter,
     CalendarDetails,
@@ -28,6 +29,12 @@ from staylong.services.home_plan import (
     build_home_independence_plan,
 )
 from staylong.services.reminders import Reminder, ReminderService, ReminderStatus
+
+
+class PrivacyGuard(Protocol):
+    """Sanitizes user text before it enters persisted workflow state."""
+
+    def redact(self, text: str) -> PrivacyRedaction: ...
 
 
 class WorkflowStage(StrEnum):
@@ -135,6 +142,7 @@ class TaskmasterWorkflow:
         calendar: CalendarDemoAdapter,
         contact_drafts: ContactDraftDemoAdapter | None = None,
         reminders: ReminderService | None = None,
+        privacy_guard: PrivacyGuard | None = None,
     ) -> None:
         self._intake_agent = intake_agent
         self._repository = repository
@@ -143,6 +151,7 @@ class TaskmasterWorkflow:
         self.contact_drafts = contact_drafts or ContactDraftDemoAdapter()
         self.integration_mode = calendar.integration_mode
         self._reminders = reminders or ReminderService()
+        self._privacy_guard = privacy_guard
 
     @property
     def repository(self) -> WorkflowRepository:
@@ -157,19 +166,24 @@ class TaskmasterWorkflow:
     def start(self, *, concern: str, now: datetime) -> WorkflowSnapshot:
         """Route danger before model use, otherwise begin the facts-only intake."""
         case_id = uuid4().hex
+        protected_concern = (
+            self._privacy_guard.redact(concern).redacted_text
+            if self._privacy_guard is not None
+            else concern
+        )
         try:
-            candidate_pack = self._intake_agent.prepare_assessment_pack(concern)
+            candidate_pack = self._intake_agent.prepare_assessment_pack(protected_concern)
         except EmergencyRouteRequired:
             snapshot = WorkflowSnapshot(
                 case_id=case_id,
-                concern=concern,
+                concern=protected_concern,
                 stage=WorkflowStage.EMERGENCY,
             )
             return self._save(snapshot)
 
         snapshot = WorkflowSnapshot(
             case_id=case_id,
-            concern=concern,
+            concern=protected_concern,
             stage=WorkflowStage.INTAKE,
             questions=candidate_pack.information_to_confirm,
             _candidate_pack=candidate_pack,

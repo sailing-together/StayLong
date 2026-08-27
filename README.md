@@ -6,6 +6,8 @@ See the [product brief](docs/product-brief.md) for policy context, MVP workflow 
 
 StayLong is a consent-governed, event-driven coordination layer for older Australians living alone. It turns a home-living concern into an accountable, assessment-ready plan, coordinates approved next steps, and follows up until every approved action is complete. The older person can work independently or invite an authorised supporter for a specific task.
 
+The public-sandbox runtime can pass concern text through a Vertex AI-hosted Gemma redaction guard before persistence or tool actions. Gemini 3.5+ remains the primary ADK coordinator; Gemma returns only a strict privacy contract and cannot change safety, consent or approval transitions.
+
 ## What it is—and is not
 
 StayLong helps older people and their chosen supporters prepare, coordinate and track. It sits between family care apps, provider operations software and My Aged Care: it does **not** deliver care, diagnose health conditions, prescribe home modifications, determine AT-HM eligibility, submit government forms, select a provider, or make payments. Human confirmation is required before every external action or information disclosure.
@@ -15,7 +17,9 @@ StayLong helps older people and their chosen supporters prepare, coordinate and 
 StayLong is designed for the **Taskmaster** track of the All Things Agentic Hackathon. It will use Gemini 3.5+ through Vertex AI, Google ADK, and Google Cloud services (Cloud Run, Firestore, Cloud Tasks and Pub/Sub).
 
 See [competition references](docs/competition-references.md) and the public [architecture](docs/architecture.md).
+The complete Devpost requirements and bonus evidence plan are in [submission readiness](docs/devpost-submission-readiness.md).
 The locked stack and live-submission compliance checklist are in [technology and compliance](docs/technology-and-compliance.md).
+The additional Gemma privacy integration is documented in [Gemma privacy guard](docs/gemma-privacy.md).
 Task documentation, human-action gates and pull-request practice follow the [delivery standards](docs/delivery-standards.md).
 Official Google training and the implementation choices it drives are in [official training guidance](docs/official-training-guidance.md).
 

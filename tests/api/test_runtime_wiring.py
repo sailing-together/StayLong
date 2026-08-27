@@ -20,6 +20,16 @@ class RecordedBuilder:
         return object()
 
 
+class RecordedGemmaBuilder:
+    def __init__(self) -> None:
+        self.project_id: str | None = None
+
+    def __call__(self, *, project_id: str, location: str) -> object:
+        self.project_id = project_id
+        assert location == "global"
+        return object()
+
+
 def test_runtime_uses_vertex_intake_and_firestore_storage() -> None:
     from staylong.api.runtime import build_runtime_workflow
     from tests.services.fake_firestore import FakeFirestoreClient
@@ -64,3 +74,19 @@ def test_runtime_uses_google_adapters_only_with_complete_oauth_configuration() -
 
     assert workflow.calendar.integration_mode == "google_oauth"
     assert workflow.contact_drafts.integration_mode == "google_oauth"
+
+
+def test_runtime_enables_gemma_privacy_guard_when_configured() -> None:
+    from staylong.api.runtime import build_runtime_workflow
+    from tests.services.fake_firestore import FakeFirestoreClient
+
+    gemma_builder = RecordedGemmaBuilder()
+    build_runtime_workflow(
+        {**VALID_ENVIRONMENT, "STAYLONG_GEMMA_ENABLED": "true"},
+        firestore_client=FakeFirestoreClient(),
+        executor=object(),
+        intake_builder=RecordedBuilder(),
+        gemma_builder=gemma_builder,
+    )
+
+    assert gemma_builder.project_id == "stay-long"

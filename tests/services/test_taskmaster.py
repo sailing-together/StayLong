@@ -54,6 +54,18 @@ class StaticProvider:
         }
 
 
+class StaticPrivacyGuard:
+    """Test double proving the workflow persists only the protected concern."""
+
+    def redact(self, text: str):
+        from staylong.privacy.gemma import PrivacyRedaction
+
+        return PrivacyRedaction(
+            redacted_text=text.replace("0412 345 678", "[PHONE REDACTED]"),
+            detected_categories=("phone",),
+        )
+
+
 def _workflow() -> object:
     from staylong.services.taskmaster import InMemoryWorkflowRepository, TaskmasterWorkflow
 
@@ -89,6 +101,26 @@ def test_normal_concern_prepares_pack_and_exact_calendar_draft() -> None:
         "concern.created",
         "assessment.pack.prepared",
     )
+
+
+def test_workflow_redacts_concern_before_model_and_persistence() -> None:
+    from staylong.services.taskmaster import InMemoryWorkflowRepository, TaskmasterWorkflow
+
+    workflow = TaskmasterWorkflow(
+        intake_agent=IntakeAgent(provider=StaticProvider()),
+        repository=InMemoryWorkflowRepository(),
+        event_repository=InMemoryEventRepository(),
+        calendar=CalendarDemoAdapter(),
+        privacy_guard=StaticPrivacyGuard(),
+    )
+
+    started = workflow.start(
+        concern="Call 0412 345 678 about the dark hallway.",
+        now=NOW,
+    )
+
+    assert "0412 345 678" not in started.concern
+    assert "[PHONE REDACTED]" in started.concern
 
 
 def test_answered_intake_builds_three_actionable_home_plan_tasks() -> None:

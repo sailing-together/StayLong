@@ -112,6 +112,26 @@ resource "google_cloud_run_v2_service" "sandbox" {
       }
 
       env {
+        name  = "STAYLONG_GEMMA_ENABLED"
+        value = "true"
+      }
+
+      env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = local.config.project_id
+      }
+
+      env {
+        name  = "GOOGLE_CLOUD_LOCATION"
+        value = "global"
+      }
+
+      env {
+        name  = "GOOGLE_GENAI_USE_VERTEXAI"
+        value = "true"
+      }
+
+      env {
         name  = "STAYLONG_GOOGLE_ACTIONS_MODE"
         value = "sandbox"
       }
