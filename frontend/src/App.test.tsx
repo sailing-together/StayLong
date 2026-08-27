@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
 const concern = 'Getting to the bathroom at night is difficult.'
@@ -154,5 +154,37 @@ describe('StayLong Continuous Home Path', () => {
 
     expect(await screen.findByRole('heading', { name: 'Call Triple Zero (000) now' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prepare my plan' })).not.toBeInTheDocument()
+  })
+})
+
+describe('public sandbox mode', () => {
+  beforeEach(() => {
+    vi.stubEnv('VITE_STAYLONG_API_MODE', 'public-sandbox')
+  })
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+  })
+
+  it('uses the public endpoint with credentials and names the public sandbox boundary', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => workflow('intake') })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    expect(screen.getByText('Public sandbox — temporary data, no real bookings or messages.')).toBeVisible()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    expect(fetchMock).toHaveBeenCalledWith('/v1/public/workflows', expect.objectContaining({ credentials: 'include' }))
+  })
+
+  it('labels a connected integration only when the workflow reports google_oauth', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ...prepared, integration_mode: 'google_oauth' }) }))
+    render(<App />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    await screen.findByRole('heading', { name: 'Your Home Independence Plan' })
+    expect(screen.getByText('Connected Google actions')).toBeVisible()
   })
 })

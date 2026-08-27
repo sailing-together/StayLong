@@ -57,3 +57,20 @@ does not read Vertex, Firestore, OAuth or Cloud Run credentials. The automated
 workspace test verifies that the local API becomes healthy before the UI proxy
 accepts an authenticated case request. This is developer-demo evidence only;
 it is not a substitute for the private Cloud Run evidence above.
+
+## Public sandbox release checklist
+
+- [x] `STAYLONG_API_TOKEN` is absent from the public sandbox Cloud Run service environment; the service rejects any request that supplies it.
+- [x] Public routes are served exclusively under `/v1/public/*`; the private `/v1/*` routes are unreachable from the public sandbox service.
+- [x] Session isolation: a cookie minted for session A is rejected (HTTP 403 or 404) when presented for a workflow owned by session B.
+- [x] Each anonymous identity is limited to two active cases; a third creation attempt returns HTTP 429.
+- [x] Cases and their event records are deleted after the 24-hour retention period by the scheduled cleanup job.
+- [x] The smoke script (`tools/public_sandbox_smoke.py`) uses two `requests.Session()` instances, never reads `STAYLONG_API_TOKEN`, and asserts the sandbox action result carries `payload.sandbox == "true"`.
+- [x] The React frontend displays the sandbox notice banner and routes requests through `/v1/public/*` with `credentials: include` when `VITE_STAYLONG_API_MODE=public-sandbox`.
+- [x] Teardown is manual, explicit, and scoped to the `public-sandbox` Terraform component only.
+
+## Reproducing the public sandbox smoke evidence
+
+- **Automatic path:** The `public-sandbox-smoke` workflow (`public-sandbox-smoke.yml`) runs two anonymous cookie sessions against the deployed `staylong-sydney-public-sandbox` Cloud Run service, verifies isolation, and reports pass/fail with no token ever printed.
+- **Manual path:** `python tools/public_sandbox_smoke.py --url <PUBLIC_SANDBOX_URL>`
+- **Link:** [StayLong Actions — public sandbox smoke](https://github.com/sailing-together/StayLong/actions/workflows/public-sandbox-smoke.yml)

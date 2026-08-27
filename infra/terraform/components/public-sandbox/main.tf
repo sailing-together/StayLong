@@ -1,0 +1,172 @@
+terraform {
+  backend "gcs" {}
+}
+
+locals {
+  config_root = "${path.module}/../../projects/config"
+  common      = jsondecode(file("${local.config_root}/common-environment.json"))
+  environment = jsondecode(file("${local.config_root}/${var.environment_config}"))
+  project     = jsondecode(file("${local.config_root}/${var.project_config}"))
+  config = merge(local.common, local.environment, local.project, {
+    labels = merge(local.common.labels, local.environment.labels, local.project.labels)
+  })
+}
+
+# --- Service accounts ---
+
+module "sandbox_runtime" {
+  source = "../../modules/base/service_account"
+
+  project_id   = local.config.project_id
+  account_id   = local.config.runtime_account_id
+  display_name = "StayLong public sandbox runtime"
+  description  = "Least-privilege runtime identity for the StayLong public sandbox service"
+}
+
+module "sandbox_scheduler" {
+  source = "../../modules/base/service_account"
+
+  project_id   = local.config.project_id
+  account_id   = local.config.scheduler_account_id
+  display_name = "StayLong public sandbox cleanup scheduler"
+  description  = "Dedicated identity for the scheduled public sandbox case-expiry job"
+}
+
+# --- Required APIs ---
+
+resource "google_project_service" "secret_manager" {
+  project            = local.config.project_id
+  service            = "secretmanager.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "cloud_scheduler" {
+  project            = local.config.project_id
+  service            = "cloudscheduler.googleapis.com"
+  disable_on_destroy = false
+}
+
+# --- Session HMAC secret ---
+# Signs the opaque HttpOnly session cookie; never the private API token.
+
+module "session_secret" {
+  source = "../../modules/base/secret_manager_secret"
+
+  project_id = local.config.project_id
+  secret_id  = "staylong-public-session-secret"
+  labels     = local.config.labels
+  accessor_members = [
+    "serviceAccount:${module.sandbox_runtime.email}",
+  ]
+
+  depends_on = [google_project_service.secret_manager, module.sandbox_runtime]
+}
+
+# --- Minimal IAM for sandbox runtime ---
+
+resource "google_project_iam_member" "sandbox_runtime_firestore" {
+  project = local.config.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${module.sandbox_runtime.email}"
+}
+
+resource "google_project_iam_member" "sandbox_runtime_vertex" {
+  project = local.config.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${module.sandbox_runtime.email}"
+}
+
+resource "google_project_iam_member" "sandbox_runtime_logging" {
+  project = local.config.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${module.sandbox_runtime.email}"
+}
+
+# --- Cloud Run public sandbox service ---
+
+resource "google_cloud_run_v2_service" "sandbox" {
+  project             = local.config.project_id
+  name                = "staylong-public-sandbox"
+  location            = local.config.region
+  ingress             = "INGRESS_TRAFFIC_ALL"
+  deletion_protection = false
+
+  template {
+    service_account = module.sandbox_runtime.email
+
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 3
+    }
+
+    containers {
+      image = var.image_ref
+
+      ports {
+        container_port = 8080
+      }
+
+      env {
+        name  = "STAYLONG_PUBLIC_SANDBOX"
+        value = "true"
+      }
+
+      env {
+        name  = "STAYLONG_GOOGLE_ACTIONS_MODE"
+        value = "sandbox"
+      }
+
+      env {
+        name = "STAYLONG_PUBLIC_SESSION_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = module.session_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [module.sandbox_runtime, module.session_secret]
+}
+
+# Public invoker — anonymous browser access; private routes remain bearer-protected.
+resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
+  project  = local.config.project_id
+  location = local.config.region
+  name     = google_cloud_run_v2_service.sandbox.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+# Scheduler invokes the cleanup endpoint with an OIDC token; anonymous calls are rejected.
+resource "google_cloud_run_v2_service_iam_member" "scheduler_invoker" {
+  project  = local.config.project_id
+  location = local.config.region
+  name     = google_cloud_run_v2_service.sandbox.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${module.sandbox_scheduler.email}"
+}
+
+# --- Hourly cleanup job ---
+
+resource "google_cloud_scheduler_job" "cleanup" {
+  project   = local.config.project_id
+  region    = local.config.region
+  name      = "staylong-public-sandbox-cleanup"
+  schedule  = "0 * * * *"
+  time_zone = "UTC"
+
+  http_target {
+    http_method = "POST"
+    uri         = "${google_cloud_run_v2_service.sandbox.uri}/internal/public-sandbox/cleanup"
+
+    oidc_token {
+      service_account_email = module.sandbox_scheduler.email
+      audience              = google_cloud_run_v2_service.sandbox.uri
+    }
+  }
+
+  depends_on = [google_project_service.cloud_scheduler]
+}
