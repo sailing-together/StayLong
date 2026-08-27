@@ -1,0 +1,191 @@
+"""Small, approval-independent Google Calendar OAuth boundary.
+
+This module handles consent state and refresh-token ownership only. It does not
+make a Calendar API call or expose credential material to workflow state. The
+public sandbox never constructs this service.
+"""
+
+from __future__ import annotations
+
+import json
+import secrets
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Protocol
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+
+class OAuthError(ValueError):
+    """A safe, user-facing OAuth flow failure."""
+
+
+@dataclass(frozen=True, slots=True)
+class OAuthTokenResponse:
+    """Validated subset of Google's token response."""
+
+    access_token: str
+    refresh_token: str
+    expires_in: int
+
+
+@dataclass(frozen=True, slots=True)
+class _PendingState:
+    session_id: str
+    expires_at: datetime
+
+
+class OAuthStateStore(Protocol):
+    def put(self, state: str, *, session_id: str, expires_at: datetime) -> None: ...
+
+    def peek(self, state: str) -> _PendingState | None: ...
+
+    def consume(self, state: str, *, now: datetime) -> _PendingState | None: ...
+
+
+class OAuthTokenStore(Protocol):
+    def save_refresh_token(self, session_id: str, refresh_token: str) -> None: ...
+
+    def get_refresh_token(self, session_id: str) -> str | None: ...
+
+
+class InMemoryOAuthStateStore:
+    """Test-only state store; production must use a durable, expiring store."""
+
+    def __init__(self) -> None:
+        self._states: dict[str, _PendingState] = {}
+
+    def put(self, state: str, *, session_id: str, expires_at: datetime) -> None:
+        self._states[state] = _PendingState(session_id=session_id, expires_at=expires_at)
+
+    def peek(self, state: str) -> _PendingState | None:
+        return self._states.get(state)
+
+    def consume(self, state: str, *, now: datetime) -> _PendingState | None:
+        pending = self._states.pop(state, None)
+        if pending is None or pending.expires_at <= now:
+            return None
+        return pending
+
+
+class InMemoryOAuthTokenStore:
+    """Test-only token store; tokens are never part of workflow snapshots."""
+
+    def __init__(self) -> None:
+        self._refresh_tokens: dict[str, str] = {}
+
+    def save_refresh_token(self, session_id: str, refresh_token: str) -> None:
+        self._refresh_tokens[session_id] = refresh_token
+
+    def get_refresh_token(self, session_id: str) -> str | None:
+        return self._refresh_tokens.get(session_id)
+
+
+class GoogleCalendarOAuth:
+    """Create Google consent URLs and exchange one-time authorization codes."""
+
+    authorization_endpoint = "https://accounts.google.com/o/oauth2/v2/auth"
+    token_endpoint = "https://oauth2.googleapis.com/token"
+    calendar_scope = "https://www.googleapis.com/auth/calendar.events"
+
+    def __init__(
+        self,
+        *,
+        client_id: str,
+        client_secret: str,
+        redirect_uri: str,
+        state_store: OAuthStateStore,
+        token_store: OAuthTokenStore,
+        state_lifetime: timedelta = timedelta(minutes=10),
+    ) -> None:
+        if not client_id or not client_secret or not redirect_uri:
+            raise ValueError("Google OAuth client configuration is incomplete.")
+        if state_lifetime <= timedelta(0):
+            raise ValueError("OAuth state lifetime must be positive.")
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._redirect_uri = redirect_uri
+        self._state_store = state_store
+        self._token_store = token_store
+        self._state_lifetime = state_lifetime
+
+    def authorization_url(self, *, session_id: str, now: datetime) -> str:
+        if not session_id:
+            raise ValueError("session_id is required.")
+        state = secrets.token_urlsafe(32)
+        self._state_store.put(
+            state,
+            session_id=session_id,
+            expires_at=now + self._state_lifetime,
+        )
+        return f"{self.authorization_endpoint}?{urlencode({
+            'client_id': self._client_id,
+            'redirect_uri': self._redirect_uri,
+            'response_type': 'code',
+            'scope': self.calendar_scope,
+            'access_type': 'offline',
+            'prompt': 'consent',
+            'state': state,
+        })}"
+
+    def exchange_code(
+        self,
+        *,
+        code: str,
+        state: str,
+        session_id: str,
+        now: datetime,
+        token_exchange: Callable[[str], OAuthTokenResponse] | None = None,
+    ) -> datetime:
+        if not code or not state or not session_id:
+            raise OAuthError("The Google authorization response is incomplete.")
+        pending = self._state_store.peek(state)
+        if pending is None:
+            raise OAuthError("The Google authorization state is expired or replayed.")
+        if not secrets.compare_digest(pending.session_id, session_id):
+            raise OAuthError("The Google authorization state belongs to another session.")
+        pending = self._state_store.consume(state, now=now)
+        if pending is None:
+            raise OAuthError("The Google authorization state is expired or replayed.")
+        exchange = token_exchange or self._exchange_code
+        try:
+            token = exchange(code)
+        except OAuthError:
+            raise
+        except Exception as error:
+            raise OAuthError("Google authorization could not be completed.") from error
+        if not token.access_token or not token.refresh_token or token.expires_in <= 0:
+            raise OAuthError("Google returned an invalid authorization token.")
+        self._token_store.save_refresh_token(session_id, token.refresh_token)
+        return now + timedelta(seconds=token.expires_in)
+
+    def _exchange_code(self, code: str) -> OAuthTokenResponse:
+        payload = urlencode({
+            "code": code,
+            "client_id": self._client_id,
+            "client_secret": self._client_secret,
+            "redirect_uri": self._redirect_uri,
+            "grant_type": "authorization_code",
+        }).encode()
+        request = Request(
+            self.token_endpoint,
+            data=payload,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=10) as response:  # noqa: S310 - fixed Google endpoint
+                data = json.loads(response.read().decode())
+        except Exception as error:
+            raise OAuthError("Google authorization could not be completed.") from error
+        if not isinstance(data, dict):
+            raise OAuthError("Google returned an invalid authorization response.")
+        try:
+            return OAuthTokenResponse(
+                access_token=str(data["access_token"]),
+                refresh_token=str(data["refresh_token"]),
+                expires_in=int(data["expires_in"]),
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise OAuthError("Google returned an invalid authorization token.") from error
