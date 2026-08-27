@@ -155,6 +155,7 @@ def test_sydney_v2_runtime_injects_vertex_project_environment_variable() -> None
 
     assert "environment_variables = {" in component
     assert "GOOGLE_CLOUD_PROJECT = local.config.project_id" in component
+    assert "GOOGLE_CLOUD_LOCATION = local.config.region" in component
 
     cloud_run_module = Path(
         "infra/terraform/modules/base/cloud_run_service/main.tf"
