@@ -27,6 +27,13 @@ def test_v2_deployment_adds_a_secret_version_without_passing_it_to_terraform() -
     assert "--environment-config stay-long-sydney-sandbox.json" in source
 
 
+def test_v2_workflow_is_the_only_automatic_application_deployment_path() -> None:
+    """Retired service names must not receive automatic main-branch deployments."""
+    assert WORKFLOW.exists()
+    assert not Path(".github/workflows/deploy.yml").exists()
+    assert not Path(".github/workflows/deploy-sydney.yml").exists()
+
+
 def test_v2_public_diagnostic_reverts_the_temporary_invoker_binding() -> None:
     """A diagnostic can expose only the v2 health endpoint and must always revoke it."""
     source = PUBLIC_DIAGNOSTIC_WORKFLOW.read_text()
