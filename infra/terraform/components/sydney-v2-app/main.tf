@@ -26,7 +26,8 @@ module "service" {
   image                 = var.image_ref
   enable_public_invoker = var.diagnostic_public_invoker
   environment_variables = {
-    GOOGLE_CLOUD_PROJECT = local.config.project_id
+    GOOGLE_CLOUD_PROJECT  = local.config.project_id
+    GOOGLE_CLOUD_LOCATION = local.config.region
   }
   invoker_members = [
     "serviceAccount:${local.config.deployer_account_id}@${local.config.project_id}.iam.gserviceaccount.com",
