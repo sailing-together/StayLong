@@ -1,5 +1,6 @@
 """Security contract for the protected Sydney v2 deployment workflow."""
 
+import re
 from pathlib import Path
 
 WORKFLOW = Path(".github/workflows/deploy-sydney-v2.yml")
@@ -154,8 +155,10 @@ def test_sydney_v2_runtime_injects_vertex_project_environment_variable() -> None
     component = Path("infra/terraform/components/sydney-v2-app/main.tf").read_text()
 
     assert "environment_variables = {" in component
-    assert "GOOGLE_CLOUD_PROJECT = local.config.project_id" in component
-    assert "GOOGLE_CLOUD_LOCATION = local.config.region" in component
+    assert re.search(
+        r"GOOGLE_CLOUD_PROJECT\s*=\s*local\.config\.project_id", component
+    )
+    assert re.search(r"GOOGLE_CLOUD_LOCATION\s*=\s*local\.config\.region", component)
 
     cloud_run_module = Path(
         "infra/terraform/modules/base/cloud_run_service/main.tf"
