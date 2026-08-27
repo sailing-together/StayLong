@@ -28,8 +28,8 @@ concurrency:
 env:
   COMPONENT_PATH: infra/terraform/components/public-sandbox
   PROJECT_CONFIG: staylong-public-sandbox.json
-  ENVIRONMENT_CONFIG: sandbox.json
-  STATE_PREFIX: staylong/sandbox/public-sandbox
+  ENVIRONMENT_CONFIG: stay-long-sydney-sandbox.json
+  STATE_PREFIX: staylong/sydney-sandbox/public-sandbox
   REGION: australia-southeast1
   REPOSITORY: staylong-sydney
   SERVICE: staylong-public-sandbox

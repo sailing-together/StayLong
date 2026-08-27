@@ -15,8 +15,8 @@
 - GCP authentication uses GitHub OIDC and WIF only; no service-account JSON keys.
 - The protected GitHub environment is exactly `sandbox`.
 - Terraform mutation is fixed to `infra/terraform/components/public-sandbox`.
-- Terraform configuration is fixed to `staylong-public-sandbox.json` and `sandbox.json`.
-- Remote state prefix is exactly `staylong/sandbox/public-sandbox`.
+- Terraform configuration is fixed to `staylong-public-sandbox.json` and `stay-long-sydney-sandbox.json`.
+- Remote state prefix is exactly `staylong/sydney-sandbox/public-sandbox`.
 - Deploy requires `DEPLOY_PUBLIC_SANDBOX`; destroy requires `DESTROY_PUBLIC_SANDBOX`.
 - A deploy revision must be reachable from `origin/main`.
 - The deployed image must use an immutable `@sha256:` reference.
@@ -84,8 +84,8 @@ def test_terraform_scope_cannot_escape_public_sandbox() -> None:
     source = workflow_source()
     assert "COMPONENT_PATH: infra/terraform/components/public-sandbox" in source
     assert "PROJECT_CONFIG: staylong-public-sandbox.json" in source
-    assert "ENVIRONMENT_CONFIG: sandbox.json" in source
-    assert "STATE_PREFIX: staylong/sandbox/public-sandbox" in source
+    assert "ENVIRONMENT_CONFIG: stay-long-sydney-sandbox.json" in source
+    assert "STATE_PREFIX: staylong/sydney-sandbox/public-sandbox" in source
     assert "inputs.component" not in source
     assert "tools/cloudrun_smoke.py" not in source
 

@@ -45,8 +45,8 @@ def test_terraform_scope_cannot_escape_public_sandbox() -> None:
     source = workflow_source()
     assert "COMPONENT_PATH: infra/terraform/components/public-sandbox" in source
     assert "PROJECT_CONFIG: staylong-public-sandbox.json" in source
-    assert "ENVIRONMENT_CONFIG: sandbox.json" in source
-    assert "STATE_PREFIX: staylong/sandbox/public-sandbox" in source
+    assert "ENVIRONMENT_CONFIG: stay-long-sydney-sandbox.json" in source
+    assert "STATE_PREFIX: staylong/sydney-sandbox/public-sandbox" in source
     assert "inputs.component" not in source
     assert "tools/cloudrun_smoke.py" not in source
 

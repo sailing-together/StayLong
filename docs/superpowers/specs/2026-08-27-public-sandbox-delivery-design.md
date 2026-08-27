@@ -57,9 +57,9 @@ The deploy job performs the following sequence:
    existing Sydney Artifact Registry repository, scan the immutable image,
    and record the resulting `repository@sha256:...` reference.
 4. Validate the fixed configuration pair
-   `staylong-public-sandbox.json` plus `sandbox.json` and initialize only
+   `staylong-public-sandbox.json` plus `stay-long-sydney-sandbox.json` and initialize only
    `infra/terraform/components/public-sandbox` with the remote-state prefix
-   `staylong/sandbox/public-sandbox`.
+   `staylong/sydney-sandbox/public-sandbox`.
 5. Plan and apply the component using the immutable image reference. The saved
    Terraform plan is the only input to apply.
 6. Read `public_url` from Terraform output and run
