@@ -66,6 +66,15 @@ class StaticPrivacyGuard:
         )
 
 
+class RecordingPrivacyGuard(StaticPrivacyGuard):
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def redact(self, text: str):
+        self.calls.append(text)
+        return super().redact(text)
+
+
 def _workflow() -> object:
     from staylong.services.taskmaster import InMemoryWorkflowRepository, TaskmasterWorkflow
 
@@ -121,6 +130,31 @@ def test_workflow_redacts_concern_before_model_and_persistence() -> None:
 
     assert "0412 345 678" not in started.concern
     assert "[PHONE REDACTED]" in started.concern
+
+
+def test_emergency_route_skips_gemma_privacy_call() -> None:
+    from staylong.services.taskmaster import (
+        InMemoryWorkflowRepository,
+        TaskmasterWorkflow,
+        WorkflowStage,
+    )
+
+    privacy_guard = RecordingPrivacyGuard()
+    workflow = TaskmasterWorkflow(
+        intake_agent=IntakeAgent(provider=StaticProvider()),
+        repository=InMemoryWorkflowRepository(),
+        event_repository=InMemoryEventRepository(),
+        calendar=CalendarDemoAdapter(),
+        privacy_guard=privacy_guard,
+    )
+
+    started = workflow.start(
+        concern="My parent is unconscious. Call 0412 345 678 now.",
+        now=NOW,
+    )
+
+    assert started.stage is WorkflowStage.EMERGENCY
+    assert privacy_guard.calls == []
 
 
 def test_answered_intake_builds_three_actionable_home_plan_tasks() -> None:

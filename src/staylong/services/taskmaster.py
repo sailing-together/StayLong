@@ -14,6 +14,7 @@ from staylong.agents.intake import (
     MissingFact,
 )
 from staylong.domain.models import ActionApproval, TimelineEvent
+from staylong.policy.emergency import EMERGENCY_ROUTE, route_concern
 from staylong.privacy.gemma import PrivacyRedaction
 from staylong.services.channels import (
     CalendarDemoAdapter,
@@ -166,11 +167,10 @@ class TaskmasterWorkflow:
     def start(self, *, concern: str, now: datetime) -> WorkflowSnapshot:
         """Route danger before model use, otherwise begin the facts-only intake."""
         case_id = uuid4().hex
-        protected_concern = (
-            self._privacy_guard.redact(concern).redacted_text
-            if self._privacy_guard is not None
-            else concern
-        )
+        # Emergency detection must remain deterministic and must never wait for a model.
+        protected_concern = concern
+        if self._privacy_guard is not None and route_concern(concern) != EMERGENCY_ROUTE:
+            protected_concern = self._privacy_guard.redact(concern).redacted_text
         try:
             candidate_pack = self._intake_agent.prepare_assessment_pack(protected_concern)
         except EmergencyRouteRequired:
