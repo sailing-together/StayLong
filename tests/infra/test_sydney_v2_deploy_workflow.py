@@ -149,6 +149,21 @@ def test_cloud_run_runtime_uses_a_pinned_alpine_base_with_security_updates() -> 
     assert "FROM python:3.12-slim AS runtime" not in dockerfile
 
 
+def test_sydney_v2_runtime_injects_vertex_project_environment_variable() -> None:
+    """Cloud Run must provide the project name required by Vertex AI startup."""
+    component = Path("infra/terraform/components/sydney-v2-app/main.tf").read_text()
+
+    assert "environment_variables = {" in component
+    assert "GOOGLE_CLOUD_PROJECT = local.config.project_id" in component
+
+    cloud_run_module = Path(
+        "infra/terraform/modules/base/cloud_run_service/main.tf"
+    ).read_text()
+    assert "for_each = var.environment_variables" in cloud_run_module
+    assert 'name  = env.key' in cloud_run_module
+    assert "value = env.value" in cloud_run_module
+
+
 def test_cloud_run_smoke_avoids_reserved_paths_ending_in_z() -> None:
     smoke_tool = SMOKE_TOOL.read_text()
 

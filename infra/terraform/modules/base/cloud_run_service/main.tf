@@ -16,6 +16,15 @@ resource "google_cloud_run_v2_service" "this" {
       image = var.image
 
       dynamic "env" {
+        for_each = var.environment_variables
+
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+
+      dynamic "env" {
         for_each = var.secret_environment_variables
 
         content {
