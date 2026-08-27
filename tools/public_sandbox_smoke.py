@@ -26,7 +26,8 @@ class SmokeTestError(RuntimeError):
 def _expect(response: requests.Response, status: int, message: str) -> dict:
     if response.status_code != status:
         raise SmokeTestError(
-            f"{message}: expected HTTP {status}, received {response.status_code} — {response.text[:200]}"
+            f"{message}: expected HTTP {status}, "
+            f"received {response.status_code} — {response.text[:200]}"
         )
     return response.json()
 
