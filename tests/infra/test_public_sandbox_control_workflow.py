@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-
 WORKFLOW = Path(".github/workflows/public-sandbox-control.yml")
 
 
@@ -58,3 +57,11 @@ def test_destroy_uses_a_saved_plan_and_retains_evidence() -> None:
     assert 'terraform -chdir="$COMPONENT_PATH" apply -input=false tfplan' in source
     assert "if: ${{ always() }}" in source
     assert "public-sandbox-destroy-evidence" in source
+
+
+def test_standalone_smoke_targets_the_public_sandbox_component() -> None:
+    source = Path(".github/workflows/public-sandbox-smoke.yml").read_text()
+    assert "SERVICE: staylong-public-sandbox" in source
+    assert "REGION: australia-southeast1" in source
+    assert "tools/public_sandbox_smoke.py" in source
+    assert "STAYLONG_API_TOKEN" not in source
