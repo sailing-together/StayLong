@@ -136,15 +136,16 @@ def test_cloud_run_container_uses_granian_asgi_server() -> None:
     ) in dockerfile
 
 
-def test_cloud_run_runtime_uses_a_minimal_versioned_alpine_base() -> None:
-    """Keep the deployed runtime small and avoid the vulnerable Debian package set."""
+def test_cloud_run_runtime_uses_a_pinned_alpine_base_with_security_updates() -> None:
+    """The scanned runtime must contain the currently patched Alpine packages."""
     dockerfile = DOCKERFILE.read_text()
 
     assert (
-        "FROM python:3.12-alpine3.23@sha256:"
-        "31a768b01976652c222e318fe5bd6e7c252f056cbf489c88fa256f1bf0af58e3 "
+        "FROM python:3.12-alpine3.24@sha256:"
+        "d09d15e60962ca365d1cd544a48773bac9d33f2fb1b00f2aa0deec78ade7dc31 "
         "AS runtime"
     ) in dockerfile
+    assert "RUN apk upgrade --no-cache" in dockerfile
     assert "FROM python:3.12-slim AS runtime" not in dockerfile
 
 
