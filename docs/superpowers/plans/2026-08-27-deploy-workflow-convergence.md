@@ -131,4 +131,3 @@ Expected: PASS with no lint violations.
 Run: `git diff origin/main -- .github/workflows Dockerfile tests/infra/test_sydney_v2_deploy_workflow.py`
 
 Expected: two retired workflows removed, runtime security update present, and Trivy remains fail-closed.
-
