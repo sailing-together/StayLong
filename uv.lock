@@ -2404,6 +2404,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "google-cloud-firestore" },
+    { name = "google-cloud-secret-manager" },
     { name = "granian" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -2429,6 +2430,7 @@ requires-dist = [
     { name = "google-adk", extras = ["gcp"], marker = "extra == 'agents'", specifier = ">=2.0.0,<3.0.0" },
     { name = "google-cloud-firestore", specifier = ">=2.16" },
     { name = "google-cloud-pubsub", marker = "extra == 'async-dispatch'", specifier = ">=2.28" },
+    { name = "google-cloud-secret-manager", specifier = ">=2.20" },
     { name = "google-cloud-tasks", marker = "extra == 'async-dispatch'", specifier = ">=2.19" },
     { name = "granian", specifier = ">=2,<3" },
     { name = "httpx2", marker = "extra == 'dev'", specifier = ">=0.1" },
