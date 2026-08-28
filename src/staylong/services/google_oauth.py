@@ -7,6 +7,7 @@ public sandbox never constructs this service.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import secrets
 from collections.abc import Callable
@@ -80,6 +81,75 @@ class InMemoryOAuthTokenStore:
 
     def get_refresh_token(self, session_id: str) -> str | None:
         return self._refresh_tokens.get(session_id)
+
+
+class SecretManagerOAuthTokenStore:
+    """Persist refresh tokens in Secret Manager under hashed session keys."""
+
+    def __init__(self, *, client: object | None = None, project_id: str) -> None:
+        if not project_id:
+            raise ValueError("project_id is required for Secret Manager token storage.")
+        if client is None:
+            from google.cloud import secretmanager
+
+            client = secretmanager.SecretManagerServiceClient()
+        self._client = client
+        self._project_id = project_id
+
+    def save_refresh_token(self, session_id: str, refresh_token: str) -> None:
+        if not session_id or not refresh_token:
+            raise ValueError("session_id and refresh_token are required.")
+        secret_id = self._secret_id(session_id)
+        parent = self._client.secret_path(self._project_id, secret_id)
+        try:
+            self._client.get_secret(name=parent)
+        except Exception as error:
+            from google.api_core.exceptions import NotFound
+
+            if not isinstance(error, NotFound):
+                raise
+            from google.cloud import secretmanager
+
+            self._client.create_secret(
+                request=secretmanager.CreateSecretRequest(
+                    parent=f"projects/{self._project_id}",
+                    secret_id=secret_id,
+                    secret=secretmanager.Secret(replication=secretmanager.Replication(automatic={})),
+                )
+            )
+        from google.cloud import secretmanager
+
+        self._client.add_secret_version(
+            request=secretmanager.AddSecretVersionRequest(
+                parent=parent,
+                payload=secretmanager.SecretPayload(data=refresh_token.encode()),
+            )
+        )
+
+    def get_refresh_token(self, session_id: str) -> str | None:
+        if not session_id:
+            return None
+        secret_id = self._secret_id(session_id)
+        version = self._client.secret_version_path(self._project_id, secret_id, "latest")
+        try:
+            response = self._client.access_secret_version(
+                request=self._request_for_access(version)
+            )
+        except Exception:
+            return None
+        value = response.payload.data.decode()
+        return value or None
+
+    @staticmethod
+    def _secret_id(session_id: str) -> str:
+        digest = hashlib.sha256(session_id.encode()).hexdigest()
+        return f"staylong-calendar-{digest[:40]}"
+
+    @staticmethod
+    def _request_for_access(name: str) -> object:
+        from google.cloud import secretmanager
+
+        return secretmanager.AccessSecretVersionRequest(name=name)
 
 
 class GoogleCalendarOAuth:
