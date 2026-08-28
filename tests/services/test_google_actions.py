@@ -21,6 +21,15 @@ def test_missing_google_oauth_configuration_selects_sandbox_adapters() -> None:
     assert adapters.contact_drafts.integration_mode == "sandbox"
 
 
+def test_explicit_sandbox_mode_selects_sandbox_adapters() -> None:
+    from staylong.services.google_actions import build_action_adapters
+
+    adapters = build_action_adapters({"STAYLONG_GOOGLE_ACTIONS_MODE": "sandbox"})
+
+    assert adapters.integration_mode == "sandbox"
+    assert adapters.calendar.integration_mode == "sandbox"
+
+
 def test_complete_google_configuration_selects_authorised_google_adapters() -> None:
     from staylong.services.google_actions import build_action_adapters
 
