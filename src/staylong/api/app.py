@@ -5,15 +5,16 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Protocol
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.staticfiles import StaticFiles
 
 from staylong.services.cases import CaseRepository, InMemoryCaseRepository
+from staylong.services.google_oauth import OAuthError
 from staylong.services.public_sessions import (
     PublicCaseAccessDenied,
     PublicCaseAccessRepository,
@@ -121,6 +122,15 @@ class ActionResultResponse(BaseModel):
     payload: dict[str, str]
 
 
+class CalendarOAuthStartResponse(BaseModel):
+    authorization_url: str
+
+
+class CalendarOAuthCallbackResponse(BaseModel):
+    connected: bool
+    expires_at: datetime
+
+
 class ReminderResponse(BaseModel):
     reminder_id: str
     action: str
@@ -152,6 +162,13 @@ class WorkflowResponse(BaseModel):
 
 APPLICATION_TOKEN_HEADER = "X-StayLong-API-Token"
 PUBLIC_SESSION_COOKIE = "staylong_public_session"
+GOOGLE_PRINCIPAL_HEADER = "X-Goog-Authenticated-User-Email"
+
+
+class CalendarOAuthService(Protocol):
+    def authorization_url(self, *, session_id: str, now: datetime) -> str: ...
+
+    def exchange_callback(self, *, code: str, state: str, now: datetime) -> datetime: ...
 
 
 @dataclass(frozen=True)
@@ -171,6 +188,7 @@ def create_app(
     repository: CaseRepository | None = None,
     workflow: TaskmasterWorkflow | None = None,
     public_sandbox: PublicSandboxConfig | None = None,
+    calendar_oauth: CalendarOAuthService | None = None,
 ) -> FastAPI:
     """Create the API with an explicit token and injectable case repository."""
     if not api_token:
@@ -212,6 +230,25 @@ def create_app(
                 detail="StayLong workflow is not available yet.",
             )
         return workflow
+
+    def require_calendar_oauth() -> CalendarOAuthService:
+        if calendar_oauth is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Google Calendar integration is not configured.",
+            )
+        return calendar_oauth
+
+    def trusted_google_principal(request: Request) -> str:
+        principal = request.headers.get(GOOGLE_PRINCIPAL_HEADER, "").strip()
+        if principal.startswith("accounts.google.com:"):
+            principal = principal.split(":", 1)[1]
+        if not principal or len(principal) > 320:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="An authenticated Google user is required.",
+            )
+        return principal
 
     def public_session(request: Request, response: Response) -> PublicSession:
         """Return the current anonymous browser session without persisting its token."""
@@ -261,6 +298,38 @@ def create_app(
     @app.get("/health", include_in_schema=False)
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get(
+        "/v1/integrations/google/calendar/start",
+        response_model=CalendarOAuthStartResponse,
+    )
+    def start_calendar_oauth(
+        request: Request,
+        _: Callable[[], None] = Depends(require_auth),
+        oauth: CalendarOAuthService = Depends(require_calendar_oauth),
+    ) -> CalendarOAuthStartResponse:
+        principal = trusted_google_principal(request)
+        return CalendarOAuthStartResponse(
+            authorization_url=oauth.authorization_url(session_id=principal, now=_now())
+        )
+
+    @app.get(
+        "/v1/integrations/google/calendar/callback",
+        response_model=CalendarOAuthCallbackResponse,
+    )
+    def calendar_oauth_callback(
+        code: str = Query(min_length=1, max_length=4_096),
+        state: str = Query(min_length=1, max_length=512),
+        oauth: CalendarOAuthService = Depends(require_calendar_oauth),
+    ) -> CalendarOAuthCallbackResponse:
+        try:
+            expires_at = oauth.exchange_callback(code=code, state=state, now=_now())
+        except OAuthError as error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(error),
+            ) from None
+        return CalendarOAuthCallbackResponse(connected=True, expires_at=expires_at)
 
     @app.post("/v1/cases", response_model=CaseResponse, status_code=status.HTTP_201_CREATED)
     def create_case(

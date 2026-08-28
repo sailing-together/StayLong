@@ -230,6 +230,26 @@ class GoogleCalendarOAuth:
         self._token_store.save_refresh_token(session_id, token.refresh_token)
         return now + timedelta(seconds=token.expires_in)
 
+    def exchange_callback(
+        self,
+        *,
+        code: str,
+        state: str,
+        now: datetime,
+        token_exchange: Callable[[str], OAuthTokenResponse] | None = None,
+    ) -> datetime:
+        """Exchange a browser callback using the session bound to its state."""
+        pending = self._state_store.peek(state)
+        if pending is None:
+            raise OAuthError("The Google authorization state is expired or replayed.")
+        return self.exchange_code(
+            code=code,
+            state=state,
+            session_id=pending.session_id,
+            now=now,
+            token_exchange=token_exchange,
+        )
+
     def _exchange_code(self, code: str) -> OAuthTokenResponse:
         payload = urlencode({
             "code": code,
