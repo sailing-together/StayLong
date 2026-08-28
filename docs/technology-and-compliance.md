@@ -46,11 +46,14 @@ StayLong is safe by default: without Google OAuth configuration, every action
 adapter is in explicit `sandbox` mode and only records an inspectable local
 result. It does **not** pretend that an event or message was created in Google.
 
-To enable user-authorised Google actions in a non-demo environment, an operator
-must complete the OAuth consent flow outside the product, store the short-lived
-access token in Secret Manager, and inject it into Cloud Run as
-`STAYLONG_GOOGLE_OAUTH_ACCESS_TOKEN`. The operator must also set
-`STAYLONG_GOOGLE_ACTIONS_MODE=oauth` and `STAYLONG_GOOGLE_CALENDAR_ID`.
+To enable user-authorised Google Calendar actions in a private non-demo
+environment, an operator must configure the OAuth client ID and exact redirect
+URI, and reference the client secret through Secret Manager using
+`STAYLONG_GOOGLE_OAUTH_CLIENT_SECRET_ID`. The runtime uses the authenticated
+principal and stores only the minimum OAuth state and refresh-token material
+needed for that user's connection; raw tokens never appear in Terraform,
+Firestore case records, API responses or logs. See the [private Calendar OAuth
+runbook](google-calendar-oauth-runbook.md) for the operator-controlled check.
 Tokens must never be committed, put in Terraform variables/state, persisted in
 Firestore, returned from the API, or written to logs.
 
