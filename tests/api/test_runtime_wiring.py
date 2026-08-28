@@ -95,6 +95,7 @@ def test_runtime_enables_gemma_privacy_guard_when_configured() -> None:
 def test_runtime_builds_calendar_oauth_only_with_complete_client_configuration() -> None:
     from staylong.api.runtime import build_calendar_oauth
     from staylong.services.google_oauth import InMemoryOAuthTokenStore
+    from tests.services.fake_firestore import FakeFirestoreClient
 
     oauth = build_calendar_oauth(
         {
@@ -104,6 +105,7 @@ def test_runtime_builds_calendar_oauth_only_with_complete_client_configuration()
             "STAYLONG_GOOGLE_OAUTH_REDIRECT_URI": "https://staylong.example.com/callback",
         },
         token_store=InMemoryOAuthTokenStore(),
+        firestore_client=FakeFirestoreClient(),
     )
 
     assert oauth is not None
