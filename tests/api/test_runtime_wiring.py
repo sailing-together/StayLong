@@ -90,3 +90,30 @@ def test_runtime_enables_gemma_privacy_guard_when_configured() -> None:
     )
 
     assert gemma_builder.project_id == "stay-long"
+
+
+def test_runtime_builds_calendar_oauth_only_with_complete_client_configuration() -> None:
+    from staylong.api.runtime import build_calendar_oauth
+    from staylong.services.google_oauth import InMemoryOAuthTokenStore
+
+    oauth = build_calendar_oauth(
+        {
+            **VALID_ENVIRONMENT,
+            "STAYLONG_GOOGLE_OAUTH_CLIENT_ID": "client-id",
+            "STAYLONG_GOOGLE_OAUTH_CLIENT_SECRET": "client-secret",
+            "STAYLONG_GOOGLE_OAUTH_REDIRECT_URI": "https://staylong.example.com/callback",
+        },
+        token_store=InMemoryOAuthTokenStore(),
+    )
+
+    assert oauth is not None
+    assert oauth.calendar_scope.endswith("calendar.events")
+
+
+def test_runtime_rejects_partial_calendar_oauth_configuration() -> None:
+    from staylong.api.runtime import build_calendar_oauth
+
+    with pytest.raises(ValueError, match="incomplete"):
+        build_calendar_oauth(
+            {**VALID_ENVIRONMENT, "STAYLONG_GOOGLE_OAUTH_CLIENT_ID": "client-id"}
+        )
