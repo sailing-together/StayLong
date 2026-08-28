@@ -44,6 +44,8 @@ class GoogleActionConfig:
         mode = values.get("STAYLONG_GOOGLE_ACTIONS_MODE", "").strip().casefold()
         if not mode:
             return None
+        if mode == "sandbox":
+            return None
         if mode != "oauth":
             raise ValueError("STAYLONG_GOOGLE_ACTIONS_MODE must be 'oauth' when configured.")
         access_token = values.get("STAYLONG_GOOGLE_OAUTH_ACCESS_TOKEN", "").strip()
