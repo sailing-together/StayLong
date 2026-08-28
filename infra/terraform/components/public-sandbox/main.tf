@@ -46,6 +46,24 @@ resource "google_project_service" "cloud_scheduler" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "firestore" {
+  project            = local.config.project_id
+  service            = "firestore.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_firestore_database" "public_sandbox" {
+  project                     = local.config.project_id
+  name                        = "(default)"
+  location_id                 = local.config.region
+  type                        = "FIRESTORE_NATIVE"
+  concurrency_mode            = "OPTIMISTIC"
+  app_engine_integration_mode = "DISABLED"
+  delete_protection_state     = "DELETE_PROTECTION_DISABLED"
+
+  depends_on = [google_project_service.firestore]
+}
+
 # --- Session HMAC secret ---
 # Signs the opaque HttpOnly session cookie; never the private API token.
 
@@ -148,7 +166,11 @@ resource "google_cloud_run_v2_service" "sandbox" {
     }
   }
 
-  depends_on = [module.sandbox_runtime, module.session_secret]
+  depends_on = [
+    google_firestore_database.public_sandbox,
+    module.sandbox_runtime,
+    module.session_secret,
+  ]
 }
 
 # Public invoker — anonymous browser access; private routes remain bearer-protected.
