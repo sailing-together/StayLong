@@ -39,6 +39,12 @@ def test_public_sandbox_provisions_firestore_for_durable_sessions() -> None:
     assert 'name                        = "(default)"' in source
 
 
+def test_public_sandbox_enables_vertex_ai_for_gemma_privacy_guard() -> None:
+    source = (COMPONENT / "main.tf").read_text()
+
+    assert 'service            = "aiplatform.googleapis.com"' in source
+
+
 def test_public_sandbox_outputs_only_url_and_non_sensitive_evidence() -> None:
     source = (COMPONENT / "outputs.tf").read_text()
     assert "public_url" in source
