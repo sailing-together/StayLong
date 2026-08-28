@@ -165,3 +165,29 @@ def test_secret_manager_store_hashes_session_and_round_trips_refresh_token() -> 
     assert store.get_refresh_token("session-a") == "refresh-token"
     assert list(client.secrets) == [next(iter(client.secrets))]
     assert "session-a" not in next(iter(client.secrets))
+
+
+def test_callback_exchange_uses_the_session_bound_to_state_without_returning_it() -> None:
+    token_store = InMemoryOAuthTokenStore()
+    oauth = GoogleCalendarOAuth(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri="https://staylong.example.com/oauth/callback",
+        state_store=InMemoryOAuthStateStore(),
+        token_store=token_store,
+    )
+    state = parse_qs(urlparse(oauth.authorization_url(session_id="user-a", now=NOW)).query)[
+        "state"
+    ][0]
+
+    expires_at = oauth.exchange_callback(
+        code="authorization-code",
+        state=state,
+        now=NOW,
+        token_exchange=lambda _: OAuthTokenResponse(
+            access_token="access", refresh_token="refresh", expires_in=3600
+        ),
+    )
+
+    assert expires_at == NOW + timedelta(seconds=3600)
+    assert token_store.get_refresh_token("user-a") == "refresh"
