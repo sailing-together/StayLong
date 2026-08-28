@@ -120,6 +120,7 @@ jobs:
           gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
           docker buildx build \
             --build-arg "BUILD_REVISION=${{ steps.revision.outputs.sha }}" \
+            --build-arg "VITE_STAYLONG_API_MODE=public-sandbox" \
             --tag "$image_tag_ref" \
             --metadata-file "$metadata_file" \
             --push .

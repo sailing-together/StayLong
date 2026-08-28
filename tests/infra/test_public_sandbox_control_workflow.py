@@ -41,6 +41,16 @@ def test_deploy_is_immutable_scanned_and_smoke_tested() -> None:
     assert "actions/upload-artifact@" in source
 
 
+def test_public_sandbox_build_compiles_the_public_api_route() -> None:
+    """The browser bundle must target cookie-owned anonymous endpoints."""
+    source = workflow_source()
+    dockerfile = Path("Dockerfile").read_text()
+
+    assert '--build-arg "VITE_STAYLONG_API_MODE=public-sandbox"' in source
+    assert "ARG VITE_STAYLONG_API_MODE" in dockerfile
+    assert "VITE_STAYLONG_API_MODE=$VITE_STAYLONG_API_MODE" in dockerfile
+
+
 def test_terraform_scope_cannot_escape_public_sandbox() -> None:
     source = workflow_source()
     assert "COMPONENT_PATH: infra/terraform/components/public-sandbox" in source

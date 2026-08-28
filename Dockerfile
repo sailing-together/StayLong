@@ -2,6 +2,9 @@ FROM node:24-slim AS frontend-build
 
 WORKDIR /frontend
 
+ARG VITE_STAYLONG_API_MODE
+ENV VITE_STAYLONG_API_MODE=$VITE_STAYLONG_API_MODE
+
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
