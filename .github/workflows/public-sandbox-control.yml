@@ -86,6 +86,8 @@ jobs:
           npm --prefix frontend run lint
           npm --prefix frontend test
           npm --prefix frontend run build
+      - name: Install configuration validator dependency
+        run: python -m pip install jsonschema
       - name: Validate public sandbox Terraform configuration
         run: |
           PYTHONPATH=src python tools/terraform_config.py \

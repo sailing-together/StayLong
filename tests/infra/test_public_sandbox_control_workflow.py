@@ -51,6 +51,13 @@ def test_terraform_scope_cannot_escape_public_sandbox() -> None:
     assert "tools/cloudrun_smoke.py" not in source
 
 
+def test_deploy_installs_jsonschema_before_configuration_validation() -> None:
+    source = workflow_source()
+    install = source.index("python -m pip install jsonschema")
+    validation = source.index("name: Validate public sandbox Terraform configuration")
+    assert install < validation
+
+
 def test_destroy_uses_a_saved_plan_and_retains_evidence() -> None:
     source = workflow_source()
     assert 'terraform -chdir="$COMPONENT_PATH" plan -destroy -input=false -out=tfplan' in source
