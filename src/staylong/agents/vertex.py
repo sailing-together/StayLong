@@ -116,9 +116,29 @@ class GoogleAdkJsonExecutor:
         if not final_text:
             raise RuntimeError("Google ADK did not return a final JSON response.")
         try:
-            return json.loads(final_text)
+            return _parse_json_response(final_text)
         except json.JSONDecodeError as error:
             raise RuntimeError("Google ADK returned malformed JSON.") from error
+
+
+def _parse_json_response(text: str) -> object:
+    """Decode JSON when a model wraps it in a markdown fence or brief prose."""
+    candidates = [text.strip()]
+    if "```" in text:
+        fenced = text.split("```")
+        candidates.extend(part.strip() for part in fenced[1::2])
+    start, end = text.find("{"), text.rfind("}")
+    if start >= 0 and end > start:
+        candidates.append(text[start : end + 1])
+    last_error: json.JSONDecodeError | None = None
+    for candidate in candidates:
+        candidate = candidate.removeprefix("json").strip()
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError as error:
+            last_error = error
+    assert last_error is not None
+    raise last_error
 
 
 @dataclass(frozen=True, slots=True)
