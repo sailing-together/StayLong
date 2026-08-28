@@ -58,7 +58,9 @@ class CalendarDemoAdapter:
         approval: ActionApproval | None,
         now: datetime,
         details: CalendarDetails,
+        session_id: str | None = None,
     ) -> DemoDispatchResult:
+        del session_id
         result = DemoDispatchResult(
             case_id=case_id,
             action_type=self.action_type,
