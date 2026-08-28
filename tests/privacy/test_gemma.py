@@ -4,6 +4,7 @@ from staylong.privacy.gemma import (
     GemmaPrivacyGuard,
     PrivacyGuardError,
     PrivacyRedaction,
+    build_vertex_gemma_privacy_guard,
 )
 
 
@@ -52,3 +53,22 @@ def test_gemma_rejects_empty_redacted_text() -> None:
 
     with pytest.raises(PrivacyGuardError, match="redacted_text"):
         guard.redact("A concern")
+
+
+def test_vertex_privacy_guard_uses_explicit_environment_model(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    class RecordingProvider:
+        def __init__(self, *, project_id: str, location: str, model_id: str) -> None:
+            captured.update(project_id=project_id, location=location, model_id=model_id)
+
+    monkeypatch.setenv("STAYLONG_PRIVACY_MODEL", "gemini-2.5-flash")
+    monkeypatch.setattr("staylong.privacy.gemma.VertexGemmaJsonProvider", RecordingProvider)
+
+    build_vertex_gemma_privacy_guard(project_id="stay-long", location="global")
+
+    assert captured == {
+        "project_id": "stay-long",
+        "location": "global",
+        "model_id": "gemini-2.5-flash",
+    }
