@@ -98,6 +98,7 @@ jobs:
         run: |
           PYTHONPATH=../../src python ../../tools/terraform_config.py --config-root projects/config --project-config staylong.json --environment-config sandbox.json
           PYTHONPATH=../../src python ../../tools/terraform_config.py --config-root projects/config --project-config staylong-sydney.json --environment-config sydney-sandbox.json
+          PYTHONPATH=../../src python ../../tools/terraform_config.py --config-root projects/config --project-config staylong-public-sandbox.json --environment-config stay-long-sydney-sandbox.json
       - name: Format check
         run: terraform fmt -check -recursive
       - name: Initialise without backend
