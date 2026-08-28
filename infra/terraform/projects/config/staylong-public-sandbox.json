@@ -8,6 +8,10 @@
   "deployer_account_id": "staylong-sandbox-deployer",
   "cloudbuild_staging_bucket_name": "staylong-cloudbuild-186136682416",
   "cloud_run_service_name": "staylong-public-sandbox",
+  "public_domain": "staylonghome.com",
+  "www_public_domain": "www.staylonghome.com",
+  "cloudflare_zone_id": "072c5d6be5b6153d5f6aecbbf8d37be6",
+  "public_edge_lockdown_enabled": false,
   "initial_image": "gcr.io/google-samples/hello-app:1.0",
   "labels": {
     "product": "staylong",

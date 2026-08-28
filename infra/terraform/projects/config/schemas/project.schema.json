@@ -47,6 +47,21 @@
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]{0,62}$"
     },
+    "public_domain": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]\\.com$"
+    },
+    "www_public_domain": {
+      "type": "string",
+      "pattern": "^www\\.[a-z0-9][a-z0-9-]{0,61}[a-z0-9]\\.com$"
+    },
+    "cloudflare_zone_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{32}$"
+    },
+    "public_edge_lockdown_enabled": {
+      "type": "boolean"
+    },
     "initial_image": {
       "type": "string",
       "minLength": 1
