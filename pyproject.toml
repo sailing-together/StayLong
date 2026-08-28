@@ -36,4 +36,4 @@ select = ["E", "F", "I", "UP"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-staylong = ["api/static/*"]
+staylong = ["api/static/*", "api/static/**/*"]
