@@ -78,6 +78,68 @@ class InMemoryOAuthStateStore:
         return pending
 
 
+class FirestoreOAuthStateStore:
+    """Durable, expiring OAuth state store shared by Cloud Run instances."""
+
+    collection_name = "google_calendar_oauth_states"
+
+    def __init__(self, *, client: object) -> None:
+        self._client = client
+
+    def put(self, state: str, *, session_id: str, expires_at: datetime) -> None:
+        if not state or not session_id:
+            raise ValueError("state and session_id are required.")
+        self._documents().document(state).create(
+            {"session_id": session_id, "expires_at": expires_at.isoformat()}
+        )
+
+    def peek(self, state: str) -> _PendingState | None:
+        snapshot = self._documents().document(state).get()
+        return self._decode(snapshot)
+
+    def consume(self, state: str, *, now: datetime) -> _PendingState | None:
+        document = self._documents().document(state)
+        if hasattr(self._client, "transaction"):
+            from google.cloud import firestore
+
+            transaction = self._client.transaction()
+
+            @firestore.transactional
+            def consume_transaction(tx: object) -> _PendingState | None:
+                snapshot = document.get(transaction=tx)
+                pending = self._decode(snapshot)
+                if pending is None:
+                    return None
+                tx.delete(document)
+                return pending if pending.expires_at > now else None
+
+            return consume_transaction(transaction)
+        snapshot = document.get()
+        pending = self._decode(snapshot)
+        if pending is None:
+            return None
+        document.delete()
+        if pending.expires_at <= now:
+            return None
+        return pending
+
+    def _documents(self) -> object:
+        return self._client.collection(self.collection_name)
+
+    @staticmethod
+    def _decode(snapshot: object) -> _PendingState | None:
+        if not snapshot.exists:
+            return None
+        data = snapshot.to_dict()
+        try:
+            return _PendingState(
+                session_id=str(data["session_id"]),
+                expires_at=datetime.fromisoformat(str(data["expires_at"])),
+            )
+        except (KeyError, TypeError, ValueError):
+            return None
+
+
 class InMemoryOAuthTokenStore:
     """Test-only token store; tokens are never part of workflow snapshots."""
 

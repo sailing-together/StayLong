@@ -17,7 +17,10 @@ GemmaBuilder = Callable[..., GemmaPrivacyGuard]
 
 
 def build_calendar_oauth(
-    environment: Mapping[str, str], *, token_store: OAuthTokenStore | None = None
+    environment: Mapping[str, str],
+    *,
+    token_store: OAuthTokenStore | None = None,
+    firestore_client: Any | None = None,
 ) -> GoogleCalendarOAuth | None:
     """Build private Calendar OAuth only when its complete config is present."""
     keys = (
@@ -34,20 +37,23 @@ def build_calendar_oauth(
         from staylong.services.google_oauth import SecretManagerOAuthTokenStore
 
         token_store = SecretManagerOAuthTokenStore(project_id=environment["GOOGLE_CLOUD_PROJECT"])
+    if firestore_client is None:
+        from google.cloud import firestore
+
+        firestore_client = firestore.Client(project=environment["GOOGLE_CLOUD_PROJECT"])
     return GoogleCalendarOAuth(
         client_id=environment[keys[0]],
         client_secret=environment[keys[1]],
         redirect_uri=environment[keys[2]],
-        state_store=_new_oauth_state_store(),
+        state_store=_new_oauth_state_store(firestore_client),
         token_store=token_store,
     )
 
 
-def _new_oauth_state_store() -> Any:
-    from staylong.services.google_oauth import InMemoryOAuthStateStore
+def _new_oauth_state_store(client: Any) -> Any:
+    from staylong.services.google_oauth import FirestoreOAuthStateStore
 
-    # Runtime replacement with a durable store is a follow-up deployment slice.
-    return InMemoryOAuthStateStore()
+    return FirestoreOAuthStateStore(client=client)
 
 
 def build_runtime_workflow(
@@ -67,7 +73,7 @@ def build_runtime_workflow(
     VertexRuntimeConfig.from_environment(values)
     adk_executor = executor or GoogleAdkJsonExecutor()
     intake_agent = intake_builder(executor=adk_executor, environment=values)
-    calendar_oauth = build_calendar_oauth(values)
+    calendar_oauth = build_calendar_oauth(values, firestore_client=firestore_client)
     action_adapters = build_action_adapters(
         values,
         access_token_provider=(GoogleOAuthAccessTokenProvider(calendar_oauth)
