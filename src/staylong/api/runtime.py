@@ -2,18 +2,42 @@
 
 import os
 from collections.abc import Callable, Mapping
+from datetime import timedelta
 from typing import Any
 
 from staylong.agents.intake import IntakeAgent, build_vertex_adk_intake_agent
 from staylong.agents.vertex import AdkJsonExecutor, GoogleAdkJsonExecutor, VertexRuntimeConfig
+from staylong.api.app import PublicSandboxConfig
 from staylong.privacy.gemma import GemmaPrivacyGuard, build_vertex_gemma_privacy_guard
 from staylong.services.events import FirestoreEventRepository
 from staylong.services.google_actions import GoogleOAuthAccessTokenProvider, build_action_adapters
 from staylong.services.google_oauth import GoogleCalendarOAuth, OAuthTokenStore
+from staylong.services.public_sessions import (
+    FirestorePublicCaseAccessRepository,
+)
 from staylong.services.taskmaster import FirestoreWorkflowRepository, TaskmasterWorkflow
 
 IntakeBuilder = Callable[..., IntakeAgent]
 GemmaBuilder = Callable[..., GemmaPrivacyGuard]
+
+
+def build_public_sandbox_config(
+    environment: Mapping[str, str], *, firestore_client: Any
+) -> PublicSandboxConfig | None:
+    """Enable anonymous public routes only for the explicit sandbox runtime."""
+    if environment.get("STAYLONG_PUBLIC_SANDBOX", "").casefold() != "true":
+        return None
+    secret = environment.get("STAYLONG_PUBLIC_SESSION_SECRET", "").strip()
+    if not secret:
+        raise RuntimeError(
+            "STAYLONG_PUBLIC_SESSION_SECRET must be configured for the public sandbox"
+        )
+    return PublicSandboxConfig(
+        session_secret=secret,
+        session_lifetime=timedelta(hours=24),
+        case_access=FirestorePublicCaseAccessRepository(client=firestore_client),
+        cookie_secure=True,
+    )
 
 
 def build_calendar_oauth(
