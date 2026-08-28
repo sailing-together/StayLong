@@ -87,6 +87,29 @@ state, the `staylong-sydney` Artifact Registry repository, and the separately
 scoped deployer and Terraform-operator identities must already exist. No
 service-account key is stored in GitHub.
 
+#### Verified sandbox bootstrap prerequisites
+
+On 28 August 2026, the project Owner completed the two prerequisites that are
+intentionally outside the public-sandbox Terraform apply:
+
+```bash
+gcloud projects add-iam-policy-binding stay-long \
+  --member="serviceAccount:staylong-tf-operator@stay-long.iam.gserviceaccount.com" \
+  --role="roles/resourcemanager.projectIamAdmin"
+
+openssl rand -hex 32 | \
+  gcloud secrets versions add staylong-public-session-secret \
+  --project=stay-long \
+  --data-file=-
+```
+
+The IAM command succeeded and the session secret command created Secret Manager
+version `1`. The generated value is not recorded here, in Terraform variables,
+or in logs. The project-level IAM role is required because the component creates
+the least-privilege runtime bindings for Datastore, Vertex AI and Cloud Logging;
+it must be granted by an Owner/bootstrap operator before the GitHub WIF operator
+can apply the component.
+
 ### Deploy and verify
 
 1. Merge the reviewed change into `main`.
