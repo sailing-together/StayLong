@@ -5,17 +5,10 @@ import os
 from staylong.agents.intake import IntakeAgent
 from staylong.api.app import create_app
 from staylong.api.runtime import build_calendar_oauth, build_runtime_workflow
+from staylong.api.runtime_token import runtime_token
 from staylong.services.channels import CalendarDemoAdapter
 from staylong.services.events import InMemoryEventRepository
 from staylong.services.taskmaster import InMemoryWorkflowRepository, TaskmasterWorkflow
-
-
-def _runtime_token() -> str:
-    """Read the API token from the runtime environment without logging it."""
-    token = os.environ.get("STAYLONG_API_TOKEN", "")
-    if not token:
-        raise RuntimeError("STAYLONG_API_TOKEN must be configured before starting the API")
-    return token
 
 
 class _LocalDemoProvider:
@@ -68,5 +61,5 @@ def _runtime_components() -> tuple[TaskmasterWorkflow, object | None]:
 
 _workflow, _calendar_oauth = _runtime_components()
 app = create_app(
-    api_token=_runtime_token(), workflow=_workflow, calendar_oauth=_calendar_oauth
+    api_token=runtime_token(os.environ), workflow=_workflow, calendar_oauth=_calendar_oauth
 )
