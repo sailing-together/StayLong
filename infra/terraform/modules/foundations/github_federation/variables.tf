@@ -28,6 +28,7 @@ variable "operator_project_roles" {
   type = list(string)
   default = [
     "roles/artifactregistry.admin",
+    "roles/cloudscheduler.admin",
     "roles/cloudtasks.admin",
     "roles/datastore.owner",
     "roles/iam.serviceAccountAdmin",

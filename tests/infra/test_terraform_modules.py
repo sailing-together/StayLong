@@ -67,6 +67,13 @@ def test_terraform_operator_can_create_secret_manager_resources() -> None:
     assert '"roles/secretmanager.admin"' in source
 
 
+def test_terraform_operator_can_manage_public_sandbox_scheduler_jobs() -> None:
+    """The public sandbox component owns its scheduled cleanup job."""
+    source = GITHUB_FEDERATION_VARIABLES.read_text()
+
+    assert '"roles/cloudscheduler.admin"' in source
+
+
 def test_cloud_build_staging_uses_bootstrap_bucket_and_scoped_identity_members() -> None:
     state_source = BOOTSTRAP_STATE_ROOT.read_text()
     identity_source = GITHUB_FEDERATION_MODULE.read_text()

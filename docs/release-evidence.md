@@ -110,6 +110,17 @@ the least-privilege runtime bindings for Datastore, Vertex AI and Cloud Logging;
 it must be granted by an Owner/bootstrap operator before the GitHub WIF operator
 can apply the component.
 
+The Terraform operator also needs Cloud Scheduler administration because the
+public sandbox owns its scheduled cleanup job. For an already-bootstrapped
+project, an Owner can apply this one-time binding (future bootstrap runs grant
+it through Terraform):
+
+```bash
+gcloud projects add-iam-policy-binding stay-long \
+  --member="serviceAccount:staylong-tf-operator@stay-long.iam.gserviceaccount.com" \
+  --role="roles/cloudscheduler.admin"
+```
+
 ### Deploy and verify
 
 1. Merge the reviewed change into `main`.
