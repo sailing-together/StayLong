@@ -8,6 +8,7 @@ from staylong.services.google_oauth import (
     GoogleCalendarOAuth,
     InMemoryOAuthStateStore,
     InMemoryOAuthTokenStore,
+    OAuthAccessTokenResponse,
     OAuthError,
     OAuthTokenResponse,
     SecretManagerOAuthTokenStore,
@@ -191,3 +192,45 @@ def test_callback_exchange_uses_the_session_bound_to_state_without_returning_it(
 
     assert expires_at == NOW + timedelta(seconds=3600)
     assert token_store.get_refresh_token("user-a") == "refresh"
+
+
+def test_refresh_uses_stored_grant_and_returns_only_short_lived_access_token() -> None:
+    token_store = InMemoryOAuthTokenStore()
+    token_store.save_refresh_token("user-a", "refresh-secret")
+    oauth = GoogleCalendarOAuth(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri="https://staylong.example.com/oauth/callback",
+        state_store=InMemoryOAuthStateStore(),
+        token_store=token_store,
+    )
+    seen: list[str] = []
+
+    access_token, expires_at = oauth.refresh_access_token(
+        session_id="user-a",
+        now=NOW,
+        token_refresh=lambda refresh: (
+            seen.append(refresh) or OAuthAccessTokenResponse(access_token="access", expires_in=900)
+        ),
+    )
+
+    assert seen == ["refresh-secret"]
+    assert access_token == "access"
+    assert expires_at == NOW + timedelta(seconds=900)
+
+
+def test_refresh_rejects_unknown_user_without_calling_token_endpoint() -> None:
+    oauth = GoogleCalendarOAuth(
+        client_id="client-id",
+        client_secret="client-secret",
+        redirect_uri="https://staylong.example.com/oauth/callback",
+        state_store=InMemoryOAuthStateStore(),
+        token_store=InMemoryOAuthTokenStore(),
+    )
+
+    with pytest.raises(OAuthError, match="not connected"):
+        oauth.refresh_access_token(
+            session_id="unknown",
+            now=NOW,
+            token_refresh=lambda _: pytest.fail("refresh endpoint must not be called"),
+        )
