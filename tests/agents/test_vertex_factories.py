@@ -83,6 +83,20 @@ def test_vertex_configuration_requires_project_location_and_vertex_mode() -> Non
         )
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"plain_language_summary": "A concern"}',
+        '```json\n{"plain_language_summary": "A concern"}\n```',
+        'Here is the result:\n{"plain_language_summary": "A concern"}',
+    ],
+)
+def test_adk_json_parser_accepts_common_model_wrappers(text: str) -> None:
+    from staylong.agents.vertex import _parse_json_response
+
+    assert _parse_json_response(text) == {"plain_language_summary": "A concern"}
+
+
 def test_intake_factory_keeps_emergency_and_schema_boundaries_outside_adk() -> None:
     from staylong.agents.intake import (
         EmergencyRouteRequired,
