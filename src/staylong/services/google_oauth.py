@@ -32,6 +32,14 @@ class OAuthTokenResponse:
 
 
 @dataclass(frozen=True, slots=True)
+class OAuthAccessTokenResponse:
+    """Short-lived access token returned when refreshing a stored grant."""
+
+    access_token: str
+    expires_in: int
+
+
+@dataclass(frozen=True, slots=True)
 class _PendingState:
     session_id: str
     expires_at: datetime
@@ -250,6 +258,28 @@ class GoogleCalendarOAuth:
             token_exchange=token_exchange,
         )
 
+    def refresh_access_token(
+        self,
+        *,
+        session_id: str,
+        now: datetime,
+        token_refresh: Callable[[str], OAuthAccessTokenResponse] | None = None,
+    ) -> tuple[str, datetime]:
+        """Refresh a short-lived access token without exposing the refresh token."""
+        refresh_token = self._token_store.get_refresh_token(session_id)
+        if not refresh_token:
+            raise OAuthError("Google Calendar is not connected for this user.")
+        refresh = token_refresh or self._refresh_access_token
+        try:
+            token = refresh(refresh_token)
+        except OAuthError:
+            raise
+        except Exception as error:
+            raise OAuthError("Google Calendar authorization could not be refreshed.") from error
+        if not token.access_token or token.expires_in <= 0:
+            raise OAuthError("Google returned an invalid refreshed access token.")
+        return token.access_token, now + timedelta(seconds=token.expires_in)
+
     def _exchange_code(self, code: str) -> OAuthTokenResponse:
         payload = urlencode({
             "code": code,
@@ -279,3 +309,31 @@ class GoogleCalendarOAuth:
             )
         except (KeyError, TypeError, ValueError) as error:
             raise OAuthError("Google returned an invalid authorization token.") from error
+
+    def _refresh_access_token(self, refresh_token: str) -> OAuthAccessTokenResponse:
+        payload = urlencode({
+            "client_id": self._client_id,
+            "client_secret": self._client_secret,
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token",
+        }).encode()
+        request = Request(
+            self.token_endpoint,
+            data=payload,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=10) as response:  # noqa: S310 - fixed Google endpoint
+                data = json.loads(response.read().decode())
+        except Exception as error:
+            raise OAuthError("Google Calendar authorization could not be refreshed.") from error
+        if not isinstance(data, dict):
+            raise OAuthError("Google returned an invalid refreshed token response.")
+        try:
+            return OAuthAccessTokenResponse(
+                access_token=str(data["access_token"]),
+                expires_in=int(data["expires_in"]),
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise OAuthError("Google returned an invalid refreshed token response.") from error
