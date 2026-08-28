@@ -25,3 +25,9 @@ def test_public_sandbox_smoke_verifies_session_isolation() -> None:
 
 def test_public_sandbox_smoke_has_main_entrypoint() -> None:
     assert 'if __name__ == "__main__"' in SOURCE
+
+
+def test_public_sandbox_smoke_uses_the_public_answer_and_decision_contracts() -> None:
+    assert '"answers": {' in SOURCE
+    assert '"action_type": proposed_action["action_type"]' in SOURCE
+    assert '"action_revision": proposed_action["revision"]' in SOURCE
