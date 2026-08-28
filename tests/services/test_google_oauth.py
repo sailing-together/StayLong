@@ -5,6 +5,7 @@ import pytest
 from google.api_core.exceptions import NotFound
 
 from staylong.services.google_oauth import (
+    FirestoreOAuthStateStore,
     GoogleCalendarOAuth,
     InMemoryOAuthStateStore,
     InMemoryOAuthTokenStore,
@@ -234,3 +235,27 @@ def test_refresh_rejects_unknown_user_without_calling_token_endpoint() -> None:
             now=NOW,
             token_refresh=lambda _: pytest.fail("refresh endpoint must not be called"),
         )
+
+
+def test_firestore_state_store_round_trips_and_consumes_state_once() -> None:
+    from tests.services.fake_firestore import FakeFirestoreClient
+
+    store = FirestoreOAuthStateStore(client=FakeFirestoreClient())
+    expires_at = NOW + timedelta(minutes=5)
+    store.put("state-1", session_id="user-a", expires_at=expires_at)
+
+    assert store.peek("state-1") is not None
+    consumed = store.consume("state-1", now=NOW)
+    assert consumed is not None
+    assert consumed.session_id == "user-a"
+    assert store.consume("state-1", now=NOW) is None
+
+
+def test_firestore_state_store_drops_expired_state() -> None:
+    from tests.services.fake_firestore import FakeFirestoreClient
+
+    store = FirestoreOAuthStateStore(client=FakeFirestoreClient())
+    store.put("expired", session_id="user-a", expires_at=NOW - timedelta(seconds=1))
+
+    assert store.consume("expired", now=NOW) is None
+    assert store.peek("expired") is None
