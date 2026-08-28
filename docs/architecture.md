@@ -10,10 +10,15 @@ flowchart LR
     U["Older person living alone"] --> W["Accessible web UI"]
     S["Optional authorised supporter"] -. invited for an approved task .-> W
   end
-  subgraph RUN["Cloud Run service"]
+  subgraph PUBLIC["Long-lived public sandbox Cloud Run"]
+    PW["Public React experience"] --> PS["/v1/public/* session API"]
+    PS --> SA["Sandbox adapters only"]
+  end
+  subgraph PRIVATE["Private Cloud Run service"]
     W --> API["Authenticated FastAPI API"]
     API --> R["Deterministic safety route"]
     R --> ADK["Google ADK intake / coordinator"]
+    API --> O["Google Calendar OAuth routes"]
   end
   ADK --> V["Vertex AI Gemini 3.5+"]
   API --> G["Vertex AI Gemma privacy guard"]
@@ -21,12 +26,15 @@ flowchart LR
   ADK --> Q["Cloud Tasks / Pub/Sub"]
   Q --> ADK
   ADK --> P["Approval policy"]
-  P --> T["Calendar / email / SMS demo adapters"]
+  P --> T["Approval-gated adapters"]
   T --> C["Approved external action"]
+  O --> GT["Google Calendar API"]
+  GT --> C
   F --> L["Immutable audit timeline"]
   L --> W
   D["Synthetic seeded household"] --> F
-  CI["GitHub Actions + Terraform + WIF"] -. deploys .-> RUN
+  CI["GitHub Actions + Terraform + WIF"] -. deploys .-> PUBLIC
+  CI -. deploys .-> PRIVATE
 ```
 
 The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded-household.json). It exercises the normal concern → intake → draft → human approval path with synthetic identifiers only; it does not represent a real household or execute an external side effect.
@@ -42,7 +50,7 @@ The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded
 | Firestore | Stores household consent, concern records, task state, approvals, action history and idempotency keys. |
 | Cloud Tasks | Schedules due-date checks, reminder retries and escalation work. |
 | Pub/Sub | Carries event notifications such as `concern.created`, `approval.granted`, `task.overdue` and `assessment.outcome.recorded`. |
-| Tool adapters | Calendar, email/SMS and provider-directory adapters. Each adapter validates authority and returns a structured result. |
+| Tool adapters | Public sandbox adapters record simulation results only. The private Calendar adapter uses user-bound OAuth and runs only after matching approval; email remains draft-only and SMS remains a recording adapter. |
 | Evaluation fixtures | Synthetic cases that test safety routing, approval enforcement, recovery and idempotent actions before deployment. |
 
 ## Core event flow
@@ -76,6 +84,8 @@ Gemma is enabled with `STAYLONG_GEMMA_ENABLED=true` in the sandbox runtime. Its 
 - Encrypt data in transit and at rest using managed Google Cloud controls.
 - Use least-privilege service accounts; the Cloud Run runtime identity may access only its Firestore, Cloud Tasks, Pub/Sub and logging resources.
 - Never send a message, create a booking or share personal data until a confirmed approval is stored.
+- The public sandbox cannot reach private OAuth routes or Google APIs, even when a
+  browser supplies an arbitrary token or cookie.
 - The older person decides whether to invite a supporter. The application does not silently notify family, friends or services.
 
 ## Emergency handling
@@ -89,4 +99,8 @@ Emergency handling is a static, deterministic route, not an LLM feature. A possi
 - CI runs formatting, linting and tests on every pull request.
 - Terraform plan runs on pull requests; apply is manually dispatched from protected `main` after review.
 - Cloud Run deployment is manually dispatched from `main` after Terraform has provisioned prerequisites.
+- The long-lived public sandbox is updated in place so its generated `run.app`
+  URL remains stable; its explicit destroy workflow is never part of normal
+  deployment. Private OAuth services are separate and require an authenticated
+  identity-aware request.
 - The sandbox initially uses the generated `run.app` URL. A future public custom domain will use a global external HTTPS Load Balancer, Google-managed TLS certificate and Serverless NEG in front of Cloud Run; direct Cloud Run domain mapping is not used.
