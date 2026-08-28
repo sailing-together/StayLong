@@ -4,7 +4,11 @@ import os
 
 from staylong.agents.intake import IntakeAgent
 from staylong.api.app import create_app
-from staylong.api.runtime import build_calendar_oauth, build_runtime_workflow
+from staylong.api.runtime import (
+    build_calendar_oauth,
+    build_public_sandbox_config,
+    build_runtime_workflow,
+)
 from staylong.api.runtime_token import runtime_token
 from staylong.services.channels import CalendarDemoAdapter
 from staylong.services.events import InMemoryEventRepository
@@ -52,14 +56,25 @@ def _local_demo_workflow() -> TaskmasterWorkflow:
     )
 
 
-def _runtime_components() -> tuple[TaskmasterWorkflow, object | None]:
+def _runtime_components() -> tuple[TaskmasterWorkflow, object | None, object | None]:
     if os.environ.get("STAYLONG_LOCAL_DEMO", "").casefold() == "true":
-        return _local_demo_workflow(), None
-    workflow = build_runtime_workflow()
-    return workflow, build_calendar_oauth(dict(os.environ))
+        return _local_demo_workflow(), None, None
+    from google.cloud import firestore
+
+    firestore_client = firestore.Client()
+    environment = dict(os.environ)
+    workflow = build_runtime_workflow(firestore_client=firestore_client, environment=environment)
+    return (
+        workflow,
+        build_calendar_oauth(environment, firestore_client=firestore_client),
+        build_public_sandbox_config(environment, firestore_client=firestore_client),
+    )
 
 
-_workflow, _calendar_oauth = _runtime_components()
+_workflow, _calendar_oauth, _public_sandbox = _runtime_components()
 app = create_app(
-    api_token=runtime_token(os.environ), workflow=_workflow, calendar_oauth=_calendar_oauth
+    api_token=runtime_token(os.environ),
+    workflow=_workflow,
+    calendar_oauth=_calendar_oauth,
+    public_sandbox=_public_sandbox,
 )
