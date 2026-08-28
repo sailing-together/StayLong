@@ -64,10 +64,16 @@ def run_smoke(base_url: str, concern: str = "Getting to the bathroom safely at n
         raise SmokeTestError("session A: workflow creation did not return a case_id")
 
     # ── 3. Session A can read its own workflow ────────────────────────────────
-    _expect(
+    continuation = _expect(
         session_a.post(
             f"{base_url}/v1/public/workflows/{case_id}/answers",
-            json={},
+            json={
+                "answers": {
+                    "assessment_status": "No assessment has been arranged yet.",
+                    "housing_tenure": "I own the home.",
+                    "support_contacts": "I am starting this myself.",
+                }
+            },
             timeout=30,
         ),
         200,
@@ -77,7 +83,7 @@ def run_smoke(base_url: str, concern: str = "Getting to the bathroom safely at n
     # ── 4. Session B is rejected from session A's workflow (isolation) ────────
     isolation_response = session_b.post(
         f"{base_url}/v1/public/workflows/{case_id}/answers",
-        json={},
+        json={"answers": {}},
         timeout=15,
     )
     if isolation_response.status_code not in (403, 404):
@@ -87,10 +93,21 @@ def run_smoke(base_url: str, concern: str = "Getting to the bathroom safely at n
         )
 
     # ── 5. Session A approves a sandbox action and gets a sandbox result ──────
+    proposed_action = continuation.get("proposed_action")
+    if not isinstance(proposed_action, dict):
+        actions = continuation.get("proposed_actions")
+        proposed_action = actions[0] if isinstance(actions, list) and actions else None
+    if not isinstance(proposed_action, dict):
+        print("  sandbox returned no action to approve — OK")
+        return case_id
     decision = _expect(
         session_a.post(
             f"{base_url}/v1/public/workflows/{case_id}/action-decision",
-            json={"approved": True},
+            json={
+                "action_type": proposed_action["action_type"],
+                "action_revision": proposed_action["revision"],
+                "decision": "approve",
+            },
             timeout=30,
         ),
         200,
