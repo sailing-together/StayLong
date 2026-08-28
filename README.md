@@ -8,6 +8,16 @@ StayLong is a consent-governed, event-driven coordination layer for older Austra
 
 The public-sandbox runtime can pass concern text through a Vertex AI-hosted Gemma redaction guard before persistence or tool actions. Gemini 3.5+ remains the primary ADK coordinator; Gemma returns only a strict privacy contract and cannot change safety, consent or approval transitions.
 
+## Public demonstration URL
+
+The long-lived judge-facing experience is designed for `https://staylonghome.com`.
+It is a temporary-data demonstration, not a production care service: it does
+not connect to real Gmail, Calendar, provider, payment, My Aged Care, or MyGov
+accounts. During Phase A, the generated Cloud Run URL remains available while
+Google-managed TLS is provisioned. Only an explicitly reviewed
+`public_edge_lockdown_enabled=true` configuration switches Cloud Run to accept
+traffic through the managed load balancer and branded URL.
+
 ## What it is—and is not
 
 StayLong helps older people and their chosen supporters prepare, coordinate and track. It sits between family care apps, provider operations software and My Aged Care: it does **not** deliver care, diagnose health conditions, prescribe home modifications, determine AT-HM eligibility, submit government forms, select a provider, or make payments. Human confirmation is required before every external action or information disclosure.

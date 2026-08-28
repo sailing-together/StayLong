@@ -7,6 +7,10 @@ The public-edge component owns the global load balancer, serverless NEG,
 certificate, and DNS records. It does not own the Cloud Run service or the
 domain registration.
 
+The branded endpoint is a temporary-data public demonstration: it permits
+anonymous cookie sessions, never connects to a real provider, payment, Gmail,
+or My Aged Care account, and its cases are routinely removed.
+
 ## Before the first provision
 
 1. Confirm the non-secret domain and Cloudflare Zone ID are present in

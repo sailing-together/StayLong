@@ -82,3 +82,11 @@ def test_standalone_smoke_targets_the_public_sandbox_component() -> None:
     assert "REGION: australia-southeast1" in source
     assert "tools/public_sandbox_smoke.py" in source
     assert "STAYLONG_API_TOKEN" not in source
+
+
+def test_deploy_switches_to_the_domain_smoke_only_after_lockdown() -> None:
+    source = workflow_source()
+
+    assert "public_edge_lockdown_enabled" in source
+    assert "tools/public_domain_smoke.py" in source
+    assert "staylonghome.com" not in source
