@@ -52,6 +52,12 @@ resource "google_project_service" "firestore" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "vertex_ai" {
+  project            = local.config.project_id
+  service            = "aiplatform.googleapis.com"
+  disable_on_destroy = false
+}
+
 resource "google_firestore_database" "public_sandbox" {
   project                     = local.config.project_id
   name                        = "(default)"
@@ -168,6 +174,7 @@ resource "google_cloud_run_v2_service" "sandbox" {
 
   depends_on = [
     google_firestore_database.public_sandbox,
+    google_project_service.vertex_ai,
     module.sandbox_runtime,
     module.session_secret,
   ]
