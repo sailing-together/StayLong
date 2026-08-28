@@ -1,6 +1,7 @@
 """Gemma-backed PII redaction with a strict, fail-closed response contract."""
 
 import json
+import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
@@ -103,7 +104,16 @@ class VertexGemmaJsonProvider:
 def build_vertex_gemma_privacy_guard(
     *, project_id: str, location: str = "global"
 ) -> GemmaPrivacyGuard:
-    """Build the production privacy guard with a Vertex-hosted Gemma model."""
+    """Build the privacy guard with the configured Vertex-hosted model.
+
+    Gemma remains the default model. Environments that do not have access to
+    the Gemma publisher model can explicitly select another approved Vertex
+    model (for example ``gemini-2.5-flash``) via ``STAYLONG_PRIVACY_MODEL``.
+    """
     return GemmaPrivacyGuard(
-        provider=VertexGemmaJsonProvider(project_id=project_id, location=location)
+        provider=VertexGemmaJsonProvider(
+            project_id=project_id,
+            location=location,
+            model_id=os.getenv("STAYLONG_PRIVACY_MODEL", "gemma-3-27b-it"),
+        )
     )

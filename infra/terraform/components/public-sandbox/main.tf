@@ -140,6 +140,13 @@ resource "google_cloud_run_v2_service" "sandbox" {
         value = "true"
       }
 
+      # The public sandbox project does not have access to the Gemma publisher
+      # model, so use an available Vertex model for the same privacy contract.
+      env {
+        name  = "STAYLONG_PRIVACY_MODEL"
+        value = "gemini-2.5-flash"
+      }
+
       env {
         name  = "GOOGLE_CLOUD_PROJECT"
         value = local.config.project_id
