@@ -1,0 +1,22 @@
+flowchart LR
+  U["Older person living alone"] --> UI["React / TypeScript UI"]
+  UI --> PUB["Long-lived public sandbox\n/v1/public/*"]
+  PUB --> SBOX["Session ownership +\n24h expiry + quota"]
+  SBOX --> DEMO["Sandbox adapters\n(no external side effects)"]
+
+  UI -. private authenticated path .-> API["Private Cloud Run\nFastAPI API"]
+  API --> SAFE["Deterministic 000 safety route"]
+  SAFE --> ADK["Google ADK intake + coordinator"]
+  ADK --> GEMINI["Vertex AI Gemini 3.5+"]
+  API --> GEMMA["Vertex AI Gemma\nprivacy guard"]
+  ADK --> FS[("Firestore\ncase + consent + audit")]
+  ADK --> EVENTS["Pub/Sub + Cloud Tasks"]
+  EVENTS --> ADK
+  ADK --> APPROVAL["Human approval gate"]
+  APPROVAL --> OAUTH["Private Calendar OAuth\nuser-bound token provider"]
+  OAUTH --> CAL["Google Calendar API"]
+  CAL --> AUDIT["event ID + audit record"]
+  FS --> AUDIT
+
+  GHA["GitHub Actions\nTerraform + WIF"] -.-> PUB
+  GHA -.-> API
