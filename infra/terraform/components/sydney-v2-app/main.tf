@@ -25,18 +25,27 @@ module "service" {
   service_account_email = "${local.config.runtime_account_id}@${local.config.project_id}.iam.gserviceaccount.com"
   image                 = var.image_ref
   enable_public_invoker = var.diagnostic_public_invoker
-  environment_variables = {
+  environment_variables = merge({
     GOOGLE_CLOUD_PROJECT      = local.config.project_id
     GOOGLE_CLOUD_LOCATION     = "global"
     GOOGLE_GENAI_USE_VERTEXAI = "true"
-  }
+    }, var.calendar_oauth_client_id != "" && var.calendar_oauth_redirect_uri != "" && var.calendar_oauth_client_secret_id != "" ? {
+    STAYLONG_GOOGLE_ACTIONS_MODE       = "oauth"
+    STAYLONG_GOOGLE_OAUTH_CLIENT_ID    = var.calendar_oauth_client_id
+    STAYLONG_GOOGLE_OAUTH_REDIRECT_URI = var.calendar_oauth_redirect_uri
+  } : {})
   invoker_members = [
     "serviceAccount:${local.config.deployer_account_id}@${local.config.project_id}.iam.gserviceaccount.com",
   ]
-  secret_environment_variables = {
+  secret_environment_variables = merge({
     STAYLONG_API_TOKEN = {
       secret_id = "staylong-api-token"
       version   = "latest"
     }
-  }
+    }, var.calendar_oauth_client_secret_id != "" ? {
+    STAYLONG_GOOGLE_OAUTH_CLIENT_SECRET = {
+      secret_id = var.calendar_oauth_client_secret_id
+      version   = "latest"
+    }
+  } : {})
 }

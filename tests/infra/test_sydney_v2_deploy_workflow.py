@@ -154,7 +154,7 @@ def test_sydney_v2_runtime_injects_vertex_project_environment_variable() -> None
     """Cloud Run must provide the project name required by Vertex AI startup."""
     component = Path("infra/terraform/components/sydney-v2-app/main.tf").read_text()
 
-    assert "environment_variables = {" in component
+    assert "environment_variables = merge({" in component
     assert re.search(
         r"GOOGLE_CLOUD_PROJECT\s*=\s*local\.config\.project_id", component
     )
