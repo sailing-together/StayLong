@@ -510,10 +510,16 @@ def create_app(
     def decide_workflow_action(
         case_id: str,
         request: ActionDecisionRequest,
+        http_request: Request,
         _: Callable[[], None] = Depends(require_auth),
         taskmaster: TaskmasterWorkflow = Depends(require_workflow),
     ) -> WorkflowResponse:
         try:
+            actor_id = (
+                trusted_google_principal(http_request)
+                if taskmaster.integration_mode == "google_oauth"
+                else None
+            )
             return _workflow_response(
                 taskmaster.decide_action(
                     case_id=case_id,
@@ -521,6 +527,7 @@ def create_app(
                     action_revision=request.action_revision,
                     approve=request.decision == "approve",
                     now=_now(),
+                    actor_id=actor_id,
                 )
             )
         except KeyError:

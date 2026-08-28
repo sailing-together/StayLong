@@ -9,7 +9,7 @@ from __future__ import annotations
 import base64
 import json
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from email.message import EmailMessage
 from typing import Protocol
@@ -64,6 +64,12 @@ class GoogleActionGateway(Protocol):
     ) -> str: ...
 
     def create_gmail_draft(self, *, config: GoogleActionConfig, details: MessageDetails) -> str: ...
+
+
+class GoogleAccessTokenProvider(Protocol):
+    """Provide a fresh access token for one already-authorised user session."""
+
+    def get_access_token(self, *, session_id: str, now: datetime) -> str: ...
 
 
 class GoogleRestGateway:
@@ -126,11 +132,16 @@ class GoogleCalendarAdapter(CalendarDemoAdapter):
     integration_mode = "google_oauth"
 
     def __init__(
-        self, config: GoogleActionConfig, *, gateway: GoogleActionGateway | None = None
+        self,
+        config: GoogleActionConfig,
+        *,
+        gateway: GoogleActionGateway | None = None,
+        access_token_provider: GoogleAccessTokenProvider | None = None,
     ) -> None:
         super().__init__()
         self._config = config
         self._gateway = gateway or GoogleRestGateway()
+        self._access_token_provider = access_token_provider
 
     def create_event(
         self,
@@ -140,9 +151,20 @@ class GoogleCalendarAdapter(CalendarDemoAdapter):
         approval: ActionApproval | None,
         now: datetime,
         details: CalendarDetails,
+        session_id: str | None = None,
     ) -> DemoDispatchResult:
         def create() -> DemoDispatchResult:
-            event_id = self._gateway.create_calendar_event(config=self._config, details=details)
+            config = self._config
+            if self._access_token_provider is not None:
+                if not session_id:
+                    raise ValueError("A user session is required for Google Calendar actions.")
+                config = replace(
+                    config,
+                    access_token=self._access_token_provider.get_access_token(
+                        session_id=session_id, now=now
+                    ),
+                )
+            event_id = self._gateway.create_calendar_event(config=config, details=details)
             result = DemoDispatchResult(
                 case_id=case_id,
                 action_type=self.action_type,

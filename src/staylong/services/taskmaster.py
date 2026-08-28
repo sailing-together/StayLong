@@ -267,6 +267,7 @@ class TaskmasterWorkflow:
         approve: bool,
         now: datetime,
         action_type: str | None = None,
+        actor_id: str | None = None,
     ) -> WorkflowSnapshot:
         """Execute exactly one approved action; each action keeps its own approval."""
         snapshot = self.get(case_id=case_id)
@@ -329,6 +330,7 @@ class TaskmasterWorkflow:
                 revision=action_revision,
                 approval=approval,
                 now=now,
+                session_id=actor_id,
                 details=CalendarDetails(
                     title=proposal.title,
                     starts_at=proposal.starts_at,
