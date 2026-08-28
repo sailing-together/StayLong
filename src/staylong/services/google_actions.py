@@ -72,6 +72,17 @@ class GoogleAccessTokenProvider(Protocol):
     def get_access_token(self, *, session_id: str, now: datetime) -> str: ...
 
 
+class GoogleOAuthAccessTokenProvider:
+    """Adapt the OAuth service refresh boundary to Calendar actions."""
+
+    def __init__(self, oauth: object) -> None:
+        self._oauth = oauth
+
+    def get_access_token(self, *, session_id: str, now: datetime) -> str:
+        access_token, _ = self._oauth.refresh_access_token(session_id=session_id, now=now)
+        return access_token
+
+
 class GoogleRestGateway:
     """Small REST client for an already user-authorised Google OAuth token."""
 
@@ -241,7 +252,11 @@ class ActionAdapters:
     integration_mode: str
 
 
-def build_action_adapters(values: Mapping[str, str]) -> ActionAdapters:
+def build_action_adapters(
+    values: Mapping[str, str],
+    *,
+    access_token_provider: GoogleAccessTokenProvider | None = None,
+) -> ActionAdapters:
     """Build OAuth adapters only when fully configured; otherwise use sandbox."""
     config = GoogleActionConfig.from_environment(values)
     if config is None:
@@ -251,7 +266,7 @@ def build_action_adapters(values: Mapping[str, str]) -> ActionAdapters:
             integration_mode="sandbox",
         )
     return ActionAdapters(
-        calendar=GoogleCalendarAdapter(config),
+        calendar=GoogleCalendarAdapter(config, access_token_provider=access_token_provider),
         contact_drafts=GoogleGmailDraftAdapter(config),
         integration_mode="google_oauth",
     )

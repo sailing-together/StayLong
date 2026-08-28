@@ -4,7 +4,7 @@ import os
 
 from staylong.agents.intake import IntakeAgent
 from staylong.api.app import create_app
-from staylong.api.runtime import build_runtime_workflow
+from staylong.api.runtime import build_calendar_oauth, build_runtime_workflow
 from staylong.services.channels import CalendarDemoAdapter
 from staylong.services.events import InMemoryEventRepository
 from staylong.services.taskmaster import InMemoryWorkflowRepository, TaskmasterWorkflow
@@ -59,10 +59,14 @@ def _local_demo_workflow() -> TaskmasterWorkflow:
     )
 
 
-def _workflow_for_runtime() -> TaskmasterWorkflow:
+def _runtime_components() -> tuple[TaskmasterWorkflow, object | None]:
     if os.environ.get("STAYLONG_LOCAL_DEMO", "").casefold() == "true":
-        return _local_demo_workflow()
-    return build_runtime_workflow()
+        return _local_demo_workflow(), None
+    workflow = build_runtime_workflow()
+    return workflow, build_calendar_oauth(dict(os.environ))
 
 
-app = create_app(api_token=_runtime_token(), workflow=_workflow_for_runtime())
+_workflow, _calendar_oauth = _runtime_components()
+app = create_app(
+    api_token=_runtime_token(), workflow=_workflow, calendar_oauth=_calendar_oauth
+)

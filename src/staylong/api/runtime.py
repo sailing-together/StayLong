@@ -8,11 +8,46 @@ from staylong.agents.intake import IntakeAgent, build_vertex_adk_intake_agent
 from staylong.agents.vertex import AdkJsonExecutor, GoogleAdkJsonExecutor, VertexRuntimeConfig
 from staylong.privacy.gemma import GemmaPrivacyGuard, build_vertex_gemma_privacy_guard
 from staylong.services.events import FirestoreEventRepository
-from staylong.services.google_actions import build_action_adapters
+from staylong.services.google_actions import GoogleOAuthAccessTokenProvider, build_action_adapters
+from staylong.services.google_oauth import GoogleCalendarOAuth, OAuthTokenStore
 from staylong.services.taskmaster import FirestoreWorkflowRepository, TaskmasterWorkflow
 
 IntakeBuilder = Callable[..., IntakeAgent]
 GemmaBuilder = Callable[..., GemmaPrivacyGuard]
+
+
+def build_calendar_oauth(
+    environment: Mapping[str, str], *, token_store: OAuthTokenStore | None = None
+) -> GoogleCalendarOAuth | None:
+    """Build private Calendar OAuth only when its complete config is present."""
+    keys = (
+        "STAYLONG_GOOGLE_OAUTH_CLIENT_ID",
+        "STAYLONG_GOOGLE_OAUTH_CLIENT_SECRET",
+        "STAYLONG_GOOGLE_OAUTH_REDIRECT_URI",
+    )
+    configured = [bool(environment.get(key, "").strip()) for key in keys]
+    if not any(configured):
+        return None
+    if not all(configured):
+        raise ValueError("Google Calendar OAuth client configuration is incomplete.")
+    if token_store is None:
+        from staylong.services.google_oauth import SecretManagerOAuthTokenStore
+
+        token_store = SecretManagerOAuthTokenStore(project_id=environment["GOOGLE_CLOUD_PROJECT"])
+    return GoogleCalendarOAuth(
+        client_id=environment[keys[0]],
+        client_secret=environment[keys[1]],
+        redirect_uri=environment[keys[2]],
+        state_store=_new_oauth_state_store(),
+        token_store=token_store,
+    )
+
+
+def _new_oauth_state_store() -> Any:
+    from staylong.services.google_oauth import InMemoryOAuthStateStore
+
+    # Runtime replacement with a durable store is a follow-up deployment slice.
+    return InMemoryOAuthStateStore()
 
 
 def build_runtime_workflow(
@@ -32,7 +67,12 @@ def build_runtime_workflow(
     VertexRuntimeConfig.from_environment(values)
     adk_executor = executor or GoogleAdkJsonExecutor()
     intake_agent = intake_builder(executor=adk_executor, environment=values)
-    action_adapters = build_action_adapters(values)
+    calendar_oauth = build_calendar_oauth(values)
+    action_adapters = build_action_adapters(
+        values,
+        access_token_provider=(GoogleOAuthAccessTokenProvider(calendar_oauth)
+                               if calendar_oauth is not None else None),
+    )
     privacy_guard = (
         gemma_builder(
             project_id=values["GOOGLE_CLOUD_PROJECT"],
