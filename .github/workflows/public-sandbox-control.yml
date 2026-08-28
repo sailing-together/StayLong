@@ -89,11 +89,13 @@ jobs:
       - name: Install configuration validator dependency
         run: python -m pip install jsonschema
       - name: Validate public sandbox Terraform configuration
+        id: config
         run: |
           PYTHONPATH=src python tools/terraform_config.py \
             --project-config "$PROJECT_CONFIG" \
             --environment-config "$ENVIRONMENT_CONFIG" \
             --output "$RUNNER_TEMP/terraform-config.json"
+          echo "public_edge_lockdown_enabled=$(jq -er '.public_edge_lockdown_enabled' "$RUNNER_TEMP/terraform-config.json")" >> "$GITHUB_OUTPUT"
           terraform fmt -check -recursive infra/terraform
       - name: Scan repository and infrastructure
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -164,17 +166,26 @@ jobs:
           service_url="$(terraform -chdir="$COMPONENT_PATH" output -raw public_url)"
           test -n "$service_url"
           echo "url=$service_url" >> "$GITHUB_OUTPUT"
-      - name: Run public sandbox anonymous smoke
-        id: smoke
+      - name: Run Cloud Run public-sandbox smoke before edge lockdown
+        if: ${{ steps.config.outputs.public_edge_lockdown_enabled != 'true' }}
+        id: cloud_run_smoke
         run: |
           set -euo pipefail
           python -m pip install requests
           python tools/public_sandbox_smoke.py --url "${{ steps.service.outputs.url }}" \
             | tee "$RUNNER_TEMP/public-sandbox-smoke.txt"
+      - name: Run canonical public-domain smoke after edge lockdown
+        if: ${{ steps.config.outputs.public_edge_lockdown_enabled == 'true' }}
+        id: public_domain_smoke
+        run: |
+          set -euo pipefail
+          python -m pip install requests
+          python tools/public_domain_smoke.py --url "${{ steps.service.outputs.url }}" \
+            | tee "$RUNNER_TEMP/public-sandbox-smoke.txt"
       - name: Create deploy evidence
         if: ${{ always() }}
         env:
-          SMOKE_RESULT: ${{ steps.smoke.outcome }}
+          SMOKE_RESULT: ${{ steps.cloud_run_smoke.outcome || steps.public_domain_smoke.outcome }}
           PUBLIC_URL: ${{ steps.service.outputs.url }}
           IMAGE_REF: ${{ steps.image.outputs.image_ref }}
           COMMIT_SHA: ${{ steps.revision.outputs.sha }}

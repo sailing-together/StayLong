@@ -17,3 +17,16 @@ def test_architecture_distinguishes_public_sandbox_from_private_oauth() -> None:
     assert "private" in ARCHITECTURE.lower()
     assert "approval" in ARCHITECTURE.lower()
     assert "does not" in ARCHITECTURE.lower()
+
+
+def test_public_edge_runbook_records_security_and_lifecycle_boundaries() -> None:
+    runbook = Path("docs/runbooks/public-edge-operations.md").read_text()
+    normalized = " ".join(runbook.lower().split())
+
+    assert "CLOUDFLARE_API_TOKEN" in runbook
+    assert "PROVISION_PUBLIC_DOMAIN" in runbook
+    assert "LOCKDOWN_PUBLIC_DOMAIN" in runbook
+    assert "DESTROY_PUBLIC_EDGE" in runbook
+    assert "staylonghome.com" in runbook
+    assert "temporary" in normalized
+    assert "never deletes the registered domain" in normalized

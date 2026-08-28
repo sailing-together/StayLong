@@ -79,6 +79,14 @@ def test_public_sandbox_has_deletion_protection_disabled() -> None:
     assert "deletion_protection = false" in source
 
 
+def test_public_sandbox_lockdown_is_explicit_and_disabled_by_default() -> None:
+    source = (COMPONENT / "main.tf").read_text()
+
+    assert "public_edge_lockdown_enabled" in source
+    assert "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" in source
+    assert "default_uri_disabled` is not exposed" in source
+
+
 def test_public_sandbox_project_config_has_dedicated_accounts() -> None:
     import json
 
