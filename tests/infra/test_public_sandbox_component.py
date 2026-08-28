@@ -31,6 +31,14 @@ def test_public_sandbox_schedules_authenticated_cleanup() -> None:
     assert "oidc_token" in source
 
 
+def test_public_sandbox_provisions_firestore_for_durable_sessions() -> None:
+    source = (COMPONENT / "main.tf").read_text()
+
+    assert 'service            = "firestore.googleapis.com"' in source
+    assert 'resource "google_firestore_database" "public_sandbox"' in source
+    assert 'name                        = "(default)"' in source
+
+
 def test_public_sandbox_outputs_only_url_and_non_sensitive_evidence() -> None:
     source = (COMPONENT / "outputs.tf").read_text()
     assert "public_url" in source
