@@ -1,0 +1,203 @@
+name: Control StayLong public domain
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Provision, lock down, or destroy only the public edge"
+        required: true
+        type: choice
+        options: [provision, lockdown, destroy]
+      commit_sha:
+        description: "Commit reachable from main (required)"
+        required: true
+        type: string
+      confirmation:
+        description: "Enter PROVISION_PUBLIC_DOMAIN, LOCKDOWN_PUBLIC_DOMAIN, or DESTROY_PUBLIC_EDGE"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: staylong-public-domain-control
+  cancel-in-progress: false
+
+env:
+  COMPONENT_PATH: infra/terraform/components/public-edge
+  PROJECT_CONFIG: staylong-public-sandbox.json
+  ENVIRONMENT_CONFIG: stay-long-sydney-sandbox.json
+  STATE_PREFIX: staylong/sydney-sandbox/public-edge
+  CANONICAL_URL: https://staylonghome.com
+
+jobs:
+  lifecycle:
+    name: ${{ inputs.operation }} public edge
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - name: Confirm requested public-domain operation
+        env:
+          OPERATION: ${{ inputs.operation }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          case "$OPERATION" in
+            provision) test "$CONFIRMATION" = "PROVISION_PUBLIC_DOMAIN" ;;
+            lockdown) test "$CONFIRMATION" = "LOCKDOWN_PUBLIC_DOMAIN" ;;
+            destroy) test "$CONFIRMATION" = "DESTROY_PUBLIC_EDGE" ;;
+            *) exit 1 ;;
+          esac
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha }}
+      - name: Verify selected commit belongs to main
+        id: revision
+        run: |
+          set -euo pipefail
+          selected_sha="$(git rev-parse HEAD)"
+          git fetch origin main
+          git merge-base --is-ancestor "$selected_sha" origin/main
+          echo "sha=$selected_sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: hashicorp/setup-terraform@v3
+      - name: Install public-domain smoke dependency
+        run: python -m pip install requests jsonschema
+      - name: Validate selected configuration
+        run: |
+          set -euo pipefail
+          PYTHONPATH=src python tools/terraform_config.py \
+            --project-config "$PROJECT_CONFIG" \
+            --environment-config "$ENVIRONMENT_CONFIG" \
+            --output "$RUNNER_TEMP/terraform-config.json"
+          terraform fmt -check -recursive infra/terraform
+      - name: Authenticate with keyless GitHub OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Initialise and plan public edge
+        if: ${{ inputs.operation == 'provision' || inputs.operation == 'destroy' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          state_bucket="$(jq -er '.state_bucket_name' "$RUNNER_TEMP/terraform-config.json")"
+          terraform -chdir="$COMPONENT_PATH" init -input=false \
+            -backend-config="bucket=$state_bucket" \
+            -backend-config="prefix=$STATE_PREFIX"
+          terraform -chdir="$COMPONENT_PATH" validate
+          plan_args=(-input=false -out=tfplan -var="project_config=$PROJECT_CONFIG" -var="environment_config=$ENVIRONMENT_CONFIG")
+          if [[ "${{ inputs.operation }}" == "destroy" ]]; then
+            plan_args=(-destroy "${plan_args[@]}")
+          fi
+          terraform -chdir="$COMPONENT_PATH" plan "${plan_args[@]}"
+      - name: Apply reviewed public-edge plan
+        if: ${{ inputs.operation == 'provision' || inputs.operation == 'destroy' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: terraform -chdir="$COMPONENT_PATH" apply -input=false tfplan
+      - name: Read public-edge outputs
+        if: ${{ inputs.operation == 'provision' }}
+        id: edge
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "ip=$(terraform -chdir="$COMPONENT_PATH" output -raw edge_ip)" >> "$GITHUB_OUTPUT"
+          echo "certificate_name=$(terraform -chdir="$COMPONENT_PATH" output -raw certificate_name)" >> "$GITHUB_OUTPUT"
+      - name: Wait for Google-managed certificate to become ACTIVE
+        if: ${{ inputs.operation == 'provision' }}
+        id: certificate
+        env:
+          PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          CERTIFICATE_NAME: ${{ steps.edge.outputs.certificate_name }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 90); do
+            certificate_status="$(gcloud compute ssl-certificates describe "$CERTIFICATE_NAME" --project="$PROJECT_ID" --global --format='value(managed.status)')"
+            echo "Certificate attempt $attempt status: $certificate_status"
+            if [[ "$certificate_status" == "ACTIVE" ]]; then
+              echo "certificate_status=$certificate_status" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "Google-managed certificate did not become ACTIVE within 45 minutes."
+          exit 1
+      - name: Smoke canonical public domain after provisioning
+        if: ${{ inputs.operation == 'provision' }}
+        id: provision_smoke
+        run: python tools/public_domain_smoke.py --url "$CANONICAL_URL" | tee "$RUNNER_TEMP/public-domain-smoke.json"
+      - name: Verify branded domain before lockdown
+        if: ${{ inputs.operation == 'lockdown' }}
+        id: pre_lockdown_smoke
+        run: python tools/public_domain_smoke.py --url "$CANONICAL_URL"
+      - name: Enforce explicit Phase-B lockdown switch
+        if: ${{ inputs.operation == 'lockdown' }}
+        run: |
+          set -euo pipefail
+          test "$(jq -r '.public_edge_lockdown_enabled' "$RUNNER_TEMP/terraform-config.json")" = "true"
+      - name: Apply reviewed Phase-B public-sandbox lockdown plan
+        if: ${{ inputs.operation == 'lockdown' }}
+        run: |
+          set -euo pipefail
+          component_path="infra/terraform/components/public-sandbox"
+          state_bucket="$(jq -er '.state_bucket_name' "$RUNNER_TEMP/terraform-config.json")"
+          image_ref="$(gcloud run services describe staylong-public-sandbox \
+            --project="${{ vars.GCP_PROJECT_ID }}" \
+            --region=australia-southeast1 \
+            --format='value(spec.template.spec.containers[0].image)')"
+          test -n "$image_ref"
+          terraform -chdir="$component_path" init -input=false \
+            -backend-config="bucket=$state_bucket" \
+            -backend-config="prefix=staylong/sydney-sandbox/public-sandbox"
+          terraform -chdir="$component_path" validate
+          terraform -chdir="$component_path" plan -input=false -out=tfplan \
+            -var="project_config=$PROJECT_CONFIG" \
+            -var="environment_config=$ENVIRONMENT_CONFIG" \
+            -var="image_ref=$image_ref"
+          terraform -chdir="$component_path" apply -input=false tfplan
+      - name: Smoke canonical public domain after lockdown
+        if: ${{ inputs.operation == 'lockdown' }}
+        id: lockdown_smoke
+        run: python tools/public_domain_smoke.py --url "$CANONICAL_URL" | tee "$RUNNER_TEMP/public-domain-smoke.json"
+      - name: Create public-edge evidence
+        if: ${{ always() }}
+        env:
+          OPERATION: ${{ inputs.operation }}
+          COMMIT_SHA: ${{ steps.revision.outputs.sha }}
+          EDGE_IP: ${{ steps.edge.outputs.ip }}
+          CERTIFICATE_STATUS: ${{ steps.certificate.outputs.certificate_status }}
+          SMOKE_RESULT: ${{ steps.provision_smoke.outcome || steps.lockdown_smoke.outcome }}
+        run: |
+          set -euo pipefail
+          evidence_dir="$RUNNER_TEMP/public-edge-evidence"
+          mkdir -p "$evidence_dir"
+          jq -n \
+            --arg operation "$OPERATION" \
+            --arg commit_sha "$COMMIT_SHA" \
+            --arg canonical_url "$CANONICAL_URL" \
+            --arg edge_ip "$EDGE_IP" \
+            --arg certificate_status "$CERTIFICATE_STATUS" \
+            --arg smoke_result "$SMOKE_RESULT" \
+            --arg workflow_run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg recorded_at "$(date --utc +%Y-%m-%dT%H:%M:%SZ)" \
+            '{operation: $operation, commit_sha: $commit_sha, canonical_url: $canonical_url, edge_ip: $edge_ip, certificate_status: $certificate_status, smoke_result: $smoke_result, workflow_run_url: $workflow_run_url, recorded_at: $recorded_at}' \
+            > "$evidence_dir/public-edge-evidence.json"
+          test -f "$RUNNER_TEMP/public-domain-smoke.json" && cp "$RUNNER_TEMP/public-domain-smoke.json" "$evidence_dir/" || true
+      - name: Upload public-edge evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: public-edge-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/public-edge-evidence
+          if-no-files-found: error
+          retention-days: 30

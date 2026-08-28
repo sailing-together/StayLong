@@ -20,6 +20,26 @@ domain registration.
 4. Confirm Cloudflare DNS records remain DNS-only while Google-managed TLS is
    provisioning.
 
+## Protected lifecycle workflow
+
+Use **Actions → Control StayLong public domain → Run workflow** only after the
+commit is reachable from `main`. The workflow uses GitHub OIDC and the
+`sandbox` environment; `CLOUDFLARE_API_TOKEN` remains an environment secret
+and is never written to Terraform variables, output, state, logs, or evidence.
+
+- `provision` requires `PROVISION_PUBLIC_DOMAIN`. It creates only the
+  Terraform-managed edge, waits up to 45 minutes for Google-managed TLS to be
+  `ACTIVE`, then runs the public-domain smoke journey.
+- `lockdown` requires `LOCKDOWN_PUBLIC_DOMAIN`. It first verifies the branded
+  URL, and refuses unless the checked-in `public_edge_lockdown_enabled` switch
+  is `true`. Do not use it during Phase A.
+- `destroy` requires `DESTROY_PUBLIC_EDGE`. It destroys only the public-edge
+  Terraform state; it never deletes the domain registration, Cloud Run service,
+  or public-sandbox data store.
+
+Every operation uploads a non-secret `public-edge-evidence-*` artifact with
+the selected SHA, canonical URL, IP, certificate state, and smoke result.
+
 ## Rollback boundary
 
 During Phase A, the existing Cloud Run `.run.app` URL remains available. If
