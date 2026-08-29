@@ -59,6 +59,13 @@ The GitHub CLI, GitHub Actions, local test runners, the browser and web
 research tools are not MCPs. They may support the same task, but their role and
 approval boundary are documented separately above.
 
+### StayLong skill register (not MCPs)
+
+| Skill | Approved purpose | Change authority |
+| --- | --- | --- |
+| frontend-design | Guide UI review and implementation: deliberate visual direction, readable hierarchy, accessible controls and truthful on-screen content for the older-person experience. | May change StayLong frontend code only within the approved UI task; it does not deploy, access cloud resources or alter shared design files. |
+| agent-reach | Retrieve current, public web information when research or source verification is needed. | Read-only research. Record sources near claims; never use it to post, message or alter third-party content. |
+
 1. **Implement and validate locally.** Update code, Terraform, tests and
    documentation together. Run the relevant application tests, `terraform fmt`
    and `terraform validate`. When the Terraform MCP is available in the active
