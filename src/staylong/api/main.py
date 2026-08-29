@@ -41,7 +41,11 @@ class _LocalDemoProvider:
                     "reason": "StayLong only shares information when invited.",
                 },
             ],
-            "assessment_preparation_topics": ["Describe the night-time bathroom route."],
+            "assessment_preparation_topics": [
+                "Write one sentence about the difficulty and when it happens.",
+                "Walk the bedroom-to-bathroom route in daylight and note lighting, obstacles and support points to discuss.",
+                "Ask a trusted supporter to help you remember what would make the route easier.",
+            ],
             "proposed_next_step": "prepare_assessment_pack",
         }
 
