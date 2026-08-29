@@ -66,7 +66,7 @@ it is not a substitute for the private Cloud Run evidence above.
 - [x] Each anonymous identity is limited to two active cases; a third creation attempt returns HTTP 429.
 - [x] Cases and their event records are deleted after the 24-hour retention period by the scheduled cleanup job.
 - [x] The smoke script (`tools/public_sandbox_smoke.py`) uses two `requests.Session()` instances, never reads `STAYLONG_API_TOKEN`, and asserts the sandbox action result carries `payload.sandbox == "true"`.
-- [x] The React frontend displays the sandbox notice banner and routes requests through `/v1/public/*` with `credentials: include` when `VITE_STAYLONG_API_MODE=public-sandbox`.
+- [x] The React frontend routes requests through `/v1/public/*` with `credentials: include` when `VITE_STAYLONG_API_MODE=public-sandbox`, while product copy avoids exposing internal environment names.
 - [x] Teardown automation is manual, explicit, and scoped to the `public-sandbox` Terraform component only.
 - [x] A live public-sandbox deployment and downloaded evidence artifact have been captured from merged `main`.
 
@@ -116,11 +116,14 @@ Configure these repository variables before dispatching the control workflow:
 - `GCP_DEPLOY_SERVICE_ACCOUNT`
 - `GCP_TERRAFORM_OPERATOR_SERVICE_ACCOUNT`
 
-The GitHub `sandbox` environment must require reviewers. In Google Cloud, the
-WIF provider must trust only `sailing-together/StayLong`; remote Terraform
-state, the `staylong-sydney` Artifact Registry repository, and the separately
-scoped deployer and Terraform-operator identities must already exist. No
-service-account key is stored in GitHub.
+The GitHub `sandbox` environment supplies the required non-secret variables.
+Its deployment branch is protected through the repository's reviewed `main`
+branch; it has no required reviewers so qualifying application releases can
+complete automatically. In Google Cloud, the WIF provider must trust only
+`sailing-together/StayLong`; remote Terraform state, the `staylong-sydney`
+Artifact Registry repository, and the separately scoped deployer and
+Terraform-operator identities must already exist. No service-account key is
+stored in GitHub.
 
 #### Verified sandbox bootstrap prerequisites
 
@@ -158,21 +161,24 @@ gcloud projects add-iam-policy-binding stay-long \
 
 ### Deploy and verify
 
-1. Merge the reviewed change into `main`.
-2. Open **Actions → Control StayLong public sandbox → Run workflow**.
+1. Merge a reviewed **application** change into `main` (`src/**`, `frontend/**`,
+   `Dockerfile`, `pyproject.toml`, or `uv.lock`). The control workflow releases
+   that exact commit automatically after its quality, image-scan and smoke gates.
+2. For an explicit re-release or rollback, open **Actions → Control StayLong public sandbox → Run workflow**.
 3. Select `deploy`, provide a commit SHA reachable from `main`, and enter
    `DEPLOY_PUBLIC_SANDBOX` exactly.
-4. Approve the protected `sandbox` environment when GitHub requests it.
-5. Download `public-sandbox-deploy-evidence-<run-id>`. Its JSON records the
+4. Download `public-sandbox-deploy-evidence-<run-id>`. Its JSON records the
    repository, source commit, immutable image digest, Terraform component and
    state prefix, public Cloud Run URL, anonymous smoke result, workflow run URL,
    and timestamp. The artifact also contains the smoke output and image
    reference where those steps completed.
 
-The deploy workflow runs Python, React, Terraform/schema and Trivy security
-gates before Terraform apply. It then runs the token-free two-session public
-smoke against Terraform's `public_url`; this proves the anonymous isolation and
-real sandbox workflow in the deployed service.
+The automatic trigger excludes `infra/**`, DNS, IAM and workflow configuration:
+those changes retain their explicit manual controls. Both release paths run
+Python, React, Terraform/schema and Trivy security gates before Terraform
+applies the already-reviewed public-service image update. They then run the
+token-free two-session public smoke against Terraform's `public_url`; this
+proves anonymous isolation and the deployed workflow.
 
 ### Smoke-only verification
 
