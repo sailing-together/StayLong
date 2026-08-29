@@ -236,6 +236,21 @@ describe('public sandbox mode', () => {
     expect(fetchMock).toHaveBeenCalledWith('/v1/public/workflows', expect.objectContaining({ credentials: 'include' }))
   })
 
+  it('explains when this browser already has an active sandbox plan', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ detail: 'Public sandbox case limit reached. Please wait for your session to expire.' }),
+    }))
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+
+    expect(await screen.findByText('This browser already has an active sandbox plan. Open an incognito window or clear this site’s cookies to start a new one.')).toBeVisible()
+  })
+
   it('labels a connected integration only when the workflow reports google_oauth', async () => {
     const user = userEvent.setup()
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ...prepared, integration_mode: 'google_oauth' }) }))

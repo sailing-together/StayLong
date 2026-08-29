@@ -37,7 +37,12 @@ function App() {
     const url = publicMode ? `${apiBaseUrl}/v1/public${path.slice('/v1'.length)}` : `${apiBaseUrl}${path}`
     const init: RequestInit = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, ...(publicMode ? { credentials: 'include' } : {}) }
     const response = await fetch(url, init)
-    if (!response.ok) throw new Error('StayLong could not continue your plan. Please try again.')
+    if (!response.ok) {
+      if (publicMode && response.status === 429) {
+        throw new Error('This browser already has an active sandbox plan. Open an incognito window or clear this site’s cookies to start a new one.')
+      }
+      throw new Error('StayLong could not continue your plan. Please try again.')
+    }
     return response.json() as Promise<Workflow>
   }
   async function start(event: FormEvent) {
