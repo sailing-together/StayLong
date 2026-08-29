@@ -47,7 +47,8 @@ def build_home_independence_plan(
                 task_id="arrange-assessment",
                 title="Prepare to arrange a My Aged Care assessment",
                 description=(
-                    "Open the official pathway, keep your summary nearby, and use it when you are ready to discuss support at home."
+                    "Open the official pathway, keep your summary nearby, and use it "
+                    "when you are ready to discuss support at home."
                 ),
                 owner="You",
                 due_at=now + timedelta(days=2),
@@ -57,7 +58,8 @@ def build_home_independence_plan(
                 task_id="prepare-notes",
                 title="Prepare your assessment notes",
                 description=(
-                    "Write one sentence about the difficulty, when it happens, and what change or support you would like to discuss."
+                    "Write one sentence about the difficulty, when it happens, and "
+                    "what change or support you would like to discuss."
                 ),
                 owner="You",
                 due_at=now + timedelta(days=1),
@@ -67,7 +69,8 @@ def build_home_independence_plan(
                 task_id="confirm-home-access",
                 title="Confirm home access or permission",
                 description=(
-                    "Check whether a landlord, building manager, or trusted supporter needs to be involved before any home change is discussed."
+                    "Check whether a landlord, building manager, or trusted supporter "
+                    "needs to be involved before any home change is discussed."
                 ),
                 owner="You",
                 due_at=now + timedelta(days=3),
