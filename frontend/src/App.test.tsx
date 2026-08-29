@@ -99,7 +99,7 @@ describe('StayLong Continuous Home Path', () => {
     expect(screen.getByText('If anyone is in immediate danger, call 000.')).toBeVisible()
   })
 
-  it('shows an assessment pack and exact sandbox action before approval', async () => {
+  it('shows an assessment pack and user-controlled action before approval', async () => {
     const user = userEvent.setup()
     const fetchMock = stubWorkflowFetches()
     render(<App />)
@@ -118,10 +118,10 @@ describe('StayLong Continuous Home Path', () => {
     expect(screen.getByText('Prepare your assessment notes')).toBeVisible()
     expect(screen.getByText('Confirm home access or permission')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Open My Aged Care' })).toHaveAttribute('href', 'https://www.myagedcare.gov.au/')
-    expect(screen.getByText('Sandbox action — no real calendar, provider or contact will be used.')).toBeVisible()
+    expect(screen.getAllByText('You choose before anything happens.')).toHaveLength(2)
     expect(screen.getByRole('button', { name: 'Add assessment reminder to calendar' })).toBeEnabled()
     expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
-    expect(screen.getByText('Sandbox integrations')).toBeVisible()
+    expect(screen.getByText('Actions you control')).toBeVisible()
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/v1/workflows', expect.objectContaining({ method: 'POST' }))
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/workflows/case-123/answers', expect.objectContaining({ method: 'POST' }))
   })
@@ -137,7 +137,7 @@ describe('StayLong Continuous Home Path', () => {
     await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
     await user.click(await screen.findByRole('button', { name: 'Add assessment reminder to calendar' }))
 
-    expect(await screen.findByText('Calendar event created in sandbox')).toBeVisible()
+    expect(await screen.findByText('Reminder added to your plan')).toBeVisible()
     expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
     const timeline = screen.getByRole('list', { name: 'Plan timeline' })
     expect(within(timeline).getByText('approval.granted')).toBeVisible()
@@ -155,6 +155,41 @@ describe('StayLong Continuous Home Path', () => {
     expect(await screen.findByRole('heading', { name: 'Call Triple Zero (000) now' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prepare my plan' })).not.toBeInTheDocument()
   })
+
+  it('lets a person return to their concern while preparing their plan', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => workflow('intake') }))
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
+    await user.click(screen.getByRole('button', { name: 'Back to my concern' }))
+
+    expect(screen.getByRole('heading', { name: 'What would make home easier today?' })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' })).toHaveValue(concern)
+  })
+
+  it('lets a person review assessment details and return to their prepared plan', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => workflow('intake') })
+      .mockResolvedValueOnce({ ok: true, json: async () => prepared })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
+    for (const question of questions) await user.type(screen.getByRole('textbox', { name: question.question }), 'Answer')
+    await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
+    await screen.findByRole('heading', { name: 'Your Home Independence Plan' })
+    await user.click(screen.getByRole('button', { name: 'Back to assessment' }))
+
+    expect(screen.getByRole('heading', { name: 'A few details will help prepare your plan' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Return to my plan' }))
+    expect(screen.getByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
+  })
 })
 
 describe('public sandbox mode', () => {
@@ -167,12 +202,12 @@ describe('public sandbox mode', () => {
     vi.unstubAllGlobals()
   })
 
-  it('uses the public endpoint with credentials and names the public sandbox boundary', async () => {
+  it('uses the public endpoint with credentials without showing internal environment language', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => workflow('intake') })
     vi.stubGlobal('fetch', fetchMock)
     render(<App />)
-    expect(screen.getByText('Public sandbox — temporary data, no real bookings or messages.')).toBeVisible()
+    expect(screen.queryByText('Public sandbox — temporary data, no real bookings or messages.')).not.toBeInTheDocument()
     fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
     await user.click(screen.getByRole('button', { name: 'Start my plan' }))
     expect(fetchMock).toHaveBeenCalledWith('/v1/public/workflows', expect.objectContaining({ credentials: 'include' }))
