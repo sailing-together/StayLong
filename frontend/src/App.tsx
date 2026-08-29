@@ -19,6 +19,14 @@ const examples = [
   ['Shower safety', 'I feel unsteady getting into and out of the shower.'],
 ]
 const pathSteps = ['Tell us what is difficult', 'Prepare for assessment', 'Approve next steps', 'Follow through']
+const assessmentStatusQuestion = 'Have you already had an aged care assessment or an occupational therapy home visit?'
+const assessmentStatusOptions = [
+  'Yes — aged care assessment',
+  'Yes — occupational therapy home visit',
+  'Yes — both',
+  'No, not yet',
+  'I’m not sure',
+]
 
 function App() {
   const [concern, setConcern] = useState('')
@@ -104,7 +112,7 @@ function App() {
             </form>
           </section>}
           {view === 'emergency' && <section className="task-panel emergency-panel"><h1>Call Triple Zero (000) now</h1><p>If anyone may be in immediate danger, call 000. StayLong will not prepare or run a plan for an emergency.</p></section>}
-          {view === 'intake' && workflow && <section className="task-panel"><p className="eyebrow">Prepare with confidence</p><h1>A few details will help prepare your plan</h1><form onSubmit={prepare}>{intakeQuestions.map((question) => <div className="input-group" key={question.key}><label htmlFor={question.key}>{question.question}</label><input id={question.key} onChange={(event) => setAnswers({ ...answers, [question.key]: event.target.value })} required value={answers[question.key] ?? ''} /><p className="field-help">{question.reason}</p></div>)}<div className="flow-actions"><button className="secondary-action" onClick={() => setView('concern')} type="button">Back to my concern</button>{workflow.stage === 'intake' ? <button className="primary-action" disabled={busy}>{busy ? 'Preparing your plan…' : 'Prepare my plan'}</button> : <button className="primary-action" onClick={() => setView('plan')} type="button">Return to my plan</button>}</div></form></section>}
+          {view === 'intake' && workflow && <section className="task-panel"><p className="eyebrow">Prepare with confidence</p><h1>A few details will help prepare your plan</h1><form onSubmit={prepare}>{intakeQuestions.map((question) => <IntakeQuestion key={question.key} question={question} value={answers[question.key] ?? ''} onChange={(value) => setAnswers({ ...answers, [question.key]: value })} />)}<div className="flow-actions"><button className="secondary-action" onClick={() => setView('concern')} type="button">Back to my concern</button>{workflow.stage === 'intake' ? <button className="primary-action" disabled={busy}>{busy ? 'Preparing your plan…' : 'Prepare my plan'}</button> : <button className="primary-action" onClick={() => setView('plan')} type="button">Return to my plan</button>}</div></form></section>}
           {view === 'plan' && workflow?.plan && workflow.pack && <PlanBoard actions={actions} busy={busy} integrationMode={workflow.integration_mode} onBackToAssessment={() => setView('intake')} onDecision={decide} pack={workflow.pack} plan={workflow.plan} results={workflow.action_results} timeline={workflow.timeline} />}
           {busyMessage && <p className="loading-status" role="status" aria-label={busyMessage}>{busyMessage}…</p>}
           {message && <p className="global-status" role="status">{message}</p>}
@@ -113,6 +121,13 @@ function App() {
       <footer className="site-footer"><p>StayLong supports preparation, coordination, and follow-through.</p><p>It does not diagnose, decide eligibility, select providers, or make payments.</p><p className="emergency-note">If there is immediate danger, call Triple Zero (000).</p></footer>
     </div>
   )
+}
+
+function IntakeQuestion({ question, value, onChange }: { question: Fact; value: string; onChange: (value: string) => void }) {
+  if (question.key === 'assessment_status') {
+    return <fieldset className="input-group choice-group"><legend>{assessmentStatusQuestion}</legend><div className="choice-options">{assessmentStatusOptions.map((option) => <label className="choice-option" key={option}><input checked={value === option} name={question.key} onChange={() => onChange(option)} required type="radio" value={option} /><span>{option}</span></label>)}</div><p className="field-help">{question.reason}</p></fieldset>
+  }
+  return <div className="input-group"><label htmlFor={question.key}>{question.question}</label><input id={question.key} onChange={(event) => onChange(event.target.value)} required value={value} /><p className="field-help">{question.reason}</p></div>
 }
 
 function PlanBoard({ plan, pack, actions, results, timeline, busy, integrationMode, onBackToAssessment, onDecision }: { plan: Plan; pack: Pack; actions: Proposal[]; results: ActionResult[]; timeline: Timeline[]; busy: boolean; integrationMode: string; onBackToAssessment: () => void; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {

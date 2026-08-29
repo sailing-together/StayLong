@@ -5,7 +5,7 @@ import App from './App'
 
 const concern = 'Getting to the bathroom at night is difficult.'
 const questions = [
-  { key: 'assessment_status', question: 'Has a My Aged Care assessment been arranged?', reason: 'This helps prepare the right next step.' },
+  { key: 'assessment_status', question: 'Have you already had an aged care assessment or an occupational therapy home visit?', reason: 'This helps prepare the right next step.' },
   { key: 'housing_tenure', question: 'Is the home owned or rented?', reason: 'Permission requirements may affect planning.' },
   { key: 'support_contacts', question: 'Would you like to involve anyone now?', reason: 'StayLong only shares information when invited.' },
 ]
@@ -149,9 +149,13 @@ describe('StayLong Continuous Home Path', () => {
     await user.click(screen.getByRole('button', { name: 'Start my plan' }))
     await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
 
-    for (const question of questions) {
-      await user.type(screen.getByRole('textbox', { name: question.question }), 'A clear answer')
-    }
+    expect(screen.getByRole('group', { name: 'Have you already had an aged care assessment or an occupational therapy home visit?' })).toBeVisible()
+    expect(screen.getByRole('radio', { name: 'No, not yet' })).toBeVisible()
+    expect(screen.getByRole('radio', { name: 'Yes — aged care assessment' })).toBeVisible()
+
+    await user.click(screen.getByRole('radio', { name: 'No, not yet' }))
+    await user.type(screen.getByRole('textbox', { name: questions[1].question }), 'A clear answer')
+    await user.type(screen.getByRole('textbox', { name: questions[2].question }), 'A clear answer')
     await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
 
     expect(await screen.findByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
@@ -197,7 +201,8 @@ describe('StayLong Continuous Home Path', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
     await user.click(screen.getByRole('button', { name: 'Start my plan' }))
     await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
-    for (const question of questions) await user.type(screen.getByRole('textbox', { name: question.question }), 'Answer')
+    await user.click(screen.getByRole('radio', { name: 'No, not yet' }))
+    for (const question of questions.slice(1)) await user.type(screen.getByRole('textbox', { name: question.question }), 'Answer')
     await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
     await user.click(await screen.findByRole('button', { name: 'Add assessment reminder to calendar' }))
 
@@ -267,7 +272,8 @@ describe('StayLong Continuous Home Path', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
     await user.click(screen.getByRole('button', { name: 'Start my plan' }))
     await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
-    for (const question of questions) await user.type(screen.getByRole('textbox', { name: question.question }), 'Answer')
+    await user.click(screen.getByRole('radio', { name: 'No, not yet' }))
+    for (const question of questions.slice(1)) await user.type(screen.getByRole('textbox', { name: question.question }), 'Answer')
     await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
     await screen.findByRole('heading', { name: 'Your Home Independence Plan' })
     await user.click(screen.getByRole('button', { name: 'Back to assessment' }))

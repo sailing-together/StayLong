@@ -27,7 +27,10 @@ class _LocalDemoProvider:
             "missing_facts": [
                 {
                     "key": "assessment_status",
-                    "question": "Has a My Aged Care assessment been arranged?",
+                    "question": (
+                        "Have you already had an aged care assessment or an occupational "
+                        "therapy home visit?"
+                    ),
                     "reason": "This helps prepare the right next step.",
                 },
                 {

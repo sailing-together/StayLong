@@ -55,6 +55,13 @@ h1 { max-width: 650px; margin-bottom: 16px; font-size: clamp(2.15rem, 3.5vw, 2.5
 .selected-example p:first-child { margin-bottom: 4px; font-weight: 800; }
 .input-group { margin: 0 0 12px; }
 .input-group label { margin-bottom: 8px; }
+.choice-group { border: 0; padding: 0; }
+.choice-group legend { margin-bottom: 10px; font-size: .98rem; font-weight: 800; line-height: 1.35; }
+.choice-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.choice-option { display: flex; min-height: 52px; align-items: center; gap: 10px; margin: 0; border: 2px solid color-mix(in srgb, var(--moss) 32%, transparent); border-radius: 15px; padding: 10px 14px; color: var(--moss); background: color-mix(in srgb, var(--paper) 68%, transparent); cursor: pointer; font-weight: 700; line-height: 1.35; }
+.choice-option:has(input:checked) { border-color: var(--moss); background: color-mix(in srgb, var(--sand) 74%, transparent); }
+.choice-option:focus-within { outline: 3px solid var(--terracotta); outline-offset: 2px; }
+.choice-option input { flex: 0 0 auto; width: 20px; height: 20px; accent-color: var(--moss); }
 textarea, input { display: block; width: 100%; border: 2px solid color-mix(in srgb, var(--moss) 40%, transparent); border-radius: 17px; padding: 15px 17px; color: var(--moss); background: var(--paper); line-height: 1.55; }
 textarea { min-height: 100px; resize: vertical; }
 textarea:focus, input:focus { border-color: var(--terracotta); }
@@ -161,6 +168,7 @@ textarea:focus, input:focus { border-color: var(--terracotta); }
   h1 { font-size: clamp(2rem, 10vw, 2.65rem); }
   .example-options { display: grid; grid-template-columns: 1fr; }
   .example-option { width: 100%; text-align: left; }
+  .choice-options { grid-template-columns: 1fr; }
   .form-actions { align-items: stretch; flex-direction: column; }
   .flow-actions { display: grid; }
   .flow-actions .primary-action, .flow-actions .secondary-action { width: 100%; }
