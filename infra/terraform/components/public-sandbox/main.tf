@@ -109,10 +109,16 @@ resource "google_project_iam_member" "sandbox_runtime_logging" {
 # --- Cloud Run public sandbox service ---
 
 resource "google_cloud_run_v2_service" "sandbox" {
-  project             = local.config.project_id
-  name                = "staylong-public-sandbox"
-  location            = local.config.region
-  ingress             = "INGRESS_TRAFFIC_ALL"
+  project  = local.config.project_id
+  name     = "staylong-public-sandbox"
+  location = local.config.region
+  ingress = (
+    local.config.public_edge_lockdown_enabled ?
+    "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
+  )
+  # `default_uri_disabled` is not exposed by the pinned Google provider. In
+  # lockdown mode, INTERNAL_LOAD_BALANCER ingress prevents external bypass of
+  # the generated .run.app address even while the API still reports that URL.
   deletion_protection = false
 
   template {
