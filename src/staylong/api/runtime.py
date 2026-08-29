@@ -88,6 +88,7 @@ def build_runtime_workflow(
     environment: Mapping[str, str] | None = None,
     *,
     firestore_client: Any | None = None,
+    oauth_token_store: OAuthTokenStore | None = None,
     executor: AdkJsonExecutor | object | None = None,
     intake_builder: IntakeBuilder = build_vertex_adk_intake_agent,
     gemma_builder: GemmaBuilder = build_vertex_gemma_privacy_guard,
@@ -101,7 +102,11 @@ def build_runtime_workflow(
     VertexRuntimeConfig.from_environment(values)
     adk_executor = executor or GoogleAdkJsonExecutor()
     intake_agent = intake_builder(executor=adk_executor, environment=values)
-    calendar_oauth = build_calendar_oauth(values, firestore_client=firestore_client)
+    calendar_oauth = build_calendar_oauth(
+        values,
+        token_store=oauth_token_store,
+        firestore_client=firestore_client,
+    )
     action_adapters = build_action_adapters(
         values,
         access_token_provider=(GoogleOAuthAccessTokenProvider(calendar_oauth)

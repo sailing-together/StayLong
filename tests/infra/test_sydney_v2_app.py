@@ -38,3 +38,19 @@ def test_sydney_v2_calendar_oauth_is_opt_in_and_uses_secret_reference() -> None:
     assert "STAYLONG_GOOGLE_OAUTH_CLIENT_SECRET" in app_source
     assert 'secret_id = var.calendar_oauth_client_secret_id' in app_source
     assert 'default     = ""' in variables_source
+
+
+def test_sydney_v2_calendar_oauth_grants_only_token_store_permissions() -> None:
+    """A private OAuth callback can persist a refresh token without admin access."""
+    app_source = V2_APP_ROOT.read_text()
+
+    assert 'resource "google_project_iam_custom_role" "calendar_oauth_tokens"' in app_source
+    assert 'resource "google_project_iam_member" "calendar_oauth_tokens"' in app_source
+    for permission in (
+        "secretmanager.secrets.create",
+        "secretmanager.secrets.get",
+        "secretmanager.versions.add",
+        "secretmanager.versions.access",
+    ):
+        assert permission in app_source
+    assert "roles/secretmanager.admin" not in app_source
