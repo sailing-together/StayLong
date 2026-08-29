@@ -94,6 +94,7 @@ describe('StayLong Continuous Home Path', () => {
     render(<App />)
 
     expect(document.title).toBe('StayLong | Independent living, coordinated')
+    expect(screen.getByRole('link', { name: 'StayLong' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('heading', { name: 'What would make home easier today?' })).toBeVisible()
     expect(screen.getByRole('navigation', { name: 'Continuous Home Path' })).toBeVisible()
     expect(screen.queryByText('If anyone is in immediate danger, call 000.')).not.toBeInTheDocument()
@@ -144,6 +145,7 @@ describe('StayLong Continuous Home Path', () => {
     expect(screen.getByRole('button', { name: 'Add assessment reminder to calendar' })).toBeEnabled()
     expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
     expect(screen.getByText('Actions you control')).toBeVisible()
+    expect(screen.getAllByText('Sandbox action — no real calendar, provider or contact will be used.')).toHaveLength(1)
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/v1/workflows', expect.objectContaining({ method: 'POST' }))
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/workflows/case-123/answers', expect.objectContaining({ method: 'POST' }))
   })
@@ -220,6 +222,7 @@ describe('public sandbox mode', () => {
   })
   afterEach(() => {
     cleanup()
+    sessionStorage.clear()
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
   })
@@ -233,6 +236,32 @@ describe('public sandbox mode', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
     await user.click(screen.getByRole('button', { name: 'Start my plan' }))
     expect(fetchMock).toHaveBeenCalledWith('/v1/public/workflows', expect.objectContaining({ credentials: 'include' }))
+  })
+
+  it('explains when this browser already has an active sandbox plan', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      json: async () => ({ detail: 'Public sandbox case limit reached. Please wait for your session to expire.' }),
+    }))
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+
+    expect(await screen.findByText('This browser already has an active sandbox plan. Open an incognito window or clear this site’s cookies to start a new one.')).toBeVisible()
+  })
+
+  it('restores the active sandbox plan when the browser page is reopened', async () => {
+    sessionStorage.setItem('staylong_active_case_id', 'case-123')
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => prepared })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
+    expect(fetchMock).toHaveBeenCalledWith('/v1/public/workflows/case-123', expect.objectContaining({ method: 'GET', credentials: 'include' }))
   })
 
   it('labels a connected integration only when the workflow reports google_oauth', async () => {
