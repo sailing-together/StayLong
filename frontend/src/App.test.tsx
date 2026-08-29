@@ -272,6 +272,23 @@ describe('StayLong Continuous Home Path', () => {
     await user.click(screen.getByRole('button', { name: 'Return to my plan' }))
     expect(screen.getByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
   })
+
+  it('returns to the prepared plan instead of an empty preparation page', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => prepared }))
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    await screen.findByRole('heading', { name: 'Your Home Independence Plan' })
+    await user.click(screen.getByRole('button', { name: 'Back to assessment' }))
+    await user.click(screen.getByRole('button', { name: 'Back to my concern' }))
+
+    expect(screen.getByRole('button', { name: 'Return to my plan' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Return to preparation' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Return to my plan' }))
+    expect(screen.getByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
+  })
 })
 
 describe('public sandbox mode', () => {

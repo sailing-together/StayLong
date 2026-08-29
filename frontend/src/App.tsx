@@ -42,6 +42,7 @@ function App() {
   }, [])
   const step = view === 'intake' ? 2 : view === 'plan' ? workflow?.stage === 'follow_through' ? 4 : 3 : 1
   const actions = workflow?.proposed_actions.length ? workflow.proposed_actions : workflow?.proposed_action ? [workflow.proposed_action] : []
+  const hasPreparedPlan = Boolean(workflow?.plan && workflow.pack)
   const selectedExample = examples.find(([, summary]) => summary === concern)?.[0]
   const publicMode = import.meta.env.VITE_STAYLONG_API_MODE === 'public-sandbox'
   async function request(path: string, body?: object, method = 'POST') {
@@ -99,7 +100,7 @@ function App() {
               <div className="example-options">{examples.map(([label, summary]) => <button aria-pressed={concern === summary} className="example-option" key={label} onClick={() => setConcern(summary)} type="button">{label}</button>)}</div>
               {selectedExample && <div className="selected-example" role="status"><p>You chose: {selectedExample}</p><p>We’ve added a starting point below — change the words so they sound like you.</p></div>}
               <div className="input-group"><label htmlFor="concern">Describe what is becoming difficult</label><p className="field-help">No example fits? That’s okay — describe what you noticed below.</p><textarea aria-describedby="concern-help" id="concern" onChange={(event) => setConcern(event.target.value)} required value={concern} /><span className="sr-only" id="concern-help">You can describe a different concern in your own words.</span></div>
-              <div className="flow-actions"><button className="primary-action" disabled={busy || !concern.trim()}>{busy ? 'Preparing your questions…' : 'Start my plan'}</button>{workflow && <button className="secondary-action" onClick={() => setView('intake')} type="button">Return to preparation</button>}</div>
+              <div className="flow-actions"><button className="primary-action" disabled={busy || !concern.trim()}>{busy ? 'Preparing your questions…' : 'Start my plan'}</button>{workflow && <button className="secondary-action" onClick={() => setView(hasPreparedPlan ? 'plan' : 'intake')} type="button">{hasPreparedPlan ? 'Return to my plan' : 'Return to preparation'}</button>}</div>
             </form>
           </section>}
           {view === 'emergency' && <section className="task-panel emergency-panel"><h1>Call Triple Zero (000) now</h1><p>If anyone may be in immediate danger, call 000. StayLong will not prepare or run a plan for an emergency.</p></section>}
