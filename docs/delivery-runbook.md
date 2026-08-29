@@ -27,6 +27,20 @@ Use this procedure for every Google Cloud or Terraform change. Terraform is the
 source of truth; MCP tools complement the repository checks and never bypass
 the approval gate.
 
+### Where each tool runs
+
+- **Terraform MCP and GCP MCP run in the local, interactive engineering task.**
+  Use Terraform MCP to inspect configuration and explain a plan. Use GCP MCP
+  for read-only checks of real cloud state, including Cloud Run revisions, IAM,
+  Secret Manager metadata, enabled APIs and bounded logs.
+- **GitHub Actions runs the controlled, reproducible execution.** It runs
+  format, validation, plan, build and tests; after explicit approval it runs
+  the protected Terraform apply and deployment workflow through WIF.
+- **Do not embed MCP calls in GitHub Actions.** That would duplicate the WIF
+  credential boundary and make interactive access harder to audit. MCP findings
+  inform the pull request and deployment evidence; workflows remain the record
+  of execution.
+
 1. **Implement and validate locally.** Update code, Terraform, tests and
    documentation together. Run the relevant application tests, `terraform fmt`
    and `terraform validate`. When the Terraform MCP is available in the active
