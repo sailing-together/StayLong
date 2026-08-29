@@ -45,14 +45,15 @@ h1 { max-width: 650px; margin-bottom: 16px; font-size: clamp(2.15rem, 3.5vw, 2.5
 .assistant-bubble { max-width: 88%; margin: 0; border: 1px solid color-mix(in srgb, var(--moss) 18%, transparent); border-radius: 18px 18px 18px 5px; padding: 13px 16px; color: var(--moss); background: color-mix(in srgb, var(--sand) 78%, transparent); font-size: .98rem; font-weight: 650; line-height: 1.45; box-shadow: 0 3px 10px color-mix(in srgb, var(--moss) 7%, transparent); }
 .example-fieldset { margin: 0 0 16px; border: 0; padding: 0; }
 .example-fieldset legend, label { display: block; margin-bottom: 10px; font-size: .98rem; font-weight: 800; }
-.example-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.example-options { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 26px; }
 .example-option { min-height: 48px; border: 2px solid color-mix(in srgb, var(--moss) 45%, transparent); border-radius: 999px; padding: 10px 17px; color: var(--moss); background: color-mix(in srgb, var(--paper) 70%, transparent); cursor: pointer; font-weight: 750; transition: border-color 160ms ease, background 160ms ease, transform 160ms ease; }
 .example-option:hover { border-color: var(--terracotta); transform: translateY(-1px); }
 .example-option[aria-pressed="true"] { border-color: var(--moss); color: var(--sand); background: var(--moss); }
 .selected-example { max-width: 88%; margin: 16px 0 16px auto; border-radius: 18px 18px 5px 18px; padding: 14px 16px; color: var(--moss); background: color-mix(in srgb, var(--sand) 72%, transparent); box-shadow: 0 3px 10px color-mix(in srgb, var(--moss) 7%, transparent); }
 .selected-example p { margin: 0; line-height: 1.45; }
 .selected-example p:first-child { margin-bottom: 4px; font-weight: 800; }
-.input-group { margin-bottom: 12px; }
+.input-group { margin: 0 0 12px; }
+.input-group label { margin-bottom: 8px; }
 textarea, input { display: block; width: 100%; border: 2px solid color-mix(in srgb, var(--moss) 40%, transparent); border-radius: 17px; padding: 15px 17px; color: var(--moss); background: var(--paper); line-height: 1.55; }
 textarea { min-height: 100px; resize: vertical; }
 textarea:focus, input:focus { border-color: var(--terracotta); }
