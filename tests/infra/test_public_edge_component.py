@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 COMPONENT_ROOT = Path("infra/terraform/components/public-edge")
 
 

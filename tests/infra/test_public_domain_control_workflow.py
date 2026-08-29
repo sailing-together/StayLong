@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 SOURCE = Path(".github/workflows/public-domain-control.yml").read_text()
 
 
