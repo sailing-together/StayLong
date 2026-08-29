@@ -1,6 +1,9 @@
 flowchart LR
   U["Older person living alone"] --> UI["React / TypeScript UI"]
-  UI --> PUB["Long-lived public sandbox\n/v1/public/*"]
+  UI --> DNS["Cloudflare DNS\nstaylonghome.com"]
+  DNS --> EDGE["Global external HTTPS\nload balancer + Google TLS"]
+  EDGE --> NEG["Regional Serverless NEG"]
+  NEG --> PUB["Long-lived public sandbox\n/v1/public/*"]
   PUB --> SBOX["Session ownership +\n24h expiry + quota"]
   SBOX --> DEMO["Sandbox adapters\n(no external side effects)"]
 
@@ -18,5 +21,6 @@ flowchart LR
   CAL --> AUDIT["event ID + audit record"]
   FS --> AUDIT
 
-  GHA["GitHub Actions\nTerraform + WIF"] -.-> PUB
+  GHA["GitHub Actions\nTerraform + WIF"] -.-> EDGE
+  GHA -.-> PUB
   GHA -.-> API

@@ -10,10 +10,16 @@ flowchart LR
     U["Older person living alone"] --> W["Accessible web UI"]
     S["Optional authorised supporter"] -. invited for an approved task .-> W
   end
+  subgraph EDGE["Public entry point — Phase A"]
+    DNS["Cloudflare DNS\nstaylonghome.com + www"] --> LB["Global external HTTPS load balancer\nGoogle-managed TLS"]
+    LB --> NEG["Regional Serverless NEG"]
+  end
   subgraph PUBLIC["Long-lived public sandbox Cloud Run"]
     PW["Public React experience"] --> PS["/v1/public/* session API"]
     PS --> SA["Sandbox adapters only"]
   end
+  W --> DNS
+  NEG --> PW
   subgraph PRIVATE["Private Cloud Run service"]
     W --> API["Authenticated FastAPI API"]
     API --> R["Deterministic safety route"]
@@ -33,7 +39,8 @@ flowchart LR
   F --> L["Immutable audit timeline"]
   L --> W
   D["Synthetic seeded household"] --> F
-  CI["GitHub Actions + Terraform + WIF"] -. deploys .-> PUBLIC
+  CI["GitHub Actions + Terraform + WIF"] -. deploys .-> EDGE
+  CI -. deploys .-> PUBLIC
   CI -. deploys .-> PRIVATE
 ```
 
@@ -94,7 +101,7 @@ Emergency handling is a static, deterministic route, not an LLM feature. A possi
 
 ## Deployment architecture
 
-- Terraform provisions all Google Cloud resources, including identity, state storage, runtime, data stores, messaging, observability and—when a custom domain is purchased—the load balancer, certificate and DNS records.
+- Terraform provisions all Google Cloud resources, including identity, state storage, runtime, data stores, messaging, observability and the public edge: global load balancer, Google-managed certificate, Serverless NEG and Cloudflare DNS records.
 - GitHub Actions authenticates to Google Cloud using OpenID Connect Workload Identity Federation (WIF); no JSON service-account key is stored in GitHub.
 - CI runs formatting, linting and tests on every pull request.
 - Terraform plan runs on pull requests; apply is manually dispatched from protected `main` after review.
@@ -103,4 +110,9 @@ Emergency handling is a static, deterministic route, not an LLM feature. A possi
   URL remains stable; its explicit destroy workflow is never part of normal
   deployment. Private OAuth services are separate and require an authenticated
   identity-aware request.
-- The sandbox initially uses the generated `run.app` URL. A future public custom domain will use a global external HTTPS Load Balancer, Google-managed TLS certificate and Serverless NEG in front of Cloud Run; direct Cloud Run domain mapping is not used.
+- The branded public entry point is `https://staylonghome.com`, served by a global external HTTPS Load Balancer, Google-managed TLS certificate and Serverless NEG in front of Cloud Run; direct Cloud Run domain mapping is not used. During Phase A, the existing generated `run.app` URL remains available as a rollback path. Phase B can restrict direct Cloud Run access only after branded-domain TLS, smoke tests and evidence have passed.
+
+The detailed boundary, lifecycle controls and DNS-token handling are in the
+[public-edge design](architecture/public-edge-design.md). The public edge is
+still a temporary-data sandbox: it does not provide real Calendar, Gmail, SMS,
+provider, payment, MyGov or government-account actions.
