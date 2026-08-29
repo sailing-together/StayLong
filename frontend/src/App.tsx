@@ -29,13 +29,23 @@ function App() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   useEffect(() => { document.title = 'StayLong | Independent living, coordinated' }, [])
+  useEffect(() => {
+    if (!publicMode) return
+    const caseId = sessionStorage.getItem('staylong_active_case_id')
+    if (!caseId) return
+    request(`/v1/workflows/${caseId}`, undefined, 'GET').then((next) => {
+      setWorkflow(next)
+      setIntakeQuestions(next.questions)
+      setView(next.stage === 'emergency' ? 'emergency' : next.plan && next.pack ? 'plan' : 'intake')
+    }).catch(() => sessionStorage.removeItem('staylong_active_case_id'))
+  }, [])
   const step = view === 'intake' ? 2 : view === 'plan' ? workflow?.stage === 'follow_through' ? 4 : 3 : 1
   const actions = workflow?.proposed_actions.length ? workflow.proposed_actions : workflow?.proposed_action ? [workflow.proposed_action] : []
   const selectedExample = examples.find(([, summary]) => summary === concern)?.[0]
   const publicMode = import.meta.env.VITE_STAYLONG_API_MODE === 'public-sandbox'
-  async function request(path: string, body?: object) {
+  async function request(path: string, body?: object, method = 'POST') {
     const url = publicMode ? `${apiBaseUrl}/v1/public${path.slice('/v1'.length)}` : `${apiBaseUrl}${path}`
-    const init: RequestInit = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, ...(publicMode ? { credentials: 'include' } : {}) }
+    const init: RequestInit = { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, ...(publicMode ? { credentials: 'include' } : {}) }
     const response = await fetch(url, init)
     if (!response.ok) {
       if (publicMode && response.status === 429) {
@@ -49,6 +59,7 @@ function App() {
     event.preventDefault(); setBusy(true)
     try {
       const next = await request('/v1/workflows', { concern })
+      if (publicMode) sessionStorage.setItem('staylong_active_case_id', next.case_id)
       setWorkflow(next); setIntakeQuestions(next.questions); setView(next.stage === 'emergency' ? 'emergency' : next.plan && next.pack ? 'plan' : 'intake')
       setMessage('Your concern is recorded. Nothing has been shared or booked.')
     }

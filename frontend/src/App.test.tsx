@@ -221,6 +221,7 @@ describe('public sandbox mode', () => {
   })
   afterEach(() => {
     cleanup()
+    sessionStorage.clear()
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
   })
@@ -249,6 +250,17 @@ describe('public sandbox mode', () => {
     await user.click(screen.getByRole('button', { name: 'Start my plan' }))
 
     expect(await screen.findByText('This browser already has an active sandbox plan. Open an incognito window or clear this site’s cookies to start a new one.')).toBeVisible()
+  })
+
+  it('restores the active sandbox plan when the browser page is reopened', async () => {
+    sessionStorage.setItem('staylong_active_case_id', 'case-123')
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => prepared })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
+    expect(fetchMock).toHaveBeenCalledWith('/v1/public/workflows/case-123', expect.objectContaining({ method: 'GET', credentials: 'include' }))
   })
 
   it('labels a connected integration only when the workflow reports google_oauth', async () => {
