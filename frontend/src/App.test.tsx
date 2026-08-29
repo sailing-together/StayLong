@@ -80,7 +80,7 @@ const fullyCompleted = workflow('follow_through', {
   stage: 'follow_through',
   action_results: [
     { case_id: 'case-123', action_type: 'calendar.create', action_revision: 1, channel: 'calendar', payload: { sandbox: 'true', title: 'Review your assessment preparation pack' } },
-    { case_id: 'case-123', action_type: 'contact_draft.create', action_revision: 1, channel: 'contact_draft', payload: { sandbox: 'true' } },
+    { case_id: 'case-123', action_type: 'contact_draft.create', action_revision: 1, channel: 'contact_draft', payload: { sandbox: 'true', body: 'A StayLong draft is ready for your review; it has not been sent.' } },
   ],
   timeline: [
     { event_id: 'event-1', event_type: 'concern.created', details: {}, occurred_at: '2026-08-23T10:00:00Z' },
@@ -119,6 +119,19 @@ describe('StayLong Continuous Home Path', () => {
     expect(screen.getByText('If there is immediate danger, call Triple Zero (000).')).toBeVisible()
   })
 
+  it('switches between the original and cinnamon home styles', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<App />)
+
+    expect(container.querySelector('.app-shell')).toHaveClass('theme-original')
+    expect(screen.getByRole('button', { name: 'Sage' })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Rose' }))
+
+    expect(container.querySelector('.app-shell')).toHaveClass('theme-cinnamon')
+    expect(screen.getByRole('button', { name: 'Rose' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('welcomes a concern that does not match an example', () => {
     render(<App />)
 
@@ -154,8 +167,8 @@ describe('StayLong Continuous Home Path', () => {
     expect(screen.getByRole('radio', { name: 'Yes — aged care assessment' })).toBeVisible()
 
     await user.click(screen.getByRole('radio', { name: 'No, not yet' }))
-    await user.type(screen.getByRole('textbox', { name: questions[1].question }), 'A clear answer')
-    await user.type(screen.getByRole('textbox', { name: questions[2].question }), 'A clear answer')
+    await user.click(screen.getByRole('radio', { name: 'I rent my home' }))
+    await user.click(screen.getByRole('radio', { name: 'Not right now' }))
     await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
 
     expect(await screen.findByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
@@ -164,19 +177,64 @@ describe('StayLong Continuous Home Path', () => {
     expect(screen.getByText('Confirm home access or permission')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Open My Aged Care pathway' })).toHaveAttribute('href', 'https://www.myagedcare.gov.au/')
     expect(screen.getByRole('button', { name: 'Review your notes in the preparation pack' })).toBeVisible()
-    expect(screen.getByText('Open access checklist')).toBeVisible()
+    expect(screen.getByText('Show access checklist')).toBeVisible()
     expect(screen.queryByText('Ready when you are')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open My Aged Care' })).toHaveAttribute('href', 'https://www.myagedcare.gov.au/')
     expect(screen.getByRole('heading', { name: 'What to prepare for your assessment' })).toBeVisible()
     expect(screen.getByText('Describe the night-time bathroom route.')).toBeVisible()
-    expect(screen.getAllByText('Proposed — waiting for your approval')).toHaveLength(2)
-    expect(screen.getAllByText('You choose before anything happens.')).toHaveLength(2)
-    expect(screen.getByRole('button', { name: 'Add assessment reminder to calendar' })).toBeEnabled()
-    expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Optional help when you want it' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Add reminder to my plan' })).toBeEnabled()
+    expect(screen.getByRole('heading', { name: 'Create a contact draft to review' })).toBeVisible()
     expect(screen.getByText('Actions you control')).toBeVisible()
     expect(screen.getAllByText('Sandbox action — no real calendar, provider or contact will be used.')).toHaveLength(1)
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/v1/workflows', expect.objectContaining({ method: 'POST' }))
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/workflows/case-123/answers', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('shows practical plan details before optional help', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => prepared })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+
+    expect(await screen.findByRole('heading', { name: 'Your practical next steps' })).toBeVisible()
+    const details = screen.getByTestId('plan-details')
+    expect(details).toHaveAttribute('open')
+    expect(screen.getByText('Plan and preparation notes')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Optional help when you want it' })).toBeVisible()
+  })
+
+  it('gives the access checklist an explicit show and hide state', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => prepared }))
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    await screen.findByRole('heading', { name: 'Your practical next steps' })
+
+    const checklist = screen.getByLabelText('Access checklist')
+    expect(checklist).not.toHaveAttribute('open')
+    await user.click(screen.getByText('Show access checklist'))
+    expect(checklist).toHaveAttribute('open')
+    expect(screen.getByText('Hide access checklist')).toBeVisible()
+  })
+
+  it('offers low-effort choices when home or support details are uncertain', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => workflow('intake') }))
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
+
+    expect(screen.getByRole('radio', { name: 'I’m not sure about the home yet' })).toBeVisible()
+    expect(screen.getByRole('radio', { name: 'Not right now' })).toBeVisible()
+    expect(screen.getByRole('radio', { name: 'I’m not sure who to involve yet' })).toBeVisible()
   })
 
   it('explains that the plan is being prepared while the start request is pending', async () => {
@@ -202,13 +260,17 @@ describe('StayLong Continuous Home Path', () => {
     await user.click(screen.getByRole('button', { name: 'Start my plan' }))
     await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
     await user.click(screen.getByRole('radio', { name: 'No, not yet' }))
-    for (const question of questions.slice(1)) await user.type(screen.getByRole('textbox', { name: question.question }), 'Answer')
+    await user.click(screen.getByRole('radio', { name: 'I rent my home' }))
+    await user.click(screen.getByRole('radio', { name: 'Not right now' }))
     await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
-    await user.click(await screen.findByRole('button', { name: 'Add assessment reminder to calendar' }))
+
+    expect(await screen.findByRole('heading', { name: 'Your practical next steps' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Optional help when you want it' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Add reminder to my plan' }))
 
     expect(await screen.findByText('Reminder added to your plan — no external calendar event was created.')).toBeVisible()
     expect(screen.getByText('Completed — recorded in this sandbox plan')).toBeVisible()
-    expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Create a contact draft to review' })).toBeVisible()
     const timeline = screen.getByRole('list', { name: 'Plan timeline' })
     expect(within(timeline).getByText('approval.granted')).toBeVisible()
     expect(within(timeline).getByText('reminder.scheduled')).toBeVisible()
@@ -227,10 +289,11 @@ describe('StayLong Continuous Home Path', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
     await user.click(screen.getByRole('button', { name: 'Start my plan' }))
     await screen.findByRole('heading', { name: 'Your Home Independence Plan' })
-    await user.click(screen.getByRole('button', { name: 'Add assessment reminder to calendar' }))
-    await user.click(await screen.findByRole('button', { name: 'Create contact draft for review' }))
+    await user.click(screen.getByRole('button', { name: 'Add reminder to my plan' }))
+    await user.click(await screen.findByRole('button', { name: 'Create draft to review' }))
 
     expect(await screen.findByRole('heading', { name: 'Your plan is ready to continue' })).toBeVisible()
+    expect(screen.getByText('A StayLong draft is ready for your review; it has not been sent.')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Review preparation pack' })).toBeVisible()
     expect(screen.getAllByRole('link', { name: 'Open My Aged Care' })).toHaveLength(2)
     expect(screen.getByText('Both actions are recorded in this sandbox plan. Nothing was sent or booked.')).toBeVisible()
@@ -273,7 +336,8 @@ describe('StayLong Continuous Home Path', () => {
     await user.click(screen.getByRole('button', { name: 'Start my plan' }))
     await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
     await user.click(screen.getByRole('radio', { name: 'No, not yet' }))
-    for (const question of questions.slice(1)) await user.type(screen.getByRole('textbox', { name: question.question }), 'Answer')
+    await user.click(screen.getByRole('radio', { name: 'I rent my home' }))
+    await user.click(screen.getByRole('radio', { name: 'Not right now' }))
     await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
     await screen.findByRole('heading', { name: 'Your Home Independence Plan' })
     await user.click(screen.getByRole('button', { name: 'Back to assessment' }))

@@ -2,8 +2,8 @@
 
 :root {
   font-family: Epilogue, "Avenir Next", Avenir, system-ui, sans-serif;
-  color: #283018;
-  background: #e8dcc7;
+  color: #273238;
+  background: #f5f2eb;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -13,8 +13,8 @@ html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input, textarea { font: inherit; }
 button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible {
-  outline: 3px solid #71311d;
+button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, summary:focus-visible {
+  outline: 3px solid #744e50;
   outline-offset: 4px;
 }
 

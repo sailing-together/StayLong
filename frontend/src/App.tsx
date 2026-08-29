@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 
@@ -7,10 +7,11 @@ type Pack = { reported_difficulty: string; assessment_discussion_topics: string[
 type PlanTask = { task_id: string; title: string; description: string; status: string }
 type Plan = { title: string; stated_difficulty: string; goal: string; official_pathway: string; tasks: PlanTask[] }
 type Proposal = { action_type: string; revision: number; title: string; boundary_note: string }
-type ActionResult = { action_type: string; action_revision: number; channel: string }
+type ActionResult = { action_type: string; action_revision: number; channel: string; payload?: Record<string, string> }
 type Timeline = { event_id: string; event_type: string }
 type Workflow = { case_id: string; stage: string; questions: Fact[]; pack: Pack | null; plan: Plan | null; proposed_action: Proposal | null; proposed_actions: Proposal[]; action_results: ActionResult[]; timeline: Timeline[]; integration_mode: string }
 type View = 'concern' | 'intake' | 'plan' | 'emergency'
+type Theme = 'original' | 'cinnamon'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
 const examples = [
@@ -27,6 +28,10 @@ const assessmentStatusOptions = [
   'No, not yet',
   'I’m not sure',
 ]
+const quickAnswerOptions: Record<string, string[]> = {
+  housing_tenure: ['I own my home', 'I rent my home', 'I’m not sure about the home yet'],
+  support_contacts: ['Not right now', 'I’d like to involve someone', 'I’m not sure who to involve yet'],
+}
 
 function App() {
   const [concern, setConcern] = useState('')
@@ -37,23 +42,9 @@ function App() {
   const [busy, setBusy] = useState(false)
   const [busyMessage, setBusyMessage] = useState('')
   const [message, setMessage] = useState('')
-  useEffect(() => { document.title = 'StayLong | Independent living, coordinated' }, [])
-  useEffect(() => {
-    if (!publicMode) return
-    const caseId = sessionStorage.getItem('staylong_active_case_id')
-    if (!caseId) return
-    request(`/v1/workflows/${caseId}`, undefined, 'GET').then((next) => {
-      setWorkflow(next)
-      setIntakeQuestions(next.questions)
-      setView(next.stage === 'emergency' ? 'emergency' : next.plan && next.pack ? 'plan' : 'intake')
-    }).catch(() => sessionStorage.removeItem('staylong_active_case_id'))
-  }, [])
-  const step = view === 'intake' ? 2 : view === 'plan' ? workflow?.stage === 'follow_through' ? 4 : 3 : 1
-  const actions = workflow?.proposed_actions.length ? workflow.proposed_actions : workflow?.proposed_action ? [workflow.proposed_action] : []
-  const hasPreparedPlan = Boolean(workflow?.plan && workflow.pack)
-  const selectedExample = examples.find(([, summary]) => summary === concern)?.[0]
+  const [theme, setTheme] = useState<Theme>('original')
   const publicMode = import.meta.env.VITE_STAYLONG_API_MODE === 'public-sandbox'
-  async function request(path: string, body?: object, method = 'POST') {
+  const request = useCallback(async (path: string, body?: object, method = 'POST') => {
     const url = publicMode ? `${apiBaseUrl}/v1/public${path.slice('/v1'.length)}` : `${apiBaseUrl}${path}`
     const init: RequestInit = { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, ...(publicMode ? { credentials: 'include' } : {}) }
     const response = await fetch(url, init)
@@ -64,7 +55,22 @@ function App() {
       throw new Error('StayLong could not continue your plan. Please try again.')
     }
     return response.json() as Promise<Workflow>
-  }
+  }, [publicMode])
+  useEffect(() => { document.title = 'StayLong | Independent living, coordinated' }, [])
+  useEffect(() => {
+    if (!publicMode) return
+    const caseId = sessionStorage.getItem('staylong_active_case_id')
+    if (!caseId) return
+    request(`/v1/workflows/${caseId}`, undefined, 'GET').then((next) => {
+      setWorkflow(next)
+      setIntakeQuestions(next.questions)
+      setView(next.stage === 'emergency' ? 'emergency' : next.plan && next.pack ? 'plan' : 'intake')
+    }).catch(() => sessionStorage.removeItem('staylong_active_case_id'))
+  }, [publicMode, request])
+  const step = view === 'intake' ? 2 : view === 'plan' ? workflow?.stage === 'follow_through' ? 4 : 3 : 1
+  const actions = workflow?.proposed_actions.length ? workflow.proposed_actions : workflow?.proposed_action ? [workflow.proposed_action] : []
+  const hasPreparedPlan = Boolean(workflow?.plan && workflow.pack)
+  const selectedExample = examples.find(([, summary]) => summary === concern)?.[0]
   async function start(event: FormEvent) {
     event.preventDefault(); setBusy(true); setBusyMessage('Preparing your questions'); setMessage('')
     try {
@@ -90,9 +96,9 @@ function App() {
     } catch { setMessage('We could not record that choice. Nothing was shared or booked. Please try again.') } finally { setBusy(false); setBusyMessage('') }
   }
   return (
-    <div className="app-shell">
+    <div className={`app-shell theme-${theme}`}>
       <a className="skip-link" href="#main-content">Skip to main content</a>
-      <header className="site-header"><a className="wordmark" href="/"><img src="/brand/staylong-lockup.svg" alt="StayLong" /></a><p>Independent living, coordinated</p></header>
+      <header className="site-header"><a className="wordmark" href="/"><img src="/brand/staylong-lockup.svg" alt="StayLong" /></a><div className="header-tools"><p>Independent living, coordinated</p>{view === 'concern' && <StyleSwitcher theme={theme} onChange={setTheme} />}</div></header>
       <main className="workspace" id="main-content">
         <aside className="path-rail"><p className="eyebrow">Continuous Home Path</p><nav aria-label="Continuous Home Path"><ol>{pathSteps.map((item, index) => <li className={index + 1 === step ? 'active' : index + 1 < step ? 'complete' : 'upcoming'} key={item}><span className="path-number">{index + 1}</span><strong>{item}</strong></li>)}</ol></nav><p className="path-promise">You approve every external action before StayLong proceeds.</p></aside>
         <div className="task-column">
@@ -123,9 +129,17 @@ function App() {
   )
 }
 
+function StyleSwitcher({ theme, onChange }: { theme: Theme; onChange: (theme: Theme) => void }) {
+  return <div aria-label="Choose visual style" className="style-switcher" role="group"><span>Style</span><button aria-pressed={theme === 'original'} onClick={() => onChange('original')} type="button">Sage</button><button aria-pressed={theme === 'cinnamon'} onClick={() => onChange('cinnamon')} type="button">Rose</button></div>
+}
+
 function IntakeQuestion({ question, value, onChange }: { question: Fact; value: string; onChange: (value: string) => void }) {
   if (question.key === 'assessment_status') {
     return <fieldset className="input-group choice-group"><legend>{assessmentStatusQuestion}</legend><div className="choice-options">{assessmentStatusOptions.map((option) => <label className="choice-option" key={option}><input checked={value === option} name={question.key} onChange={() => onChange(option)} required type="radio" value={option} /><span>{option}</span></label>)}</div><p className="field-help">{question.reason}</p></fieldset>
+  }
+  const options = quickAnswerOptions[question.key]
+  if (options) {
+    return <fieldset className="input-group choice-group"><legend>{question.question}</legend><div className="choice-options">{options.map((option) => <label className="choice-option" key={option}><input checked={value === option} name={question.key} onChange={() => onChange(option)} required type="radio" value={option} /><span>{option}</span></label>)}</div><p className="field-help">{question.reason}</p></fieldset>
   }
   return <div className="input-group"><label htmlFor={question.key}>{question.question}</label><input id={question.key} onChange={(event) => onChange(event.target.value)} required value={value} /><p className="field-help">{question.reason}</p></div>
 }
@@ -134,22 +148,31 @@ function PlanBoard({ plan, pack, actions, results, timeline, busy, integrationMo
   const integrationLabel = integrationMode === 'google_oauth' ? 'Connected Google actions' : 'Actions you control'
   const allActionsComplete = actions.length > 0 && actions.every((action) => results.some((result) => result.action_type === action.action_type && result.action_revision === action.revision))
   const officialPathway = pack.official_pathways[0] ?? plan.official_pathway
-  return <section className="plan-board"><div className="plan-heading"><p className="eyebrow">A plan you control</p><h1>{plan.title}</h1><p>{plan.goal}</p></div><section className="concern-card"><p className="eyebrow">Recorded concern</p><p>{plan.stated_difficulty}</p></section><section className="task-list"><h2>Your practical next steps</h2>{plan.tasks.map((task, index) => <article className="plan-task" key={task.task_id}><span>{index + 1}</span><div><h3>{task.title}</h3><p>{task.description}</p><TaskSupport task={task} officialPathway={officialPathway} onReviewPack={() => document.getElementById('preparation-pack')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} /></div></article>)}</section><section className="pack-card" id="preparation-pack" tabIndex={-1}><h2>What to prepare for your assessment</h2><p>{pack.reported_difficulty}</p>{pack.assessment_discussion_topics.length > 0 && <ul className="pack-topics">{pack.assessment_discussion_topics.map((topic) => <li key={topic}>{topic}</li>)}</ul>}<a href={officialPathway}>Open My Aged Care</a></section><section className="action-area"><p className="eyebrow">{integrationLabel}</p><h2>Approve next action</h2><p className="action-intro">These proposals stay here until you choose what to do.</p>{actions.map((action) => <ActionCard action={action} busy={busy} key={action.action_type} onDecision={onDecision} result={results.find((item) => item.action_type === action.action_type && item.action_revision === action.revision)} />)}</section>{allActionsComplete && <section className="completion-card" aria-labelledby="completion-heading"><p className="eyebrow">Follow through</p><h2 id="completion-heading">Your plan is ready to continue</h2><p>Both actions are recorded in this sandbox plan. Nothing was sent or booked.</p><p className="completion-next">When you are ready, take these notes to your aged-care or occupational-therapy conversation.</p><div className="flow-actions"><button className="secondary-action" onClick={() => document.getElementById('preparation-pack')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} type="button">Review preparation pack</button><a className="primary-action link-action" href={officialPathway}>Open My Aged Care</a></div></section>}<div className="flow-actions plan-navigation"><button className="secondary-action" onClick={onBackToAssessment} type="button">Back to assessment</button></div>{timeline.length > 0 && <section className="timeline-card"><h2>Plan record</h2><ol aria-label="Plan timeline">{timeline.map((event) => <li key={event.event_id}>{event.event_type}</li>)}</ol></section>}</section>
+  function revealPreparationPack() {
+    const details = document.getElementById('plan-details') as HTMLDetailsElement | null
+    if (details) details.open = true
+    document.getElementById('preparation-pack')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  return <section className="plan-board"><div className="plan-heading"><p className="eyebrow">A plan you control</p><h1>{plan.title}</h1><p>{plan.goal}</p></div><section className="concern-card"><p className="eyebrow">Recorded concern</p><p>{plan.stated_difficulty}</p></section><details className="plan-details" data-testid="plan-details" id="plan-details" open><summary>Plan and preparation notes</summary><section className="task-list"><h2>Your practical next steps</h2>{plan.tasks.map((task, index) => <article className="plan-task" key={task.task_id}><span>{index + 1}</span><div><h3>{task.title}</h3><p>{task.description}</p><TaskSupport task={task} officialPathway={officialPathway} onReviewPack={revealPreparationPack} /></div></article>)}</section><section className="pack-card" id="preparation-pack" tabIndex={-1}><h2>What to prepare for your assessment</h2><p>{pack.reported_difficulty}</p>{pack.assessment_discussion_topics.length > 0 && <ul className="pack-topics">{pack.assessment_discussion_topics.map((topic) => <li key={topic}>{topic}</li>)}</ul>}<a href={officialPathway}>Open My Aged Care</a></section>{timeline.length > 0 && <section className="timeline-card"><h2>Plan record</h2><ol aria-label="Plan timeline">{timeline.map((event) => <li key={event.event_id}>{event.event_type}</li>)}</ol></section>}</details><section className="action-area"><p className="eyebrow">{integrationLabel}</p><h2>Optional help when you want it</h2><p className="action-intro">These choices stay in your plan until you decide.</p>{actions.map((action) => <ActionCard action={action} busy={busy} key={action.action_type} onDecision={onDecision} result={results.find((item) => item.action_type === action.action_type && item.action_revision === action.revision)} />)}</section>{allActionsComplete && <section className="completion-card" aria-labelledby="completion-heading"><p className="eyebrow">Follow through</p><h2 id="completion-heading">Your plan is ready to continue</h2><p>Both actions are recorded in this sandbox plan. Nothing was sent or booked.</p><p className="completion-next">When you are ready, take these notes to your aged-care or occupational-therapy conversation.</p><div className="flow-actions"><button className="secondary-action" onClick={revealPreparationPack} type="button">Review preparation pack</button><a className="primary-action link-action" href={officialPathway}>Open My Aged Care</a></div></section>}<div className="flow-actions plan-navigation"><button className="secondary-action" onClick={onBackToAssessment} type="button">Back to assessment</button></div></section>
 }
 
 function TaskSupport({ task, officialPathway, onReviewPack }: { task: PlanTask; officialPathway: string; onReviewPack: () => void }) {
   const taskId = task.task_id
   if (taskId === 'assessment' || taskId === 'arrange-assessment') return <div className="task-support"><a href={officialPathway}>Open My Aged Care pathway</a><small>Use this official service when you decide you are ready. StayLong does not submit an assessment.</small></div>
   if (taskId === 'notes' || taskId === 'prepare-notes') return <div className="task-support"><button className="text-action" onClick={onReviewPack} type="button">Review your notes in the preparation pack</button><small>Check the difficulty, what happens at night, and what would help before you talk with a professional.</small></div>
-  if (taskId === 'permission' || taskId === 'confirm-home-access') return <details className="task-support task-checklist"><summary>Open access checklist</summary><ul><li>Is the home owned, rented, or in a managed building?</li><li>Would a landlord, building manager, or trusted supporter need to be involved?</li><li>What access details should you confirm before any changes?</li></ul></details>
+  if (taskId === 'permission' || taskId === 'confirm-home-access') return <AccessChecklist />
   return <div className="task-support"><small>{task.status === 'ready' ? 'Your next step is ready when you choose to continue.' : task.status}</small></div>
 }
 
+function AccessChecklist() {
+  const [open, setOpen] = useState(false)
+  return <details aria-label="Access checklist" className="task-support task-checklist" onToggle={(event) => setOpen(event.currentTarget.open)}><summary>{open ? 'Hide access checklist' : 'Show access checklist'}</summary><ul><li>Is the home owned, rented, or in a managed building?</li><li>Would a landlord, building manager, or trusted supporter need to be involved?</li><li>What access details should you confirm before any changes?</li></ul></details>
+}
+
 function ActionCard({ action, result, busy, onDecision }: { action: Proposal; result?: ActionResult; busy: boolean; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {
-  if (result) return <article className="action-card completed"><h3>{action.title}</h3><p className="action-state">Completed — recorded in this sandbox plan</p><p>{resultMessage(result)}</p></article>
+  if (result) return <article className="action-card completed"><h3>{action.title}</h3><p className="action-state">Completed — recorded in this sandbox plan</p><p>{resultMessage(result)}</p>{result.action_type === 'contact_draft.create' && result.payload?.body && <div className="draft-preview"><p className="eyebrow">Draft for your review</p><p>{result.payload.body}</p></div>}</article>
   const calendar = action.action_type === 'calendar.create'
-  return <article className="action-card"><h3>{action.title}</h3><p>You choose before anything happens.</p><p className="action-state">Proposed — waiting for your approval</p><p className="action-state">{calendar ? 'Calendar reminder waiting for approval' : 'Contact draft waiting for approval'}</p><p className="action-boundary">{action.boundary_note}</p><div className="action-buttons"><button className="primary-action" disabled={busy} onClick={() => onDecision(action, 'approve')}>{busy ? 'Recording approval…' : calendar ? 'Add assessment reminder to calendar' : 'Create contact draft for review'}</button><button aria-label={`Keep ${action.title} for later`} className="secondary-action" disabled={busy} onClick={() => onDecision(action, 'decline')}>Not now</button></div></article>
-  return <article className="action-card"><h3>{action.title}</h3><p>You choose before anything happens.</p><p className="action-state">Proposed — waiting for your approval</p><p className="action-state">{calendar ? 'Calendar reminder waiting for approval' : 'Contact draft waiting for approval'}</p><p className="action-boundary">{action.boundary_note}</p><div className="action-buttons"><button className="primary-action" disabled={busy} onClick={() => onDecision(action, 'approve')}>{busy ? 'Recording approval…' : calendar ? 'Add assessment reminder to calendar' : 'Create contact draft for review'}</button><button aria-label={`Keep ${action.title} for later`} className="secondary-action" disabled={busy} onClick={() => onDecision(action, 'decline')}>Not now</button></div></article>
+  return <article className="action-card"><h3>{calendar ? 'Add a reminder to this plan' : 'Create a contact draft to review'}</h3><p>{calendar ? 'Keep the assessment preparation in your StayLong plan. It will not add anything to an external calendar.' : 'Create a private draft first. You can read it here and it will not be sent.'}</p><p className="action-boundary">{action.boundary_note}</p><div className="action-buttons"><button className="primary-action" disabled={busy} onClick={() => onDecision(action, 'approve')}>{busy ? 'Recording your choice…' : calendar ? 'Add reminder to my plan' : 'Create draft to review'}</button><button aria-label={`Keep ${action.title} for later`} className="secondary-action" disabled={busy} onClick={() => onDecision(action, 'decline')}>Not now</button></div></article>
 }
 
 function resultMessage(result: ActionResult) { return result.action_type === 'calendar.create' ? result.channel === 'google_calendar' ? 'Calendar event created' : 'Reminder added to your plan — no external calendar event was created.' : 'Contact draft created for your review — it has not been sent.' }
