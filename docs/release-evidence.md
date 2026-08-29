@@ -86,6 +86,25 @@ Terraform component/state prefix, public URL and the token-free smoke result.
 The branded-domain evidence is tracked separately in the public-edge lifecycle;
 it does not change the Cloud Run service lifecycle or this sandbox safety contract.
 
+## Verified branded public entry point
+
+| Item | Verified value |
+| --- | --- |
+| Canonical URL | `https://staylonghome.com` |
+| TLS | Google-managed certificate ACTIVE for `staylonghome.com` and `www.staylonghome.com` |
+| Global HTTPS edge | `staylong-public-edge-https`, `34.117.36.145`, TCP 443 |
+| Backend | Serverless NEG to `staylong-public-sandbox` in `australia-southeast1` |
+| Ready sandbox revision | `staylong-public-sandbox-00012-z6h`, 100% traffic |
+| Provision evidence | [GitHub Actions run 33223257029](https://github.com/sailing-together/StayLong/actions/runs/33223257029) — success |
+| Branded-domain smoke | PASS on 29 August 2026: HTTPS 200 and anonymous cookie-session case flow completed without a shared secret |
+
+The provision artifact records the canonical URL, static edge IP, active
+certificate and successful smoke result. The public route remains a
+temporary-data sandbox: it has no real Calendar, Gmail, SMS, provider, payment,
+MyGov or government-account action. This Phase A verification deliberately
+leaves the generated Cloud Run `run.app` URL available as a rollback path; no
+ingress restriction or default-URL change has occurred.
+
 ## Reproducing public sandbox deployment and evidence
 
 ### One-time human setup
