@@ -27,6 +27,7 @@ function App() {
   const [view, setView] = useState<View>('concern')
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
+  const [busyMessage, setBusyMessage] = useState('')
   const [message, setMessage] = useState('')
   useEffect(() => { document.title = 'StayLong | Independent living, coordinated' }, [])
   useEffect(() => {
@@ -41,6 +42,7 @@ function App() {
   }, [])
   const step = view === 'intake' ? 2 : view === 'plan' ? workflow?.stage === 'follow_through' ? 4 : 3 : 1
   const actions = workflow?.proposed_actions.length ? workflow.proposed_actions : workflow?.proposed_action ? [workflow.proposed_action] : []
+  const hasPreparedPlan = Boolean(workflow?.plan && workflow.pack)
   const selectedExample = examples.find(([, summary]) => summary === concern)?.[0]
   const publicMode = import.meta.env.VITE_STAYLONG_API_MODE === 'public-sandbox'
   async function request(path: string, body?: object, method = 'POST') {
@@ -56,28 +58,28 @@ function App() {
     return response.json() as Promise<Workflow>
   }
   async function start(event: FormEvent) {
-    event.preventDefault(); setBusy(true)
+    event.preventDefault(); setBusy(true); setBusyMessage('Preparing your questions'); setMessage('')
     try {
       const next = await request('/v1/workflows', { concern })
       if (publicMode) sessionStorage.setItem('staylong_active_case_id', next.case_id)
       setWorkflow(next); setIntakeQuestions(next.questions); setView(next.stage === 'emergency' ? 'emergency' : next.plan && next.pack ? 'plan' : 'intake')
       setMessage('Your concern is recorded. Nothing has been shared or booked.')
     }
-    catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false) }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false); setBusyMessage('') }
   }
   async function prepare(event: FormEvent) {
-    event.preventDefault(); if (!workflow) return; setBusy(true)
+    event.preventDefault(); if (!workflow) return; setBusy(true); setBusyMessage('Preparing your plan'); setMessage('')
     try { setWorkflow(await request(`/v1/workflows/${workflow.case_id}/answers`, { answers })); setView('plan'); setMessage('Your plan is ready to review. Nothing has been shared or booked.') }
-    catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false) }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false); setBusyMessage('') }
   }
   async function decide(action: Proposal, decision: 'approve' | 'decline') {
-    if (!workflow) return; setBusy(true)
+    if (!workflow) return; setBusy(true); setBusyMessage('Recording your choice'); setMessage('')
     try {
       const next = await request(`/v1/workflows/${workflow.case_id}/action-decision`, { action_type: action.action_type, action_revision: action.revision, decision })
       setWorkflow(next)
       const result = next.action_results.find((item) => item.action_type === action.action_type && item.action_revision === action.revision)
       setMessage(result ? '' : 'This action is waiting for you.')
-    } catch { setMessage('We could not record that choice. Nothing was shared or booked. Please try again.') } finally { setBusy(false) }
+    } catch { setMessage('We could not record that choice. Nothing was shared or booked. Please try again.') } finally { setBusy(false); setBusyMessage('') }
   }
   return (
     <div className="app-shell">
@@ -98,12 +100,13 @@ function App() {
               <div className="example-options">{examples.map(([label, summary]) => <button aria-pressed={concern === summary} className="example-option" key={label} onClick={() => setConcern(summary)} type="button">{label}</button>)}</div>
               {selectedExample && <div className="selected-example" role="status"><p>You chose: {selectedExample}</p><p>We’ve added a starting point below — change the words so they sound like you.</p></div>}
               <div className="input-group"><label htmlFor="concern">Describe what is becoming difficult</label><p className="field-help">No example fits? That’s okay — describe what you noticed below.</p><textarea aria-describedby="concern-help" id="concern" onChange={(event) => setConcern(event.target.value)} required value={concern} /><span className="sr-only" id="concern-help">You can describe a different concern in your own words.</span></div>
-              <div className="flow-actions"><button className="primary-action" disabled={busy || !concern.trim()}>Start my plan</button>{workflow && <button className="secondary-action" onClick={() => setView('intake')} type="button">Return to preparation</button>}</div>
+              <div className="flow-actions"><button className="primary-action" disabled={busy || !concern.trim()}>{busy ? 'Preparing your questions…' : 'Start my plan'}</button>{workflow && <button className="secondary-action" onClick={() => setView(hasPreparedPlan ? 'plan' : 'intake')} type="button">{hasPreparedPlan ? 'Return to my plan' : 'Return to preparation'}</button>}</div>
             </form>
           </section>}
           {view === 'emergency' && <section className="task-panel emergency-panel"><h1>Call Triple Zero (000) now</h1><p>If anyone may be in immediate danger, call 000. StayLong will not prepare or run a plan for an emergency.</p></section>}
-          {view === 'intake' && workflow && <section className="task-panel"><p className="eyebrow">Prepare with confidence</p><h1>A few details will help prepare your plan</h1><form onSubmit={prepare}>{intakeQuestions.map((question) => <div className="input-group" key={question.key}><label htmlFor={question.key}>{question.question}</label><input id={question.key} onChange={(event) => setAnswers({ ...answers, [question.key]: event.target.value })} required value={answers[question.key] ?? ''} /><p className="field-help">{question.reason}</p></div>)}<div className="flow-actions"><button className="secondary-action" onClick={() => setView('concern')} type="button">Back to my concern</button>{workflow.stage === 'intake' ? <button className="primary-action" disabled={busy}>Prepare my plan</button> : <button className="primary-action" onClick={() => setView('plan')} type="button">Return to my plan</button>}</div></form></section>}
+          {view === 'intake' && workflow && <section className="task-panel"><p className="eyebrow">Prepare with confidence</p><h1>A few details will help prepare your plan</h1><form onSubmit={prepare}>{intakeQuestions.map((question) => <div className="input-group" key={question.key}><label htmlFor={question.key}>{question.question}</label><input id={question.key} onChange={(event) => setAnswers({ ...answers, [question.key]: event.target.value })} required value={answers[question.key] ?? ''} /><p className="field-help">{question.reason}</p></div>)}<div className="flow-actions"><button className="secondary-action" onClick={() => setView('concern')} type="button">Back to my concern</button>{workflow.stage === 'intake' ? <button className="primary-action" disabled={busy}>{busy ? 'Preparing your plan…' : 'Prepare my plan'}</button> : <button className="primary-action" onClick={() => setView('plan')} type="button">Return to my plan</button>}</div></form></section>}
           {view === 'plan' && workflow?.plan && workflow.pack && <PlanBoard actions={actions} busy={busy} integrationMode={workflow.integration_mode} onBackToAssessment={() => setView('intake')} onDecision={decide} pack={workflow.pack} plan={workflow.plan} results={workflow.action_results} timeline={workflow.timeline} />}
+          {busyMessage && <p className="loading-status" role="status" aria-label={busyMessage}>{busyMessage}…</p>}
           {message && <p className="global-status" role="status">{message}</p>}
         </div>
       </main>
@@ -114,13 +117,24 @@ function App() {
 
 function PlanBoard({ plan, pack, actions, results, timeline, busy, integrationMode, onBackToAssessment, onDecision }: { plan: Plan; pack: Pack; actions: Proposal[]; results: ActionResult[]; timeline: Timeline[]; busy: boolean; integrationMode: string; onBackToAssessment: () => void; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {
   const integrationLabel = integrationMode === 'google_oauth' ? 'Connected Google actions' : 'Actions you control'
-  return <section className="plan-board"><div className="plan-heading"><p className="eyebrow">A plan you control</p><h1>{plan.title}</h1><p>{plan.goal}</p></div><section className="concern-card"><p className="eyebrow">Recorded concern</p><p>{plan.stated_difficulty}</p></section><section className="task-list"><h2>Your practical next steps</h2>{plan.tasks.map((task, index) => <article className="plan-task" key={task.task_id}><span>{index + 1}</span><div><h3>{task.title}</h3><p>{task.description}</p><small>{task.status === 'ready' ? 'Ready when you are' : task.status}</small></div></article>)}</section><section className="pack-card"><h2>What to prepare for your assessment</h2><p>{pack.reported_difficulty}</p>{pack.assessment_discussion_topics.length > 0 && <ul className="pack-topics">{pack.assessment_discussion_topics.map((topic) => <li key={topic}>{topic}</li>)}</ul>}<a href={pack.official_pathways[0] ?? plan.official_pathway}>Open My Aged Care</a></section><section className="action-area"><p className="eyebrow">{integrationLabel}</p><h2>Approve next action</h2><p className="action-intro">These proposals stay here until you choose what to do.</p>{actions.map((action) => <ActionCard action={action} busy={busy} key={action.action_type} onDecision={onDecision} result={results.find((item) => item.action_type === action.action_type && item.action_revision === action.revision)} />)}</section><div className="flow-actions plan-navigation"><button className="secondary-action" onClick={onBackToAssessment} type="button">Back to assessment</button></div>{timeline.length > 0 && <section className="timeline-card"><h2>Plan record</h2><ol aria-label="Plan timeline">{timeline.map((event) => <li key={event.event_id}>{event.event_type}</li>)}</ol></section>}</section>
+  const allActionsComplete = actions.length > 0 && actions.every((action) => results.some((result) => result.action_type === action.action_type && result.action_revision === action.revision))
+  const officialPathway = pack.official_pathways[0] ?? plan.official_pathway
+  return <section className="plan-board"><div className="plan-heading"><p className="eyebrow">A plan you control</p><h1>{plan.title}</h1><p>{plan.goal}</p></div><section className="concern-card"><p className="eyebrow">Recorded concern</p><p>{plan.stated_difficulty}</p></section><section className="task-list"><h2>Your practical next steps</h2>{plan.tasks.map((task, index) => <article className="plan-task" key={task.task_id}><span>{index + 1}</span><div><h3>{task.title}</h3><p>{task.description}</p><TaskSupport task={task} officialPathway={officialPathway} onReviewPack={() => document.getElementById('preparation-pack')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} /></div></article>)}</section><section className="pack-card" id="preparation-pack" tabIndex={-1}><h2>What to prepare for your assessment</h2><p>{pack.reported_difficulty}</p>{pack.assessment_discussion_topics.length > 0 && <ul className="pack-topics">{pack.assessment_discussion_topics.map((topic) => <li key={topic}>{topic}</li>)}</ul>}<a href={officialPathway}>Open My Aged Care</a></section><section className="action-area"><p className="eyebrow">{integrationLabel}</p><h2>Approve next action</h2><p className="action-intro">These proposals stay here until you choose what to do.</p>{actions.map((action) => <ActionCard action={action} busy={busy} key={action.action_type} onDecision={onDecision} result={results.find((item) => item.action_type === action.action_type && item.action_revision === action.revision)} />)}</section>{allActionsComplete && <section className="completion-card" aria-labelledby="completion-heading"><p className="eyebrow">Follow through</p><h2 id="completion-heading">Your plan is ready to continue</h2><p>Both actions are recorded in this sandbox plan. Nothing was sent or booked.</p><p className="completion-next">When you are ready, take these notes to your aged-care or occupational-therapy conversation.</p><div className="flow-actions"><button className="secondary-action" onClick={() => document.getElementById('preparation-pack')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} type="button">Review preparation pack</button><a className="primary-action link-action" href={officialPathway}>Open My Aged Care</a></div></section>}<div className="flow-actions plan-navigation"><button className="secondary-action" onClick={onBackToAssessment} type="button">Back to assessment</button></div>{timeline.length > 0 && <section className="timeline-card"><h2>Plan record</h2><ol aria-label="Plan timeline">{timeline.map((event) => <li key={event.event_id}>{event.event_type}</li>)}</ol></section>}</section>
+}
+
+function TaskSupport({ task, officialPathway, onReviewPack }: { task: PlanTask; officialPathway: string; onReviewPack: () => void }) {
+  const taskId = task.task_id
+  if (taskId === 'assessment' || taskId === 'arrange-assessment') return <div className="task-support"><a href={officialPathway}>Open My Aged Care pathway</a><small>Use this official service when you decide you are ready. StayLong does not submit an assessment.</small></div>
+  if (taskId === 'notes' || taskId === 'prepare-notes') return <div className="task-support"><button className="text-action" onClick={onReviewPack} type="button">Review your notes in the preparation pack</button><small>Check the difficulty, what happens at night, and what would help before you talk with a professional.</small></div>
+  if (taskId === 'permission' || taskId === 'confirm-home-access') return <details className="task-support task-checklist"><summary>Open access checklist</summary><ul><li>Is the home owned, rented, or in a managed building?</li><li>Would a landlord, building manager, or trusted supporter need to be involved?</li><li>What access details should you confirm before any changes?</li></ul></details>
+  return <div className="task-support"><small>{task.status === 'ready' ? 'Your next step is ready when you choose to continue.' : task.status}</small></div>
 }
 
 function ActionCard({ action, result, busy, onDecision }: { action: Proposal; result?: ActionResult; busy: boolean; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {
   if (result) return <article className="action-card completed"><h3>{action.title}</h3><p className="action-state">Completed — recorded in this sandbox plan</p><p>{resultMessage(result)}</p></article>
   const calendar = action.action_type === 'calendar.create'
-  return <article className="action-card"><h3>{action.title}</h3><p>You choose before anything happens.</p><p className="action-state">Proposed — waiting for your approval</p><p className="action-state">{calendar ? 'Calendar reminder waiting for approval' : 'Contact draft waiting for approval'}</p><p className="action-boundary">{action.boundary_note}</p><div className="action-buttons"><button className="primary-action" disabled={busy} onClick={() => onDecision(action, 'approve')}>{calendar ? 'Add assessment reminder to calendar' : 'Create contact draft for review'}</button><button aria-label={`Keep ${action.title} for later`} className="secondary-action" disabled={busy} onClick={() => onDecision(action, 'decline')}>Not now</button></div></article>
+  return <article className="action-card"><h3>{action.title}</h3><p>You choose before anything happens.</p><p className="action-state">Proposed — waiting for your approval</p><p className="action-state">{calendar ? 'Calendar reminder waiting for approval' : 'Contact draft waiting for approval'}</p><p className="action-boundary">{action.boundary_note}</p><div className="action-buttons"><button className="primary-action" disabled={busy} onClick={() => onDecision(action, 'approve')}>{busy ? 'Recording approval…' : calendar ? 'Add assessment reminder to calendar' : 'Create contact draft for review'}</button><button aria-label={`Keep ${action.title} for later`} className="secondary-action" disabled={busy} onClick={() => onDecision(action, 'decline')}>Not now</button></div></article>
+  return <article className="action-card"><h3>{action.title}</h3><p>You choose before anything happens.</p><p className="action-state">Proposed — waiting for your approval</p><p className="action-state">{calendar ? 'Calendar reminder waiting for approval' : 'Contact draft waiting for approval'}</p><p className="action-boundary">{action.boundary_note}</p><div className="action-buttons"><button className="primary-action" disabled={busy} onClick={() => onDecision(action, 'approve')}>{busy ? 'Recording approval…' : calendar ? 'Add assessment reminder to calendar' : 'Create contact draft for review'}</button><button aria-label={`Keep ${action.title} for later`} className="secondary-action" disabled={busy} onClick={() => onDecision(action, 'decline')}>Not now</button></div></article>
 }
 
 function resultMessage(result: ActionResult) { return result.action_type === 'calendar.create' ? result.channel === 'google_calendar' ? 'Calendar event created' : 'Reminder added to your plan — no external calendar event was created.' : 'Contact draft created for your review — it has not been sent.' }

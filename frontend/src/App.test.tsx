@@ -44,7 +44,7 @@ const prepared = workflow('awaiting_approval', {
     goal: 'Stay independent at home with a safer night-time bathroom routine.',
     official_pathway: 'https://www.myagedcare.gov.au/',
     tasks: [
-      { task_id: 'assessment', title: 'Arrange a My Aged Care assessment', description: 'Use your preparation pack to explain what is difficult.', owner: 'You', due_at: '2026-08-25T09:00:00Z', status: 'ready', blocker: null },
+      { task_id: 'assessment', title: 'Prepare to arrange a My Aged Care assessment', description: 'Use your preparation pack to explain what is difficult.', owner: 'You', due_at: '2026-08-25T09:00:00Z', status: 'ready', blocker: null },
       { task_id: 'notes', title: 'Prepare your assessment notes', description: 'Keep the practical details ready for the assessment.', owner: 'You', due_at: '2026-08-25T09:00:00Z', status: 'ready', blocker: null },
       { task_id: 'permission', title: 'Confirm home access or permission', description: 'Confirm whether a landlord or building manager needs to be involved.', owner: 'You', due_at: '2026-08-25T09:00:00Z', status: 'ready', blocker: null },
     ],
@@ -72,6 +72,24 @@ const followedThrough = workflow('follow_through', {
     { event_id: 'event-3', event_type: 'approval.granted', details: {}, occurred_at: '2026-08-23T10:02:00Z' },
     { event_id: 'event-4', event_type: 'calendar.action.recorded', details: { sandbox: 'true' }, occurred_at: '2026-08-23T10:02:00Z' },
     { event_id: 'event-5', event_type: 'reminder.scheduled', details: {}, occurred_at: '2026-08-23T10:02:00Z' },
+  ],
+})
+
+const fullyCompleted = workflow('follow_through', {
+  ...prepared,
+  stage: 'follow_through',
+  action_results: [
+    { case_id: 'case-123', action_type: 'calendar.create', action_revision: 1, channel: 'calendar', payload: { sandbox: 'true', title: 'Review your assessment preparation pack' } },
+    { case_id: 'case-123', action_type: 'contact_draft.create', action_revision: 1, channel: 'contact_draft', payload: { sandbox: 'true' } },
+  ],
+  timeline: [
+    { event_id: 'event-1', event_type: 'concern.created', details: {}, occurred_at: '2026-08-23T10:00:00Z' },
+    { event_id: 'event-2', event_type: 'assessment.pack.prepared', details: {}, occurred_at: '2026-08-23T10:01:00Z' },
+    { event_id: 'event-3', event_type: 'approval.granted', details: {}, occurred_at: '2026-08-23T10:02:00Z' },
+    { event_id: 'event-4', event_type: 'calendar.action.recorded', details: { sandbox: 'true' }, occurred_at: '2026-08-23T10:02:00Z' },
+    { event_id: 'event-5', event_type: 'reminder.scheduled', details: {}, occurred_at: '2026-08-23T10:02:00Z' },
+    { event_id: 'event-6', event_type: 'approval.granted', details: {}, occurred_at: '2026-08-23T10:03:00Z' },
+    { event_id: 'event-7', event_type: 'contact_draft.created', details: { sandbox: 'true' }, occurred_at: '2026-08-23T10:03:00Z' },
   ],
 })
 
@@ -137,9 +155,13 @@ describe('StayLong Continuous Home Path', () => {
     await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
 
     expect(await screen.findByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
-    expect(screen.getByText('Arrange a My Aged Care assessment')).toBeVisible()
+    expect(screen.getByText('Prepare to arrange a My Aged Care assessment')).toBeVisible()
     expect(screen.getByText('Prepare your assessment notes')).toBeVisible()
     expect(screen.getByText('Confirm home access or permission')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Open My Aged Care pathway' })).toHaveAttribute('href', 'https://www.myagedcare.gov.au/')
+    expect(screen.getByRole('button', { name: 'Review your notes in the preparation pack' })).toBeVisible()
+    expect(screen.getByText('Open access checklist')).toBeVisible()
+    expect(screen.queryByText('Ready when you are')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open My Aged Care' })).toHaveAttribute('href', 'https://www.myagedcare.gov.au/')
     expect(screen.getByRole('heading', { name: 'What to prepare for your assessment' })).toBeVisible()
     expect(screen.getByText('Describe the night-time bathroom route.')).toBeVisible()
@@ -151,6 +173,21 @@ describe('StayLong Continuous Home Path', () => {
     expect(screen.getAllByText('Sandbox action — no real calendar, provider or contact will be used.')).toHaveLength(1)
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/v1/workflows', expect.objectContaining({ method: 'POST' }))
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/workflows/case-123/answers', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('explains that the plan is being prepared while the start request is pending', async () => {
+    const user = userEvent.setup()
+    let resolveRequest: ((value: unknown) => void) | undefined
+    const pending = new Promise((resolve) => { resolveRequest = resolve })
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(pending))
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+
+    expect(screen.getByRole('status', { name: 'Preparing your questions' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Preparing your questions…' })).toBeDisabled()
+    resolveRequest?.({ ok: true, json: async () => workflow('intake') })
   })
 
   it('records one approved sandbox action and visible follow-through timeline', async () => {
@@ -171,6 +208,27 @@ describe('StayLong Continuous Home Path', () => {
     expect(within(timeline).getByText('approval.granted')).toBeVisible()
     expect(within(timeline).getByText('reminder.scheduled')).toBeVisible()
     expect(fetchMock).toHaveBeenNthCalledWith(3, '/v1/workflows/case-123/action-decision', expect.objectContaining({ method: 'POST' }))
+  })
+
+  it('shows a clear continuation path after every proposed action is complete', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => prepared })
+      .mockResolvedValueOnce({ ok: true, json: async () => followedThrough })
+      .mockResolvedValueOnce({ ok: true, json: async () => fullyCompleted })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    await screen.findByRole('heading', { name: 'Your Home Independence Plan' })
+    await user.click(screen.getByRole('button', { name: 'Add assessment reminder to calendar' }))
+    await user.click(await screen.findByRole('button', { name: 'Create contact draft for review' }))
+
+    expect(await screen.findByRole('heading', { name: 'Your plan is ready to continue' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Review preparation pack' })).toBeVisible()
+    expect(screen.getAllByRole('link', { name: 'Open My Aged Care' })).toHaveLength(2)
+    expect(screen.getByText('Both actions are recorded in this sandbox plan. Nothing was sent or booked.')).toBeVisible()
   })
 
   it('shows the deterministic 000 route without normal workflow controls', async () => {
@@ -215,6 +273,23 @@ describe('StayLong Continuous Home Path', () => {
     await user.click(screen.getByRole('button', { name: 'Back to assessment' }))
 
     expect(screen.getByRole('heading', { name: 'A few details will help prepare your plan' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Return to my plan' }))
+    expect(screen.getByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
+  })
+
+  it('returns to the prepared plan instead of an empty preparation page', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => prepared }))
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    await screen.findByRole('heading', { name: 'Your Home Independence Plan' })
+    await user.click(screen.getByRole('button', { name: 'Back to assessment' }))
+    await user.click(screen.getByRole('button', { name: 'Back to my concern' }))
+
+    expect(screen.getByRole('button', { name: 'Return to my plan' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Return to preparation' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Return to my plan' }))
     expect(screen.getByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
   })
