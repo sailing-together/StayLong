@@ -96,7 +96,28 @@ describe('StayLong Continuous Home Path', () => {
     expect(document.title).toBe('StayLong | Independent living, coordinated')
     expect(screen.getByRole('heading', { name: 'What would make home easier today?' })).toBeVisible()
     expect(screen.getByRole('navigation', { name: 'Continuous Home Path' })).toBeVisible()
-    expect(screen.getByText('If anyone is in immediate danger, call 000.')).toBeVisible()
+    expect(screen.queryByText('If anyone is in immediate danger, call 000.')).not.toBeInTheDocument()
+    expect(screen.getByText('If there is immediate danger, call Triple Zero (000).')).toBeVisible()
+  })
+
+  it('welcomes a concern that does not match an example', () => {
+    render(<App />)
+
+    expect(screen.getByText('Choose an example, or tell us in your own words.')).toBeVisible()
+    expect(screen.getByText('No example fits? That’s okay — describe what you noticed below.')).toBeVisible()
+  })
+
+  it('turns a chosen example into an editable starting point', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Night-time bathroom' }))
+
+    expect(screen.getByText('You chose: Night-time bathroom')).toBeVisible()
+    expect(screen.getByText('We’ve added a starting point below — change the words so they sound like you.')).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' })).toHaveValue(
+      'I’m finding it harder to reach the bathroom safely at night. The hallway is dark and there are no rails near the toilet.',
+    )
   })
 
   it('shows an assessment pack and user-controlled action before approval', async () => {
