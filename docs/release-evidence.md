@@ -68,7 +68,23 @@ it is not a substitute for the private Cloud Run evidence above.
 - [x] The smoke script (`tools/public_sandbox_smoke.py`) uses two `requests.Session()` instances, never reads `STAYLONG_API_TOKEN`, and asserts the sandbox action result carries `payload.sandbox == "true"`.
 - [x] The React frontend displays the sandbox notice banner and routes requests through `/v1/public/*` with `credentials: include` when `VITE_STAYLONG_API_MODE=public-sandbox`.
 - [x] Teardown automation is manual, explicit, and scoped to the `public-sandbox` Terraform component only.
-- [ ] A live public-sandbox deployment and downloaded evidence artifact have been captured from merged `main`.
+- [x] A live public-sandbox deployment and downloaded evidence artifact have been captured from merged `main`.
+
+### Verified long-lived public sandbox
+
+| Item | Verified value |
+| --- | --- |
+| Stable service | `staylong-public-sandbox` in `australia-southeast1` |
+| Public URL | `https://staylong-public-sandbox-m6tm6wheoa-ts.a.run.app` |
+| Deployment evidence | [GitHub Actions run 33169936087](https://github.com/sailing-together/StayLong/actions/runs/33169936087) — success |
+| Deployed main commit | `4860460f0821ea05d554be2364898974462798c0` |
+| Ready revision at the live check | `staylong-public-sandbox-00012-z6h` with 100% traffic |
+| Anonymous smoke | PASS on 29 August 2026; a two-cookie-session workflow completed without an API token |
+
+The deployment evidence artifact from that run records the immutable image digest,
+Terraform component/state prefix, public URL and the token-free smoke result.
+The branded-domain evidence is tracked separately in the public-edge lifecycle;
+it does not change the Cloud Run service lifecycle or this sandbox safety contract.
 
 ## Reproducing public sandbox deployment and evidence
 
