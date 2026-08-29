@@ -41,6 +41,24 @@ the approval gate.
   inform the pull request and deployment evidence; workflows remain the record
   of execution.
 
+### StayLong MCP register
+
+Record an MCP here only when it is used for StayLong work or is an approved
+project tool. Availability can vary by Codex task; a missing tool in one task
+does not mean it is uninstalled.
+
+| MCP | Approved purpose | Change authority |
+| --- | --- | --- |
+| Linear | Read and maintain the project backlog, issue status, owners and delivery notes. | Update Linear only when the task calls for it; preserve accurate status and links. |
+| GitHub | Inspect issues, pull requests, review threads and workflow evidence. | Repository writes, PR creation, merge, workflow reruns and settings changes require the applicable user approval. GitHub Actions remains the execution record. |
+| Figma | Inspect design context, review flows and exchange implementation references. | Do not overwrite shared designs or create files unless the user asks. |
+| Terraform | Inspect Terraform configuration, validate workspace context and explain a plan in the local engineering task. | Never apply through MCP. A reviewed plan and explicit human approval are required before the protected workflow applies infrastructure. |
+| GCP | Read-only preflight and post-deployment checks of Cloud Run, IAM, Secret Manager metadata, enabled APIs and bounded logs. | Do not read secret values. Do not mutate GCP directly unless the user explicitly authorises that exact scoped action; normal applies use the protected GitHub WIF workflow. |
+
+The GitHub CLI, GitHub Actions, local test runners, the browser and web
+research tools are not MCPs. They may support the same task, but their role and
+approval boundary are documented separately above.
+
 1. **Implement and validate locally.** Update code, Terraform, tests and
    documentation together. Run the relevant application tests, `terraform fmt`
    and `terraform validate`. When the Terraform MCP is available in the active
