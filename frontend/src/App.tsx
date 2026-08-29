@@ -76,6 +76,9 @@ function App() {
             <h1>What would make home easier today?</h1>
             <p className="task-intro">Choose an example, or tell us in your own words.</p>
             <form onSubmit={start}>
+              <div className="conversation-preview" aria-live="polite">
+                <p className="assistant-bubble">Tell StayLong what has become harder at home.</p>
+              </div>
               <div className="example-options">{examples.map(([label, summary]) => <button aria-pressed={concern === summary} className="example-option" key={label} onClick={() => setConcern(summary)} type="button">{label}</button>)}</div>
               {selectedExample && <div className="selected-example" role="status"><p>You chose: {selectedExample}</p><p>We’ve added a starting point below — change the words so they sound like you.</p></div>}
               <div className="input-group"><label htmlFor="concern">Describe what is becoming difficult</label><p className="field-help">No example fits? That’s okay — describe what you noticed below.</p><textarea aria-describedby="concern-help" id="concern" onChange={(event) => setConcern(event.target.value)} required value={concern} /><span className="sr-only" id="concern-help">You can describe a different concern in your own words.</span></div>

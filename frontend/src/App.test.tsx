@@ -103,6 +103,7 @@ describe('StayLong Continuous Home Path', () => {
   it('welcomes a concern that does not match an example', () => {
     render(<App />)
 
+    expect(screen.getByText('Tell StayLong what has become harder at home.')).toBeVisible()
     expect(screen.getByText('Choose an example, or tell us in your own words.')).toBeVisible()
     expect(screen.getByText('No example fits? That’s okay — describe what you noticed below.')).toBeVisible()
   })
