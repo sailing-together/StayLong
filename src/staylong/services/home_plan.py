@@ -45,7 +45,7 @@ def build_home_independence_plan(
         tasks=(
             PlanTask(
                 task_id="arrange-assessment",
-                title="Arrange a My Aged Care assessment",
+                title="Prepare to arrange a My Aged Care assessment",
                 description=(
                     "Use the official pathway when you are ready to discuss support at home."
                 ),

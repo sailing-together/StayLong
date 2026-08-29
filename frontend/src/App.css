@@ -72,6 +72,7 @@ textarea:focus, input:focus { border-color: var(--terracotta); }
 .secondary-action:hover { color: var(--sand); background: var(--moss); }
 
 .global-status { min-height: 0; margin: 0; font-weight: 700; line-height: 1.5; }
+.loading-status { margin: 18px 0 0; border-left: 5px solid var(--moss); border-radius: 0 14px 14px 0; padding: 14px 18px; color: var(--moss); background: color-mix(in srgb, var(--oat) 72%, var(--sand)); font-weight: 750; line-height: 1.5; }
 .global-status.has-message { margin-top: 20px; border-left: 5px solid var(--moss); border-radius: 0 14px 14px 0; padding: 14px 18px; background: var(--oat); }
 .global-status.error { border-left-color: var(--terracotta); color: var(--terracotta); }
 .recorded-concern:focus { outline: 4px solid var(--terracotta); outline-offset: 6px; }
@@ -121,6 +122,14 @@ textarea:focus, input:focus { border-color: var(--terracotta); }
 .action-boundary { margin-top: 10px; color: var(--terracotta); font-size: .84rem; font-weight: 650; }
 .action-card.completed { border-color: var(--moss); background: color-mix(in srgb, var(--sand) 75%, var(--sage)); }
 .action-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.completion-card { border: 2px solid var(--moss); border-radius: 24px; padding: clamp(22px, 3vw, 32px); background: color-mix(in srgb, var(--sage) 72%, var(--sand)); }
+.completion-card .eyebrow { margin-bottom: 8px; }
+.completion-card h2 { margin-bottom: 12px; font-size: 1.5rem; letter-spacing: -.02em; }
+.completion-card p { max-width: 620px; line-height: 1.5; }
+.completion-card .completion-next { margin-bottom: 0; font-weight: 650; }
+.completion-card .flow-actions { align-items: center; }
+.link-action { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.pack-card:focus { outline: 3px solid var(--terracotta); outline-offset: 5px; }
 .timeline-card { background: color-mix(in srgb, var(--oat) 72%, var(--sand)); }
 .timeline-card ol { display: grid; gap: 9px; margin: 0; padding-left: 22px; }
 .timeline-card li { padding-left: 5px; font-size: .88rem; }
