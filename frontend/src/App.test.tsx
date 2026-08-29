@@ -96,7 +96,15 @@ describe('StayLong Continuous Home Path', () => {
     expect(document.title).toBe('StayLong | Independent living, coordinated')
     expect(screen.getByRole('heading', { name: 'What would make home easier today?' })).toBeVisible()
     expect(screen.getByRole('navigation', { name: 'Continuous Home Path' })).toBeVisible()
-    expect(screen.getByText('If anyone is in immediate danger, call 000.')).toBeVisible()
+    expect(screen.queryByText('If anyone is in immediate danger, call 000.')).not.toBeInTheDocument()
+    expect(screen.getByText('If there is immediate danger, call Triple Zero (000).')).toBeVisible()
+  })
+
+  it('welcomes a concern that does not match an example', () => {
+    render(<App />)
+
+    expect(screen.getByText('Choose an example, or tell us in your own words.')).toBeVisible()
+    expect(screen.getByText('No example fits? That’s okay — describe what you noticed below.')).toBeVisible()
   })
 
   it('turns a chosen example into an editable starting point', async () => {

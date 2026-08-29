@@ -66,7 +66,6 @@ function App() {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to main content</a>
-      <aside className="emergency-bar">If anyone is in immediate danger, call 000.</aside>
       <header className="site-header"><a className="wordmark" href="#main-content"><img src="/brand/staylong-lockup.svg" alt="StayLong" /></a><p>Independent living, coordinated</p></header>
       <main className="workspace" id="main-content">
         <aside className="path-rail"><p className="eyebrow">Continuous Home Path</p><nav aria-label="Continuous Home Path"><ol>{pathSteps.map((item, index) => <li className={index + 1 === step ? 'active' : index + 1 < step ? 'complete' : 'upcoming'} key={item}><span className="path-number">{index + 1}</span><strong>{item}</strong></li>)}</ol></nav><p className="path-promise">You approve every external action before StayLong proceeds.</p></aside>
@@ -75,11 +74,11 @@ function App() {
           {view === 'concern' && <section className="task-panel">
             <p className="eyebrow">Start with what you notice</p>
             <h1>What would make home easier today?</h1>
-            <p className="task-intro">Choose an example, then make the words your own.</p>
+            <p className="task-intro">Choose an example, or tell us in your own words.</p>
             <form onSubmit={start}>
               <div className="example-options">{examples.map(([label, summary]) => <button aria-pressed={concern === summary} className="example-option" key={label} onClick={() => setConcern(summary)} type="button">{label}</button>)}</div>
               {selectedExample && <div className="selected-example" role="status"><p>You chose: {selectedExample}</p><p>We’ve added a starting point below — change the words so they sound like you.</p></div>}
-              <div className="input-group"><label htmlFor="concern">Describe what is becoming difficult</label><textarea id="concern" onChange={(event) => setConcern(event.target.value)} required value={concern} /></div>
+              <div className="input-group"><label htmlFor="concern">Describe what is becoming difficult</label><p className="field-help">No example fits? That’s okay — describe what you noticed below.</p><textarea aria-describedby="concern-help" id="concern" onChange={(event) => setConcern(event.target.value)} required value={concern} /><span className="sr-only" id="concern-help">You can describe a different concern in your own words.</span></div>
               <div className="flow-actions"><button className="primary-action" disabled={busy || !concern.trim()}>Start my plan</button>{workflow && <button className="secondary-action" onClick={() => setView('intake')} type="button">Return to preparation</button>}</div>
             </form>
           </section>}
@@ -89,7 +88,7 @@ function App() {
           {message && <p className="global-status" role="status">{message}</p>}
         </div>
       </main>
-      <footer className="site-footer"><p>StayLong supports preparation, coordination, and follow-through.</p><p>It does not diagnose, decide eligibility, select providers, or make payments.</p></footer>
+      <footer className="site-footer"><p>StayLong supports preparation, coordination, and follow-through.</p><p>It does not diagnose, decide eligibility, select providers, or make payments.</p><p className="emergency-note">If there is immediate danger, call Triple Zero (000).</p></footer>
     </div>
   )
 }
