@@ -4,7 +4,7 @@ RUNBOOK = Path("docs/google-calendar-oauth-runbook.md")
 
 
 def test_google_calendar_runbook_preserves_private_oauth_boundary() -> None:
-    text = RUNBOOK.read_text()
+    text = RUNBOOK.read_text(encoding="utf-8")
 
     for required in (
         "STAYLONG_GOOGLE_OAUTH_CLIENT_ID",

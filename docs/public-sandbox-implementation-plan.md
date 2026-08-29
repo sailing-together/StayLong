@@ -382,7 +382,7 @@ git commit -m "feat: provision public StayLong sandbox"
 **Files:**
 
 - Modify: .github/workflows/terraform.yml
-- Modify: .github/workflows/deploy.yml or create .github/workflows/public-sandbox.yml
+- Modify: .github/workflows/deploy-sydney-v2.yml or create .github/workflows/public-sandbox-control.yml
 - Modify: .github/workflows/tests.yml
 - Modify: README.md
 - Modify: docs/release-evidence.md

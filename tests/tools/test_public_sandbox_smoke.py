@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-SOURCE = Path("tools/public_sandbox_smoke.py").read_text()
+SOURCE = Path("tools/public_sandbox_smoke.py").read_text(encoding="utf-8")
 
 
 def test_public_sandbox_smoke_never_requires_or_prints_an_api_token() -> None:

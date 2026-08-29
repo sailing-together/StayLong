@@ -7,8 +7,8 @@ FOUNDATION_ROOT = Path("infra/terraform/components/sydney-v2-foundation/main.tf"
 
 
 def test_sydney_v2_token_secret_uses_resource_scoped_least_privilege_iam() -> None:
-    module_source = SECRET_MODULE.read_text()
-    foundation_source = FOUNDATION_ROOT.read_text()
+    module_source = SECRET_MODULE.read_text(encoding="utf-8")
+    foundation_source = FOUNDATION_ROOT.read_text(encoding="utf-8")
 
     assert 'resource "google_secret_manager_secret" "this"' in module_source
     assert "secret_data" not in module_source

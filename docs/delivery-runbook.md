@@ -14,12 +14,12 @@ No service-account JSON key is created, stored or uploaded. GitHub Actions excha
 
 | Workflow | Trigger | Purpose |
 | --- | --- | --- |
-| `ci.yml` | Pull requests and `main` | Python tests and Ruff linting |
+| `tests.yml` | Pull requests and `main` | Python tests and Ruff linting |
 | `terraform.yml` | Infrastructure PRs, manual dispatch from `main` | Format, validate, plan; reviewed apply only when selected |
-| `deploy.yml` | Manual dispatch from `main` | Build and deploy the Cloud Run service with WIF |
+| `deploy-sydney-v2.yml` | Manual dispatch from `main` | Build and deploy the Cloud Run service in Sydney with WIF |
 | `release-evidence.yml` | Manual dispatch from `main` | Capture live Cloud Run, Artifact Registry and security release evidence |
 
-`deploy.yml` builds and smoke-tests the implemented Cloud Run service. The first live run still requires the sandbox environment variables, masked API token and protected-environment approval described in [release evidence](release-evidence.md).
+`deploy-sydney-v2.yml` builds and smoke-tests the implemented Cloud Run service. The first live run still requires the sandbox environment variables, masked API token and protected-environment approval described in [release evidence](release-evidence.md).
 
 ## Safety release gate
 

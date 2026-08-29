@@ -7,8 +7,8 @@ WORKFLOW = Path(".github/workflows/sydney-v2-private-app-control.yml")
 
 
 def test_private_app_control_matches_runtime_without_public_invocation() -> None:
-    main = (COMPONENT / "main.tf").read_text()
-    versions = (COMPONENT / "versions.tf").read_text()
+    main = (COMPONENT / "main.tf").read_text(encoding="utf-8")
+    versions = (COMPONENT / "versions.tf").read_text(encoding="utf-8")
 
     assert 'resource "google_cloud_run_v2_service" "control"' in main
     assert 'ingress             = "INGRESS_TRAFFIC_ALL"' in main
@@ -22,7 +22,7 @@ def test_private_app_control_matches_runtime_without_public_invocation() -> None
 
 
 def test_private_app_control_uses_wif_smoke_and_always_destroys() -> None:
-    workflow = WORKFLOW.read_text()
+    workflow = WORKFLOW.read_text(encoding="utf-8")
 
     assert "RUN_STAY_LONG_SYDNEY_PRIVATE_APP_CONTROL" in workflow
     assert "prefix=staylong/sydney-sandbox/sydney-v2-private-app-control" in workflow
@@ -37,7 +37,7 @@ def test_private_app_control_uses_wif_smoke_and_always_destroys() -> None:
 
 
 def test_private_app_control_waits_for_iam_and_compares_token_headers() -> None:
-    workflow = WORKFLOW.read_text()
+    workflow = WORKFLOW.read_text(encoding="utf-8")
 
     assert "Wait for the private invocation path" in workflow
     assert "for attempt in {1..12}" in workflow

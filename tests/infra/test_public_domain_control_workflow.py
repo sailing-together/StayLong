@@ -1,6 +1,6 @@
 from pathlib import Path
 
-SOURCE = Path(".github/workflows/public-domain-control.yml").read_text()
+SOURCE = Path(".github/workflows/public-domain-control.yml").read_text(encoding="utf-8")
 
 
 def test_public_domain_workflow_requires_explicit_approval_and_keyless_auth() -> None:

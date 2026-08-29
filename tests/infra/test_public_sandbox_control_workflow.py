@@ -7,7 +7,7 @@ WORKFLOW = Path(".github/workflows/public-sandbox-control.yml")
 
 def workflow_source() -> str:
     """Return the public-sandbox lifecycle workflow source."""
-    return WORKFLOW.read_text()
+    return WORKFLOW.read_text(encoding="utf-8")
 
 
 def test_public_sandbox_control_has_explicit_mutation_guards() -> None:
@@ -58,7 +58,7 @@ def test_deploy_is_immutable_scanned_and_smoke_tested() -> None:
 def test_public_sandbox_build_compiles_the_public_api_route() -> None:
     """The browser bundle must target cookie-owned anonymous endpoints."""
     source = workflow_source()
-    dockerfile = Path("Dockerfile").read_text()
+    dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
 
     assert '--build-arg "VITE_STAYLONG_API_MODE=public-sandbox"' in source
     assert "ARG VITE_STAYLONG_API_MODE" in dockerfile
@@ -91,7 +91,7 @@ def test_destroy_uses_a_saved_plan_and_retains_evidence() -> None:
 
 
 def test_standalone_smoke_targets_the_public_sandbox_component() -> None:
-    source = Path(".github/workflows/public-sandbox-smoke.yml").read_text()
+    source = Path(".github/workflows/public-sandbox-smoke.yml").read_text(encoding="utf-8")
     assert "SERVICE: staylong-public-sandbox" in source
     assert "REGION: australia-southeast1" in source
     assert "tools/public_sandbox_smoke.py" in source

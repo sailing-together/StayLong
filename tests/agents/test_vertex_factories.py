@@ -213,8 +213,8 @@ def test_google_adk_executor_returns_only_the_final_json_response(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A partial ADK event must not be mistaken for the structured intake output."""
-    from google.adk import runners, sessions
-    from google.genai import types
+    import sys
+    import types as stdlib_types
 
     from staylong.agents.vertex import GoogleAdkJsonExecutor
 
@@ -251,10 +251,22 @@ def test_google_adk_executor_returns_only_the_final_json_response(
         def __init__(self, **kwargs: object) -> None:
             self.kwargs = kwargs
 
-    monkeypatch.setattr(runners, "Runner", FakeRunner)
-    monkeypatch.setattr(sessions, "InMemorySessionService", FakeSessions)
-    monkeypatch.setattr(types, "Part", FakePart)
-    monkeypatch.setattr(types, "Content", FakeContent)
+    fake_adk = stdlib_types.ModuleType("google.adk")
+    fake_runners = stdlib_types.ModuleType("google.adk.runners")
+    fake_sessions = stdlib_types.ModuleType("google.adk.sessions")
+    fake_genai = stdlib_types.ModuleType("google.genai")
+    fake_genai_types = stdlib_types.ModuleType("google.genai.types")
+
+    fake_runners.Runner = FakeRunner
+    fake_sessions.InMemorySessionService = FakeSessions
+    fake_genai_types.Part = FakePart
+    fake_genai_types.Content = FakeContent
+
+    monkeypatch.setitem(sys.modules, "google.adk", fake_adk)
+    monkeypatch.setitem(sys.modules, "google.adk.runners", fake_runners)
+    monkeypatch.setitem(sys.modules, "google.adk.sessions", fake_sessions)
+    monkeypatch.setitem(sys.modules, "google.genai", fake_genai)
+    monkeypatch.setitem(sys.modules, "google.genai.types", fake_genai_types)
 
     result = GoogleAdkJsonExecutor().generate_json(agent=object(), prompt="A concern")
 
