@@ -145,6 +145,7 @@ describe('StayLong Continuous Home Path', () => {
     expect(screen.getByRole('button', { name: 'Add assessment reminder to calendar' })).toBeEnabled()
     expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
     expect(screen.getByText('Actions you control')).toBeVisible()
+    expect(screen.getAllByText('Sandbox action — no real calendar, provider or contact will be used.')).toHaveLength(1)
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/v1/workflows', expect.objectContaining({ method: 'POST' }))
     expect(fetchMock).toHaveBeenNthCalledWith(2, '/v1/workflows/case-123/answers', expect.objectContaining({ method: 'POST' }))
   })

@@ -37,6 +37,10 @@ def build_public_sandbox_config(
         session_lifetime=timedelta(hours=24),
         case_access=FirestorePublicCaseAccessRepository(client=firestore_client),
         cookie_secure=True,
+        # People may go back and try a different example while evaluating the
+        # public demo. Keep a bounded per-session allowance without making a
+        # normal correction look like a broken service.
+        max_cases_per_session=10,
     )
 
 

@@ -116,6 +116,7 @@ textarea:focus, input:focus { border-color: var(--terracotta); }
 .action-area > .eyebrow { margin-bottom: 8px; }
 .action-card { margin-top: 14px; border: 2px solid color-mix(in srgb, var(--moss) 32%, transparent); border-radius: 18px; padding: 20px; background: var(--sand); }
 .action-card p { line-height: 1.5; }
+.action-boundary { margin-top: 10px; color: var(--terracotta); font-size: .84rem; font-weight: 650; }
 .action-card.completed { border-color: var(--moss); background: color-mix(in srgb, var(--sand) 75%, var(--sage)); }
 .action-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .timeline-card { background: color-mix(in srgb, var(--oat) 72%, var(--sand)); }

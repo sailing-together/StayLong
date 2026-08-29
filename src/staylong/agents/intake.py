@@ -93,6 +93,36 @@ def _missing_facts(value: object) -> tuple[MissingFact, ...]:
     return tuple(MissingFact.from_model_response(item) for item in value)
 
 
+_CORE_MISSING_FACTS = (
+    MissingFact(
+        key="assessment_status",
+        question="Has a My Aged Care assessment been arranged?",
+        reason="This helps prepare the right next step.",
+    ),
+    MissingFact(
+        key="housing_tenure",
+        question="Is the home owned or rented?",
+        reason="Permission requirements may affect planning.",
+    ),
+    MissingFact(
+        key="support_contacts",
+        question="Would you like to involve anyone now?",
+        reason="StayLong only shares information when invited.",
+    ),
+)
+
+
+def _stable_missing_facts(facts: tuple[MissingFact, ...]) -> tuple[MissingFact, ...]:
+    """Keep the first intake handoff consistent when the model returns too few facts."""
+    result = list(facts)
+    for core_fact in _CORE_MISSING_FACTS:
+        if len(result) >= 3:
+            break
+        if all(item.key != core_fact.key for item in result):
+            result.append(core_fact)
+    return tuple(result)
+
+
 @dataclass(frozen=True, slots=True)
 class IntakeOutput:
     """The validated, non-clinical output contract for a reported concern."""
@@ -141,7 +171,7 @@ class IntakeOutput:
             reported_difficulty=_required_string(
                 response["reported_difficulty"], "reported_difficulty"
             ),
-            missing_facts=_missing_facts(response["missing_facts"]),
+            missing_facts=_stable_missing_facts(_missing_facts(response["missing_facts"])),
             assessment_preparation_topics=_string_list(
                 response["assessment_preparation_topics"], "assessment_preparation_topics"
             ),
