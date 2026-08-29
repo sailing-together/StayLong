@@ -1,6 +1,14 @@
 name: Control StayLong public sandbox
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "frontend/**"
+      - "Dockerfile"
+      - "pyproject.toml"
+      - "uv.lock"
   workflow_dispatch:
     inputs:
       operation:
@@ -36,7 +44,7 @@ env:
 
 jobs:
   deploy:
-    if: ${{ inputs.operation == 'deploy' }}
+    if: ${{ github.event_name == 'push' || inputs.operation == 'deploy' }}
     name: Build, deploy, and verify public sandbox
     runs-on: ubuntu-latest
     environment: sandbox
@@ -47,12 +55,16 @@ jobs:
           COMMIT_SHA: ${{ inputs.commit_sha }}
         run: |
           set -euo pipefail
-          test "$CONFIRMATION" = "DEPLOY_PUBLIC_SANDBOX"
-          test -n "$COMMIT_SHA"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            test "$CONFIRMATION" = "DEPLOY_PUBLIC_SANDBOX"
+            test -n "$COMMIT_SHA"
+          else
+            test "${{ github.ref }}" = "refs/heads/main"
+          fi
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ inputs.commit_sha }}
+          ref: ${{ inputs.commit_sha || github.sha }}
       - name: Verify deployment revision belongs to main
         id: revision
         run: |

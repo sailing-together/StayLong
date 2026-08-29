@@ -19,6 +19,20 @@ def test_public_sandbox_control_has_explicit_mutation_guards() -> None:
     assert "cancel-in-progress: false" in source
 
 
+def test_main_application_changes_release_automatically_but_infrastructure_stays_manual() -> None:
+    """Only reviewed application paths may start an unattended public release."""
+    source = workflow_source()
+
+    assert "push:" in source
+    assert "branches: [main]" in source
+    for path in ('"src/**"', '"frontend/**"', '"Dockerfile"', '"pyproject.toml"', '"uv.lock"'):
+        assert path in source
+    assert '"infra/**"' not in source
+    assert "github.event_name == 'push' || inputs.operation == 'deploy'" in source
+    assert "inputs.commit_sha || github.sha" in source
+    assert "DEPLOY_PUBLIC_SANDBOX" in source
+
+
 def test_public_sandbox_control_is_keyless_and_main_reachable() -> None:
     source = workflow_source()
     assert "id-token: write" in source
