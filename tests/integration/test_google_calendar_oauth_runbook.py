@@ -9,7 +9,7 @@ def test_google_calendar_runbook_preserves_private_oauth_boundary() -> None:
     for required in (
         "STAYLONG_GOOGLE_OAUTH_CLIENT_ID",
         "STAYLONG_GOOGLE_OAUTH_REDIRECT_URI",
-        "STAYLONG_GOOGLE_OAUTH_CLIENT_SECRET_ID",
+        "STAYLONG_GOOGLE_OAUTH_CLIENT_SECRET",
         "/v1/integrations/google/calendar/start",
         "/v1/workflows/{case_id}/action-decision",
         "calendar.events",
@@ -20,3 +20,5 @@ def test_google_calendar_runbook_preserves_private_oauth_boundary() -> None:
 
     assert "access token or refresh token" in text
     assert "exactly one event" in text
+    assert "secretmanager.secrets.create" in text
+    assert "Secret Manager Admin" in text

@@ -55,25 +55,28 @@ def test_runtime_rejects_missing_vertex_configuration() -> None:
         build_runtime_workflow({"STAYLONG_API_TOKEN": "token"})
 
 
-def test_runtime_uses_google_adapters_only_with_complete_oauth_configuration() -> None:
+def test_runtime_uses_calendar_refresh_provider_without_static_access_token() -> None:
     from staylong.api.runtime import build_runtime_workflow
+    from staylong.services.google_oauth import InMemoryOAuthTokenStore
     from tests.services.fake_firestore import FakeFirestoreClient
 
     environment = {
         **VALID_ENVIRONMENT,
         "STAYLONG_GOOGLE_ACTIONS_MODE": "oauth",
-        "STAYLONG_GOOGLE_OAUTH_ACCESS_TOKEN": "test-token",
-        "STAYLONG_GOOGLE_CALENDAR_ID": "primary",
+        "STAYLONG_GOOGLE_OAUTH_CLIENT_ID": "client-id",
+        "STAYLONG_GOOGLE_OAUTH_CLIENT_SECRET": "client-secret",
+        "STAYLONG_GOOGLE_OAUTH_REDIRECT_URI": "https://staylong.example.com/callback",
     }
     workflow = build_runtime_workflow(
         environment,
         firestore_client=FakeFirestoreClient(),
         executor=object(),
         intake_builder=RecordedBuilder(),
+        oauth_token_store=InMemoryOAuthTokenStore(),
     )
 
     assert workflow.calendar.integration_mode == "google_oauth"
-    assert workflow.contact_drafts.integration_mode == "google_oauth"
+    assert workflow.contact_drafts.integration_mode == "sandbox"
 
 
 def test_runtime_enables_gemma_privacy_guard_when_configured() -> None:
