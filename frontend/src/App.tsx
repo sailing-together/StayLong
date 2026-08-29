@@ -66,7 +66,7 @@ function App() {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to main content</a>
-      <header className="site-header"><a className="wordmark" href="#main-content"><img src="/brand/staylong-lockup.svg" alt="StayLong" /></a><p>Independent living, coordinated</p></header>
+      <header className="site-header"><a className="wordmark" href="/"><img src="/brand/staylong-lockup.svg" alt="StayLong" /></a><p>Independent living, coordinated</p></header>
       <main className="workspace" id="main-content">
         <aside className="path-rail"><p className="eyebrow">Continuous Home Path</p><nav aria-label="Continuous Home Path"><ol>{pathSteps.map((item, index) => <li className={index + 1 === step ? 'active' : index + 1 < step ? 'complete' : 'upcoming'} key={item}><span className="path-number">{index + 1}</span><strong>{item}</strong></li>)}</ol></nav><p className="path-promise">You approve every external action before StayLong proceeds.</p></aside>
         <div className="task-column">

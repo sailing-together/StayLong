@@ -94,6 +94,7 @@ describe('StayLong Continuous Home Path', () => {
     render(<App />)
 
     expect(document.title).toBe('StayLong | Independent living, coordinated')
+    expect(screen.getByRole('link', { name: 'StayLong' })).toHaveAttribute('href', '/')
     expect(screen.getByRole('heading', { name: 'What would make home easier today?' })).toBeVisible()
     expect(screen.getByRole('navigation', { name: 'Continuous Home Path' })).toBeVisible()
     expect(screen.queryByText('If anyone is in immediate danger, call 000.')).not.toBeInTheDocument()
