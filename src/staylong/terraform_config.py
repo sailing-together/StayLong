@@ -20,7 +20,7 @@ class ConfigurationError(ValueError):
 
 def _read_json(path: Path) -> dict[str, Any]:
     try:
-        value = json.loads(path.read_text())
+        value = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as error:
         raise ConfigurationError(f"Unknown configuration: {path.name}") from error
     except json.JSONDecodeError as error:

@@ -14,7 +14,7 @@
 | Persistent case state | Firestore: household, consent, approval, case and immutable audit-event records |
 | Autonomous work | Cloud Tasks for delayed reminders/retries and Pub/Sub for domain-event routing |
 | Approved real-world action | Google Calendar API creates an authorised coordination event; later iterations may add Gmail notifications |
-| Runtime | One Cloud Run service in `australia-southeast2` (Melbourne) |
+| Runtime | One Cloud Run service in `australia-southeast1` (Sydney) |
 | Infrastructure | Terraform provisions all GCP resource lifecycle; GitHub Actions runs reviewed plans/applies through WIF |
 | Automation | GitHub Actions for test, lint, Terraform plan/apply and Cloud Run deployment |
 | Cloud authentication | GitHub OIDC Workload Identity Federation; no service-account JSON keys |
@@ -37,7 +37,7 @@ it does not fall back to the Gemini Developer API or infer a project/location
 from the model identifier. Application code supplies the ADK Runner bridge to
 the intake wrapper, so deterministic emergency routing and structured-output
 validation run around every response rather than relying on prompt text.
-Cloud Run remains deployed in `australia-southeast2`; its service region is not
+Cloud Run remains deployed in `australia-southeast1`; its service region is not
 the Vertex Gemini inference endpoint.
 
 ## Optional Google action connections

@@ -41,7 +41,7 @@ def test_resolve_config_rejects_secret_like_keys(tmp_path: Path) -> None:
     copied_root = tmp_path / "config"
     shutil.copytree(CONFIG_ROOT, copied_root)
     environment_path = copied_root / "sandbox.json"
-    environment = json.loads(environment_path.read_text())
+    environment = json.loads(environment_path.read_text(encoding="utf-8"))
     environment["api_token"] = "not-allowed"
     environment_path.write_text(json.dumps(environment))
 
@@ -53,7 +53,7 @@ def test_public_edge_config_rejects_cloudflare_api_token(tmp_path: Path) -> None
     copied_root = tmp_path / "config"
     shutil.copytree(CONFIG_ROOT, copied_root)
     project_path = copied_root / "staylong-public-sandbox.json"
-    project = json.loads(project_path.read_text())
+    project = json.loads(project_path.read_text(encoding="utf-8"))
     project["cloudflare_api_token"] = "must-not-be-checked-in"
     project_path.write_text(json.dumps(project))
 

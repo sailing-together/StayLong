@@ -7,8 +7,8 @@ WORKFLOW = Path(".github/workflows/sydney-v2-public-app-control.yml")
 
 
 def test_public_app_control_changes_only_the_invocation_boundary() -> None:
-    main = (COMPONENT / "main.tf").read_text()
-    versions = (COMPONENT / "versions.tf").read_text()
+    main = (COMPONENT / "main.tf").read_text(encoding="utf-8")
+    versions = (COMPONENT / "versions.tf").read_text(encoding="utf-8")
 
     assert 'resource "google_cloud_run_v2_service" "control"' in main
     assert 'ingress             = "INGRESS_TRAFFIC_ALL"' in main
@@ -21,7 +21,7 @@ def test_public_app_control_changes_only_the_invocation_boundary() -> None:
 
 
 def test_public_app_control_smokes_and_always_destroys() -> None:
-    workflow = WORKFLOW.read_text()
+    workflow = WORKFLOW.read_text(encoding="utf-8")
 
     assert "RUN_STAY_LONG_SYDNEY_PUBLIC_APP_CONTROL" in workflow
     assert "prefix=staylong/sydney-sandbox/sydney-v2-public-app-control" in workflow
@@ -34,7 +34,7 @@ def test_public_app_control_smokes_and_always_destroys() -> None:
 
 
 def test_public_app_control_probes_both_generated_urls_with_response_fingerprints() -> None:
-    workflow = WORKFLOW.read_text()
+    workflow = WORKFLOW.read_text(encoding="utf-8")
 
     assert 'metadata.annotations["run.googleapis.com/urls"]' in workflow
     assert "mapfile -t service_urls" in workflow
