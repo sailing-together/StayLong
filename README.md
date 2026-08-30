@@ -2,9 +2,9 @@
 
 > Approval-safe coordination for independent living at home.
 
-StayLong helps older Australians who live alone remain independent at home for longer. It turns an everyday home-living concern into clear, assessment-ready information and a plan of approved next steps.
+StayLong is an approval-safe coordination layer for older Australians living alone. It turns a non-emergency home-living concern into an assessment-ready Home Independence Plan, keeps proposed next steps pending until the person approves them, and records follow-through over time.
 
-It is an approval-safe coordination companion, not a generic chatbot, care provider or eligibility decision-maker. An older person can work independently, or invite an authorised trusted supporter only for a specific task and only when they choose.
+StayLong prepares and coordinates approved steps; it does not deliver care, determine eligibility, access MyGov, select providers, prescribe modifications or make payments.
 
 ## What it does
 
@@ -13,7 +13,7 @@ It is an approval-safe coordination companion, not a generic chatbot, care provi
 - Prepares an assessment-ready summary and practical notes for the person to review.
 - Proposes bounded next steps and keeps them waiting until the person approves.
 - Records approved follow-through, reminders and outcomes in an auditable case timeline.
-- Lets the person decide whether and when to involve a trusted supporter.
+- Shows a visible plan, approval status and outcome timeline.
 
 ## Product principles
 
@@ -40,7 +40,7 @@ The public-sandbox runtime passes concern text through Vertex Model Garden MaaS 
 
 ## What it is—and is not
 
-StayLong helps older people and their chosen supporters prepare, coordinate and track. It sits between family care apps, provider operations software and My Aged Care: it does **not** deliver care, diagnose health conditions, prescribe home modifications, determine AT-HM eligibility, submit government forms, select a provider, or make payments. For acute emergencies or immediate danger, StayLong immediately halts workflow progression and directs users to call Triple Zero (000). Human confirmation is required before every external action or information disclosure.
+StayLong helps an older person prepare, coordinate and track approved next steps. It sits between family care apps, provider operations software and My Aged Care: it does **not** deliver care, diagnose health conditions, prescribe home modifications, determine AT-HM eligibility, submit government forms, select a provider, or make payments. For acute emergencies or immediate danger, StayLong immediately halts workflow progression and directs users to call Triple Zero (000). Human confirmation is required before every external action or information disclosure.
 
 ## Technology stack
 
