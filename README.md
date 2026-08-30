@@ -26,7 +26,7 @@ It is an approval-safe coordination companion, not a generic chatbot, care provi
 
 ## Architecture at a glance
 
-<img src="docs/assets/architecture/staylong-architecture-diagram.drawio.png" alt="StayLong approval-safe ageing-in-place architecture" width="960" />
+![StayLong approval-safe ageing-in-place architecture](docs/assets/architecture/staylong-architecture-diagram.drawio.png)
 
 StayLong runs on Google Cloud with Google ADK, Gemini 3.6 Flash and a Gemma 4 privacy guard. An explicit approval gate separates a proposed step from any external action. The public demonstration cannot create real Calendar, Gmail, provider, payment, My Aged Care or MyGov actions; private Calendar OAuth and Gmail draft preparation are available only in the authenticated private runtime after user approval. See the complete [architecture and boundary documentation](docs/architecture.md).
 
