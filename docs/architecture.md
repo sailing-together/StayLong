@@ -116,6 +116,6 @@ Emergency handling is a static, deterministic route, not an LLM feature. A possi
 - The branded public entry point is `https://staylonghome.com`, served by a global external HTTPS Load Balancer, Google-managed TLS certificate and Serverless NEG in front of Cloud Run; direct Cloud Run domain mapping is not used. During Phase A, the existing generated `run.app` URL remains available as a rollback path. Phase B can restrict direct Cloud Run access only after branded-domain TLS, smoke tests and evidence have passed.
 
 The detailed boundary, lifecycle controls and DNS-token handling are in the
-[public-edge design](architecture/public-edge-design.md). The public edge is
+[public-edge design](public-edge-design.md). The public edge is
 still a temporary-data sandbox: it does not provide real Calendar, Gmail, SMS,
 provider, payment, MyGov or government-account actions.
