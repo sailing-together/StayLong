@@ -42,9 +42,14 @@ The public-sandbox runtime passes concern text through Vertex Model Garden MaaS 
 
 StayLong helps older people and their chosen supporters prepare, coordinate and track. It sits between family care apps, provider operations software and My Aged Care: it does **not** deliver care, diagnose health conditions, prescribe home modifications, determine AT-HM eligibility, submit government forms, select a provider, or make payments. For acute emergencies or immediate danger, StayLong immediately halts workflow progression and directs users to call Triple Zero (000). Human confirmation is required before every external action or information disclosure.
 
-## Technology and implementation
+## Technology stack
 
-StayLong uses Gemini 3.6 Flash through Vertex AI, Google ADK, Vertex Model Garden MaaS Gemma 4, and Google Cloud services including Cloud Run, Firestore, Cloud Tasks, Pub/Sub and Cloud Logging. Terraform defines cloud infrastructure and policies; GitHub Actions uses Workload Identity Federation rather than long-lived cloud keys.
+- **Application:** Python, FastAPI and an accessible browser experience.
+- **Agentic AI:** Google ADK with Gemini 3.6 Flash on Vertex AI; Gemma 4 through Vertex Model Garden MaaS as a schema-validated, fail-closed privacy guard.
+- **Google Cloud runtime:** Cloud Run, Firestore, Cloud Tasks, Pub/Sub and Cloud Logging.
+- **Public edge:** Cloudflare DNS, Google-managed TLS, Global HTTPS Load Balancing and a Serverless NEG.
+- **Private integrations:** user-approved Google Calendar OAuth and review-only Gmail draft preparation.
+- **Infrastructure and delivery:** Terraform, GitHub Actions and Workload Identity Federation—no long-lived Google Cloud service-account keys in GitHub.
 
 ## Documentation
 
