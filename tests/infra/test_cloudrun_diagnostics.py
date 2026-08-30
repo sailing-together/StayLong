@@ -6,8 +6,8 @@ from tools.cloudrun_diagnostics import build_summary
 
 
 def test_endpoint_diagnostic_can_target_the_clean_v2_service() -> None:
-    """The read-only workflow must collect evidence from the service under investigation."""
-    workflow = Path(".github/workflows/cloud-run-endpoint-diagnostic.yml").read_text()
+    path = Path(".github/workflows/cloud-run-endpoint-diagnostic.yml")
+    workflow = path.read_text(encoding="utf-8")
 
     assert 'description: "Cloud Run service to inspect"' in workflow
     assert "options: [staylong, staylong-sydney, staylong-sydney-v2]" in workflow

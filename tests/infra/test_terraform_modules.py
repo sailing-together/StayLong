@@ -22,14 +22,14 @@ CLOUD_RUN_SERVICE_MODULE = Path(
 
 def test_service_account_iam_bindings_use_static_instance_keys() -> None:
     """New identity resources must be plannable before their IDs exist."""
-    source = IAM_BINDING_MODULE.read_text()
+    source = IAM_BINDING_MODULE.read_text(encoding="utf-8")
 
     assert "for index, binding in var.service_account_bindings : index => binding" in source
 
 
 def test_main_branch_workload_identities_are_matched_by_a_mapped_principal() -> None:
     """WIF branch restrictions belong in the principal identifier, not IAM CEL."""
-    source = GITHUB_FEDERATION_MODULE.read_text()
+    source = GITHUB_FEDERATION_MODULE.read_text(encoding="utf-8")
 
     assert re.search(
         r'"attribute\.repository_ref"\s+=\s+"assertion\.repository \+ \\"\:\\" \+ assertion\.ref"',
@@ -44,8 +44,8 @@ def test_main_branch_workload_identities_are_matched_by_a_mapped_principal() -> 
 
 def test_terraform_workflow_identities_can_lock_the_remote_state_bucket() -> None:
     """Terraform plan needs object access for its GCS state lock."""
-    federation_source = GITHUB_FEDERATION_MODULE.read_text()
-    bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text()
+    federation_source = GITHUB_FEDERATION_MODULE.read_text(encoding="utf-8")
+    bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text(encoding="utf-8")
 
     assert 'resource "google_storage_bucket_iam_member" "terraform_state"' in federation_source
     assert 'role   = "roles/storage.objectAdmin"' in federation_source
@@ -55,27 +55,29 @@ def test_terraform_workflow_identities_can_lock_the_remote_state_bucket() -> Non
 
 
 def test_deployer_can_consume_enabled_google_apis_for_cloud_build() -> None:
-    source = Path("infra/terraform/modules/foundations/github_federation/variables.tf").read_text()
+    path = Path("infra/terraform/modules/foundations/github_federation/variables.tf")
+    source = path.read_text(encoding="utf-8")
 
     assert '"roles/serviceusage.serviceUsageConsumer"' in source
 
 
 def test_terraform_operator_can_create_secret_manager_resources() -> None:
     """The Terraform identity, not the runtime, owns secret-container creation."""
-    source = Path("infra/terraform/modules/foundations/github_federation/variables.tf").read_text()
+    path = Path("infra/terraform/modules/foundations/github_federation/variables.tf")
+    source = path.read_text(encoding="utf-8")
 
     assert '"roles/secretmanager.admin"' in source
 
 
 def test_terraform_operator_can_manage_public_sandbox_scheduler_jobs() -> None:
     """The public sandbox component owns its scheduled cleanup job."""
-    source = GITHUB_FEDERATION_VARIABLES.read_text()
+    source = GITHUB_FEDERATION_VARIABLES.read_text(encoding="utf-8")
 
     assert '"roles/cloudscheduler.admin"' in source
 
 
 def test_terraform_operator_has_exact_roles_for_public_edge_resources() -> None:
-    source = GITHUB_FEDERATION_VARIABLES.read_text()
+    source = GITHUB_FEDERATION_VARIABLES.read_text(encoding="utf-8")
 
     for role in (
         "roles/compute.loadBalancerAdmin",
@@ -88,9 +90,9 @@ def test_terraform_operator_has_exact_roles_for_public_edge_resources() -> None:
 
 
 def test_cloud_build_staging_uses_bootstrap_bucket_and_scoped_identity_members() -> None:
-    state_source = BOOTSTRAP_STATE_ROOT.read_text()
-    identity_source = GITHUB_FEDERATION_MODULE.read_text()
-    variables_source = GITHUB_FEDERATION_VARIABLES.read_text()
+    state_source = BOOTSTRAP_STATE_ROOT.read_text(encoding="utf-8")
+    identity_source = GITHUB_FEDERATION_MODULE.read_text(encoding="utf-8")
+    variables_source = GITHUB_FEDERATION_VARIABLES.read_text(encoding="utf-8")
 
     assert 'module "cloudbuild_staging"' in state_source
     assert 'source = "../../modules/base/gcs_bucket"' in state_source
@@ -104,7 +106,7 @@ def test_cloud_build_staging_uses_bootstrap_bucket_and_scoped_identity_members()
 
 
 def test_cloud_build_compute_identity_can_push_only_to_the_artifact_repository() -> None:
-    source = SANDBOX_PLATFORM_MODULE.read_text()
+    source = SANDBOX_PLATFORM_MODULE.read_text(encoding="utf-8")
 
     assert 'resource "google_artifact_registry_repository_iam_member" "cloudbuild_writer"' in source
     assert 'role       = "roles/artifactregistry.writer"' in source
@@ -112,8 +114,8 @@ def test_cloud_build_compute_identity_can_push_only_to_the_artifact_repository()
 
 
 def test_platform_enables_cloud_resource_manager_before_managing_project_services() -> None:
-    bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text()
-    platform_source = SANDBOX_PLATFORM_MODULE.read_text()
+    bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text(encoding="utf-8")
+    platform_source = SANDBOX_PLATFORM_MODULE.read_text(encoding="utf-8")
 
     assert 'resource "google_project_service" "cloud_resource_manager"' in bootstrap_source
     assert re.search(
@@ -124,8 +126,8 @@ def test_platform_enables_cloud_resource_manager_before_managing_project_service
 
 def test_identity_bootstrap_enables_managed_identity_apis_before_bucket_iam() -> None:
     """New projects must create Google-managed identities before IAM grants."""
-    bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text()
-    federation_source = GITHUB_FEDERATION_MODULE.read_text()
+    bootstrap_source = IDENTITY_BOOTSTRAP_ROOT.read_text(encoding="utf-8")
+    federation_source = GITHUB_FEDERATION_MODULE.read_text(encoding="utf-8")
 
     assert 'resource "google_project_service" "managed_identity_apis"' in bootstrap_source
     assert '"cloudbuild.googleapis.com"' in bootstrap_source
@@ -137,7 +139,7 @@ def test_identity_bootstrap_enables_managed_identity_apis_before_bucket_iam() ->
 
 
 def test_v2_deployment_builds_directly_to_artifact_registry_and_applies_with_terraform() -> None:
-    source = DEPLOY_WORKFLOW.read_text()
+    source = DEPLOY_WORKFLOW.read_text(encoding="utf-8")
 
     assert "docker/setup-buildx-action@v3" in source
     assert "docker buildx build" in source
@@ -147,7 +149,7 @@ def test_v2_deployment_builds_directly_to_artifact_registry_and_applies_with_ter
 
 
 def test_sydney_platform_creates_runtime_identity_before_cloud_run_deployment() -> None:
-    source = SYDNEY_PLATFORM_ROOT.read_text()
+    source = SYDNEY_PLATFORM_ROOT.read_text(encoding="utf-8")
 
     assert 'service            = "run.googleapis.com"' in source
     assert 'module "runtime"' in source
@@ -157,7 +159,7 @@ def test_sydney_platform_creates_runtime_identity_before_cloud_run_deployment() 
 
 def test_cloud_run_revision_template_is_managed_by_terraform() -> None:
     """Image and secret changes must create a new Cloud Run revision."""
-    source = CLOUD_RUN_SERVICE_MODULE.read_text()
+    source = CLOUD_RUN_SERVICE_MODULE.read_text(encoding="utf-8")
 
     lifecycle = re.search(r"lifecycle\s*\{(?P<body>.*?)\n\s*\}", source, re.DOTALL)
 

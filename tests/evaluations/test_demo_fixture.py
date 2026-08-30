@@ -9,8 +9,10 @@ ROOT = Path(__file__).parents[2]
 
 
 def test_seeded_household_matches_schema_and_contains_only_demo_identifiers() -> None:
-    schema = json.loads((ROOT / "fixtures/demo/seeded-household.schema.json").read_text())
-    fixture = json.loads((ROOT / "fixtures/demo/seeded-household.json").read_text())
+    schema_path = ROOT / "fixtures/demo/seeded-household.schema.json"
+    fixture_path = ROOT / "fixtures/demo/seeded-household.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
 
     errors = sorted(Draft202012Validator(schema).iter_errors(fixture), key=lambda error: error.path)
     assert errors == []

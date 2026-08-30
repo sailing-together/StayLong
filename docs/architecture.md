@@ -2,7 +2,7 @@
 
 ## Architecture goal
 
-Build a small, demonstrable Taskmaster that persists a household coordination plan, reacts to events, seeks approval for consequential actions, and records an auditable result.
+Build a small, demonstrable Taskmaster that persists a household coordination plan, reacts to events, seeks approval for consequential actions, and records an auditable result. See the [capability matrix](capability-matrix.md) for the exhaustive mapping from user capabilities to API endpoints, code modules, test suites, and infrastructure components.
 
 ```mermaid
 flowchart LR

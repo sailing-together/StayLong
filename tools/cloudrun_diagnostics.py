@@ -73,7 +73,7 @@ def build_summary(
 
 
 def _read_json(path: str) -> Mapping[str, Any]:
-    value = json.loads(Path(path).read_text())
+    value = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(value, Mapping):
         raise ValueError(f"{path} must contain a JSON object")
     return value

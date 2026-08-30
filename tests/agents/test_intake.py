@@ -95,6 +95,36 @@ def test_intake_generates_a_non_clinical_assessment_preparation_pack() -> None:
     assert len(provider.requests) == 1
 
 
+def test_intake_keeps_the_demo_checklist_consistent_when_model_returns_one_fact() -> None:
+    from staylong.agents.intake import IntakeAgent
+
+    provider = StaticProvider(
+        {
+            "plain_language_summary": "The shower entry is difficult to manage.",
+            "home_area": "bathroom",
+            "reported_difficulty": "Stepping into the shower has become difficult.",
+            "missing_facts": [
+                {
+                    "key": "support_contacts",
+                    "question": "Would you like to involve anyone now?",
+                    "reason": "StayLong only shares information when invited.",
+                }
+            ],
+            "assessment_preparation_topics": ["Describe the shower entry."],
+            "proposed_next_step": "prepare_assessment_pack",
+        }
+    )
+
+    result = IntakeAgent(provider=provider).intake("The shower entry is difficult.")
+
+    assert len(result.missing_facts) == 3
+    assert tuple(item.key for item in result.missing_facts) == (
+        "support_contacts",
+        "assessment_status",
+        "housing_tenure",
+    )
+
+
 def test_intake_rejects_a_model_response_outside_the_schema() -> None:
     from staylong.agents.intake import IntakeAgent, IntakeSchemaError
 

@@ -20,26 +20,41 @@ traffic through the managed load balancer and branded URL.
 
 ## What it is—and is not
 
-StayLong helps older people and their chosen supporters prepare, coordinate and track. It sits between family care apps, provider operations software and My Aged Care: it does **not** deliver care, diagnose health conditions, prescribe home modifications, determine AT-HM eligibility, submit government forms, select a provider, or make payments. Human confirmation is required before every external action or information disclosure.
+StayLong helps older people and their chosen supporters prepare, coordinate and track. It sits between family care apps, provider operations software and My Aged Care: it does **not** deliver care, diagnose health conditions, prescribe home modifications, determine AT-HM eligibility, submit government forms, select a provider, or make payments. For acute emergencies or immediate danger, StayLong immediately halts workflow progression and directs users to call Triple Zero (000). Human confirmation is required before every external action or information disclosure.
 
 ## Competition fit
 
 StayLong is designed for the **Taskmaster** track of the All Things Agentic Hackathon. It will use Gemini 3.5+ through Vertex AI, Google ADK, and Google Cloud services (Cloud Run, Firestore, Cloud Tasks and Pub/Sub).
 
 See [competition references](docs/competition-references.md) and the public [architecture](docs/architecture.md).
+The single source-of-truth capability mapping is in the [capability matrix](docs/capability-matrix.md).
 The complete Devpost requirements and bonus evidence plan are in [submission readiness](docs/devpost-submission-readiness.md).
 The locked stack and live-submission compliance checklist are in [technology and compliance](docs/technology-and-compliance.md).
 The additional Gemma privacy integration is documented in [Gemma privacy guard](docs/gemma-privacy.md).
 Task documentation, human-action gates and pull-request practice follow the [delivery standards](docs/delivery-standards.md).
 Official Google training and the implementation choices it drives are in [official training guidance](docs/official-training-guidance.md).
 
+## Quickstart and local development
+
+```bash
+# 1. Install dependencies
+pip install -e ".[dev]"
+
+# 2. Run automated test suite
+python -m pytest
+
+# 3. Start local API server with static web UI
+python -m uvicorn staylong.api.main:app --port 8080
+```
+
 ## Repository layout
 
-- `src/staylong/` — application package (to be implemented task-by-task)
-- `tests/` — automated tests
-- `infra/terraform/` — Google Cloud infrastructure definitions
+- `src/staylong/` — application package (FastAPI API, Google ADK agents, Gemma privacy guard, domain models, policy engines, and coordination services)
+- `tests/` — automated unit, integration, and infrastructure test suites
+- `infra/terraform/` — Google Cloud infrastructure definitions (Sydney `australia-southeast1`)
 - `.github/workflows/` — CI, Terraform, and Cloud Run deployment automation
-- `docs/release-evidence.md` — release-candidate evidence packet and the one-time live verification gate
+- `docs/release-evidence.md` — release-candidate evidence packet and the live verification gate
+- `docs/capability-matrix.md` — single source-of-truth matrix mapping capabilities to code and tests
 - `docs/` — product, architecture, prompt, competition and delivery documentation
 
 ## Runtime container and smoke test
@@ -63,4 +78,4 @@ require a live Cloud Run service.
 
 ## Development status
 
-This repository contains the public project materials and secure deployment foundation. Product code begins task-by-task through the linked Linear plan.
+The core application, multi-step coordination workflows, deterministic safety policies, Gemma privacy guard, Google Calendar integration, public sandbox, and Sydney Cloud Run infrastructure are fully implemented and verified with automated test suites.

@@ -4,8 +4,8 @@ COMPONENT_ROOT = Path("infra/terraform/components/public-edge")
 
 
 def test_public_edge_component_owns_only_edge_resources() -> None:
-    main = (COMPONENT_ROOT / "main.tf").read_text()
-    versions = (COMPONENT_ROOT / "versions.tf").read_text()
+    main = (COMPONENT_ROOT / "main.tf").read_text(encoding="utf-8")
+    versions = (COMPONENT_ROOT / "versions.tf").read_text(encoding="utf-8")
 
     assert 'backend "gcs"' in main
     assert "cloudflare = {" in versions
@@ -23,7 +23,7 @@ def test_public_edge_component_owns_only_edge_resources() -> None:
 
 
 def test_certificate_status_is_observed_by_the_lifecycle_workflow() -> None:
-    outputs = (COMPONENT_ROOT / "outputs.tf").read_text()
+    outputs = (COMPONENT_ROOT / "outputs.tf").read_text(encoding="utf-8")
 
     assert 'output "certificate_name"' in outputs
     assert 'output "certificate_status"' not in outputs

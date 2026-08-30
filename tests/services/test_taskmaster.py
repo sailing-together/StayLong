@@ -163,7 +163,7 @@ def test_answered_intake_builds_three_actionable_home_plan_tasks() -> None:
     assert prepared.plan is not None
     assert prepared.plan.title == "Your Home Independence Plan"
     assert [task.title for task in prepared.plan.tasks] == [
-        "Arrange a My Aged Care assessment",
+        "Prepare to arrange a My Aged Care assessment",
         "Prepare your assessment notes",
         "Confirm home access or permission",
     ]
@@ -209,6 +209,29 @@ def test_contact_draft_requires_its_own_approval() -> None:
     assert [result.action_type for result in completed.action_results] == ["contact_draft.create"]
     assert workflow.calendar.sent_items == ()
     assert len(workflow.contact_drafts.sent_items) == 1
+
+
+def test_contact_approval_does_not_duplicate_existing_reminder_event() -> None:
+    workflow, prepared = _prepared_workflow()
+
+    after_calendar = workflow.decide_action(
+        case_id=prepared.case_id,
+        action_type="calendar.create",
+        action_revision=1,
+        approve=True,
+        now=NOW,
+    )
+    completed = workflow.decide_action(
+        case_id=prepared.case_id,
+        action_type="contact_draft.create",
+        action_revision=1,
+        approve=True,
+        now=NOW,
+    )
+
+    assert after_calendar.reminder is not None
+    assert completed.reminder == after_calendar.reminder
+    assert tuple(event.event_type for event in completed.timeline).count("reminder.scheduled") == 1
 
 
 def test_unanswered_required_fact_keeps_workflow_in_intake() -> None:

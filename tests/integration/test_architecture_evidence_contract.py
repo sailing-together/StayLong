@@ -1,7 +1,7 @@
 from pathlib import Path
 
-ARCHITECTURE = Path("docs/architecture.md").read_text()
-DIAGRAM = Path("docs/architecture.mmd").read_text()
+ARCHITECTURE = Path("docs/architecture.md").read_text(encoding="utf-8")
+DIAGRAM = Path("docs/architecture.mmd").read_text(encoding="utf-8")
 
 
 def test_architecture_distinguishes_public_sandbox_from_private_oauth() -> None:
@@ -20,7 +20,7 @@ def test_architecture_distinguishes_public_sandbox_from_private_oauth() -> None:
 
 
 def test_public_edge_runbook_records_security_and_lifecycle_boundaries() -> None:
-    runbook = Path("docs/runbooks/public-edge-operations.md").read_text()
+    runbook = Path("docs/runbooks/public-edge-operations.md").read_text(encoding="utf-8")
     normalized = " ".join(runbook.lower().split())
 
     assert "CLOUDFLARE_API_TOKEN" in runbook

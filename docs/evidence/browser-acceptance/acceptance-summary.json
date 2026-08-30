@@ -1,0 +1,97 @@
+{
+  "targetUrl": "https://staylonghome.com",
+  "executedAt": "2026-08-30T02:44:45.640Z",
+  "overallStatus": "PASSED",
+  "results": {
+    "desktop": {
+      "viewport": "Desktop",
+      "status": "PASSED",
+      "totalDurationMs": 17726,
+      "stepTimingsMs": {
+        "01_open_landing": 1351,
+        "02_select_and_edit": 57,
+        "03_start_plan": 13597,
+        "04_navigation_test": 68,
+        "05_prepare_plan": 293,
+        "06_decline_action": 1538,
+        "07_approve_calendar": 2,
+        "08_approve_draft": 3
+      },
+      "consoleErrors": [],
+      "apiRequests": [
+        {
+          "url": "https://staylonghome.com/v1/public/workflows",
+          "status": 201,
+          "statusText": "",
+          "timestamp": "2026-08-30T02:44:25.883Z"
+        },
+        {
+          "url": "https://staylonghome.com/v1/public/workflows/963f04464467403f9758f504f8d72df4/answers",
+          "status": 200,
+          "statusText": "",
+          "timestamp": "2026-08-30T02:44:26.398Z"
+        },
+        {
+          "url": "https://staylonghome.com/v1/public/workflows/963f04464467403f9758f504f8d72df4/action-decision",
+          "status": 200,
+          "statusText": "",
+          "timestamp": "2026-08-30T02:44:26.753Z"
+        }
+      ],
+      "screenshots": [
+        "desktop_01_landing.png",
+        "desktop_02_concern_edited.png",
+        "desktop_03_intake_questions.png",
+        "desktop_04_plan_prepared.png",
+        "desktop_05_action_deferred.png",
+        "desktop_06_calendar_approved.png",
+        "desktop_07_draft_approved.png"
+      ]
+    },
+    "mobile": {
+      "viewport": "Mobile",
+      "status": "PASSED",
+      "totalDurationMs": 16535,
+      "stepTimingsMs": {
+        "01_open_landing": 1315,
+        "02_select_and_edit": 53,
+        "03_start_plan": 12596,
+        "04_navigation_test": 88,
+        "05_prepare_plan": 298,
+        "06_decline_action": 1547,
+        "07_approve_calendar": 1,
+        "08_approve_draft": 2
+      },
+      "consoleErrors": [],
+      "apiRequests": [
+        {
+          "url": "https://staylonghome.com/v1/public/workflows",
+          "status": 201,
+          "statusText": "",
+          "timestamp": "2026-08-30T02:44:42.865Z"
+        },
+        {
+          "url": "https://staylonghome.com/v1/public/workflows/2cb776cfe2dc4aa69f8d7436faf23b15/answers",
+          "status": 200,
+          "statusText": "",
+          "timestamp": "2026-08-30T02:44:43.455Z"
+        },
+        {
+          "url": "https://staylonghome.com/v1/public/workflows/2cb776cfe2dc4aa69f8d7436faf23b15/action-decision",
+          "status": 200,
+          "statusText": "",
+          "timestamp": "2026-08-30T02:44:43.817Z"
+        }
+      ],
+      "screenshots": [
+        "mobile_01_landing.png",
+        "mobile_02_concern_edited.png",
+        "mobile_03_intake_questions.png",
+        "mobile_04_plan_prepared.png",
+        "mobile_05_action_deferred.png",
+        "mobile_06_calendar_approved.png",
+        "mobile_07_draft_approved.png"
+      ]
+    }
+  }
+}

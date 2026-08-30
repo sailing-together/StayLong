@@ -41,7 +41,7 @@ def test_answered_intake_builds_three_actionable_plan_tasks() -> None:
     _, prepared = _prepared_workflow()
     assert prepared.plan is not None
     assert [task.title for task in prepared.plan.tasks] == [
-        "Arrange a My Aged Care assessment",
+        "Prepare to arrange a My Aged Care assessment",
         "Prepare your assessment notes",
         "Confirm home access or permission",
     ]
@@ -248,7 +248,7 @@ it('shows three concrete plan tasks after intake', async () => {
   render(<App />)
   await completeIntake()
   expect(await screen.findByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
-  expect(screen.getByText('Arrange a My Aged Care assessment')).toBeVisible()
+  expect(screen.getByText('Prepare to arrange a My Aged Care assessment')).toBeVisible()
   expect(screen.getByText('Prepare your assessment notes')).toBeVisible()
 })
 

@@ -23,7 +23,7 @@ Prerequisites:
 - An approved human administrator is authenticated to the dedicated Google
   Cloud project.
 - The project and environment JSON selections have been reviewed.
-- The Cloud region is `australia-southeast2` (Melbourne).
+- The Cloud region is `australia-southeast1` (Sydney).
 
 1. Validate the non-sensitive selection files.
 

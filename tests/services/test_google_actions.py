@@ -43,7 +43,20 @@ def test_complete_google_configuration_selects_authorised_google_adapters() -> N
 
     assert adapters.integration_mode == "google_oauth"
     assert adapters.calendar.integration_mode == "google_oauth"
-    assert adapters.contact_drafts.integration_mode == "google_oauth"
+    assert adapters.contact_drafts.integration_mode == "sandbox"
+
+
+def test_calendar_oauth_provider_needs_no_static_token_and_keeps_contact_drafts_sandboxed() -> None:
+    from staylong.services.google_actions import build_action_adapters
+
+    adapters = build_action_adapters(
+        {"STAYLONG_GOOGLE_ACTIONS_MODE": "oauth"},
+        access_token_provider=RecordingTokenProvider(),
+    )
+
+    assert adapters.integration_mode == "google_oauth"
+    assert adapters.calendar.integration_mode == "google_oauth"
+    assert adapters.contact_drafts.integration_mode == "sandbox"
 
 
 def test_google_calendar_requires_exact_approval_before_calling_gateway() -> None:

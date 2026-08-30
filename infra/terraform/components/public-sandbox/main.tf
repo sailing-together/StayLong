@@ -125,7 +125,10 @@ resource "google_cloud_run_v2_service" "sandbox" {
     service_account = module.sandbox_runtime.email
 
     scaling {
-      min_instance_count = 0
+      # Keep one warm instance during the hackathon/demo window so the first
+      # plan request does not pay the Cloud Run cold-start penalty. Revert to
+      # 0 after the credits window to return to scale-to-zero billing.
+      min_instance_count = 1
       max_instance_count = 3
     }
 

@@ -7,9 +7,9 @@ WORKFLOW = Path(".github/workflows/sydney-v2-control-probe.yml")
 
 
 def test_control_probe_uses_stable_provider_and_explicit_public_ingress() -> None:
-    main = (COMPONENT / "main.tf").read_text()
-    variables = (COMPONENT / "variables.tf").read_text()
-    versions = (COMPONENT / "versions.tf").read_text()
+    main = (COMPONENT / "main.tf").read_text(encoding="utf-8")
+    variables = (COMPONENT / "variables.tf").read_text(encoding="utf-8")
+    versions = (COMPONENT / "versions.tf").read_text(encoding="utf-8")
 
     assert 'resource "google_cloud_run_v2_service" "control"' in main
     assert 'ingress             = "INGRESS_TRAFFIC_ALL"' in main
@@ -41,7 +41,7 @@ def test_control_probe_uses_stable_provider_and_explicit_public_ingress() -> Non
 
 
 def test_control_probe_workflow_is_confirmation_gated_and_always_destroys() -> None:
-    workflow = WORKFLOW.read_text()
+    workflow = WORKFLOW.read_text(encoding="utf-8")
 
     assert "RUN_STAY_LONG_SYDNEY_CONTROL_PROBE" in workflow
     assert "stay-long-sydney-v2.json" in workflow
@@ -58,7 +58,7 @@ def test_control_probe_workflow_is_confirmation_gated_and_always_destroys() -> N
 
 
 def test_control_probe_switches_images_on_the_same_service_and_restores_hello() -> None:
-    workflow = WORKFLOW.read_text()
+    workflow = WORKFLOW.read_text(encoding="utf-8")
 
     assert "HELLO_IMAGE: gcr.io/google-samples/hello-app:1.0" in workflow
     assert "APP_SERVICE: staylong-sydney-v2" in workflow
