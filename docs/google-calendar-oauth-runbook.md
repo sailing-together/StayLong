@@ -19,13 +19,23 @@ Terraform variable, state value, log field, or repository file.
 ```text
 STAYLONG_GOOGLE_OAUTH_CLIENT_ID
 STAYLONG_GOOGLE_OAUTH_REDIRECT_URI
-STAYLONG_GOOGLE_OAUTH_CLIENT_SECRET_ID
+STAYLONG_GOOGLE_OAUTH_CLIENT_SECRET
 ```
 
-Grant the private runtime service account only the Secret Manager access needed
-for that secret and the Firestore access needed for OAuth state/token records.
-The Cloud Run service must be private, with the identity-aware access layer
-supplying `X-Goog-Authenticated-User-Email`.
+Set Terraform's `calendar_oauth_client_secret_id` to the name of the existing
+Secret Manager secret; Terraform injects its latest value into the runtime as
+`STAYLONG_GOOGLE_OAUTH_CLIENT_SECRET`. Do not put that value in a tfvars file.
+
+When all three OAuth Terraform inputs are set, Terraform grants the private
+runtime a custom token-store role with only these Secret Manager permissions:
+`secretmanager.secrets.create`, `secretmanager.secrets.get`,
+`secretmanager.versions.add`, and `secretmanager.versions.access`. This is
+needed because a per-user token secret is created only after consent. It does
+not grant Secret Manager Admin, list, delete, or IAM-policy permissions. Keep
+this private OAuth deployment in a project that does not hold unrelated
+secrets. The runtime also needs the existing Firestore access needed for OAuth
+state records. The Cloud Run service must be private, with the identity-aware
+access layer supplying `X-Goog-Authenticated-User-Email`.
 
 ## Verification steps
 

@@ -78,7 +78,7 @@ def test_proxy_authenticated_user_can_prepare_and_approve_workflow() -> None:
     assert prepared.json()["stage"] == "awaiting_approval"
     assert prepared.json()["pack"]["official_pathways"] == ["https://www.myagedcare.gov.au/"]
     assert [task["title"] for task in prepared.json()["plan"]["tasks"]] == [
-        "Arrange a My Aged Care assessment",
+        "Prepare to arrange a My Aged Care assessment",
         "Prepare your assessment notes",
         "Confirm home access or permission",
     ]

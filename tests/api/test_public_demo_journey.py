@@ -100,7 +100,7 @@ def test_public_demo_journey_night_time_bathroom() -> None:
     )
     task_titles = [task["title"] for task in plan["tasks"]]
     assert task_titles == [
-        "Arrange a My Aged Care assessment",
+        "Prepare to arrange a My Aged Care assessment",
         "Prepare your assessment notes",
         "Confirm home access or permission",
     ], f"Unexpected plan tasks: {task_titles}"

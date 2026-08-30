@@ -15,6 +15,7 @@ def test_public_sandbox_config_uses_secret_and_durable_case_access() -> None:
     assert config.session_secret == "session-secret"
     assert config.session_lifetime == timedelta(hours=24)
     assert config.cookie_secure is True
+    assert config.max_cases_per_session == 10
 
 
 def test_private_runtime_does_not_enable_public_sandbox_routes() -> None:

@@ -163,7 +163,10 @@ def _plan_task3_description(
             return (
                 "Confirm access requirements and family or tradesperson permissions for your home."
             )
-    return "Check any access, tenancy, or permission details needed before changes."
+    return (
+        "Check whether a landlord, building manager, or trusted supporter "
+        "needs to be involved before any home change is discussed."
+    )
 
 
 def build_home_independence_plan(
@@ -181,7 +184,7 @@ def build_home_independence_plan(
         tasks=(
             PlanTask(
                 task_id="arrange-assessment",
-                title="Arrange a My Aged Care assessment",
+                title="Prepare to arrange a My Aged Care assessment",
                 description=_plan_task1_description(pack),
                 owner="You",
                 due_at=now + timedelta(days=2),
@@ -205,4 +208,5 @@ def build_home_independence_plan(
             ),
         ),
     )
+
 

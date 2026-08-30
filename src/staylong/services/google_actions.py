@@ -34,7 +34,12 @@ class GoogleActionConfig:
     calendar_id: str
 
     @classmethod
-    def from_environment(cls, values: Mapping[str, str]) -> GoogleActionConfig | None:
+    def from_environment(
+        cls,
+        values: Mapping[str, str],
+        *,
+        allow_refreshed_access_token: bool = False,
+    ) -> GoogleActionConfig | None:
         """Return no configuration unless every required OAuth value is present.
 
         An explicit OAuth mode with incomplete configuration is an error: it must
@@ -49,11 +54,11 @@ class GoogleActionConfig:
         if mode != "oauth":
             raise ValueError("STAYLONG_GOOGLE_ACTIONS_MODE must be 'oauth' when configured.")
         access_token = values.get("STAYLONG_GOOGLE_OAUTH_ACCESS_TOKEN", "").strip()
-        calendar_id = values.get("STAYLONG_GOOGLE_CALENDAR_ID", "").strip()
-        if not access_token or not calendar_id:
+        calendar_id = values.get("STAYLONG_GOOGLE_CALENDAR_ID", "primary").strip() or "primary"
+        if not access_token and not allow_refreshed_access_token:
             raise ValueError(
-                "OAuth mode requires STAYLONG_GOOGLE_OAUTH_ACCESS_TOKEN and "
-                "STAYLONG_GOOGLE_CALENDAR_ID."
+                "OAuth mode requires STAYLONG_GOOGLE_OAUTH_ACCESS_TOKEN unless a "
+                "user-authorised refresh-token provider is configured."
             )
         return cls(access_token=access_token, calendar_id=calendar_id)
 
@@ -260,7 +265,10 @@ def build_action_adapters(
     access_token_provider: GoogleAccessTokenProvider | None = None,
 ) -> ActionAdapters:
     """Build OAuth adapters only when fully configured; otherwise use sandbox."""
-    config = GoogleActionConfig.from_environment(values)
+    config = GoogleActionConfig.from_environment(
+        values,
+        allow_refreshed_access_token=access_token_provider is not None,
+    )
     if config is None:
         return ActionAdapters(
             calendar=CalendarDemoAdapter(),
@@ -269,7 +277,7 @@ def build_action_adapters(
         )
     return ActionAdapters(
         calendar=GoogleCalendarAdapter(config, access_token_provider=access_token_provider),
-        contact_drafts=GoogleGmailDraftAdapter(config),
+        contact_drafts=ContactDraftDemoAdapter(),
         integration_mode="google_oauth",
     )
 

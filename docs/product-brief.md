@@ -22,6 +22,6 @@ Possible emergencies route immediately to Triple Zero (000), without a model cal
 
 ## Differentiation
 
-AskSafe Home supports a single safety decision around suspicious information. StayLong coordinates the ongoing work that helps a person living alone address an ageing-in-place concern at their own pace.
+StayLong coordinates the ongoing work that helps a person living alone address an ageing-in-place concern at their own pace. Its distinctive value is the complete path from a plain-language concern to an assessment-ready plan, explicit human approval and visible follow-through.
 
 StayLong sits between family care apps, provider operations software and My Aged Care. It does not manage day-to-day care delivery, run a provider's roster or billing operation, determine eligibility, or replace the government assessment and application process. Its role is to turn an older person's concern into an authorised, assessment-ready plan and follow agreed steps through to completion.

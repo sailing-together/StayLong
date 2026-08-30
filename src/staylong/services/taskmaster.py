@@ -479,7 +479,7 @@ class TaskmasterWorkflow:
             now=now,
             details={"action_type": selected_type, "channel": result.channel, "sandbox": "true"},
         )
-        if reminder is None:
+        if reminder is None or selected_type != CalendarDemoAdapter.action_type:
             return recorded
         return self._save_with_event(
             recorded,
