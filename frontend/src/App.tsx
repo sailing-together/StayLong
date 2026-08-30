@@ -28,9 +28,13 @@ const assessmentStatusOptions = [
   'No, not yet',
   'I’m not sure',
 ]
+const supporterQuestion = 'Would you like to involve anyone now?'
+const supporterReason = 'StayLong only shares information when invited.'
+const supporterOptions = ['Not right now', 'I’d like to involve someone', 'I’m not sure who to involve yet']
 const quickAnswerOptions: Record<string, string[]> = {
   housing_tenure: ['I own my home', 'I rent my home', 'I’m not sure about the home yet'],
-  support_contacts: ['Not right now', 'I’d like to involve someone', 'I’m not sure who to involve yet'],
+  support_contacts: supporterOptions,
+  information_sharing_consent: supporterOptions,
 }
 
 const timelineLabels: Record<string, string> = {
@@ -154,7 +158,8 @@ function IntakeQuestion({ question, value, onChange }: { question: Fact; value: 
   }
   const options = quickAnswerOptions[question.key]
   if (options) {
-    return <fieldset className="input-group choice-group"><legend>{question.question}</legend><div className="choice-options">{options.map((option) => <label className="choice-option" key={option}><input checked={value === option} name={question.key} onChange={() => onChange(option)} required type="radio" value={option} /><span>{option}</span></label>)}</div><p className="field-help">{question.reason}</p></fieldset>
+    const isSupporterQuestion = question.key === 'support_contacts' || question.key === 'information_sharing_consent'
+    return <fieldset className="input-group choice-group"><legend>{isSupporterQuestion ? supporterQuestion : question.question}</legend><div className="choice-options">{options.map((option) => <label className="choice-option" key={option}><input checked={value === option} name={question.key} onChange={() => onChange(option)} required type="radio" value={option} /><span>{option}</span></label>)}</div><p className="field-help">{isSupporterQuestion ? supporterReason : question.reason}</p></fieldset>
   }
   return <div className="input-group"><label htmlFor={question.key}>{question.question}</label><input id={question.key} onChange={(event) => onChange(event.target.value)} required value={value} /><p className="field-help">{question.reason}</p></div>
 }

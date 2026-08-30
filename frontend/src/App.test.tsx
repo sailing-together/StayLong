@@ -250,6 +250,31 @@ describe('StayLong Continuous Home Path', () => {
     expect(screen.getByRole('radio', { name: 'I’m not sure who to involve yet' })).toBeVisible()
   })
 
+  it('keeps a consent field aligned with the accepted supporter-choice UI', async () => {
+    const user = userEvent.setup()
+    const consentQuestion = {
+      key: 'information_sharing_consent',
+      question: 'Do you give consent for us to share these details with your nominated support contacts or assessors?',
+      reason: 'Consent is required before sending household information to external supporters or care teams.',
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => workflow('intake', { questions: [...questions.slice(0, 2), consentQuestion] }),
+    }))
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    await screen.findByRole('heading', { name: 'A few details will help prepare your plan' })
+
+    expect(screen.getByRole('group', { name: 'Would you like to involve anyone now?' })).toBeVisible()
+    expect(screen.getByRole('radio', { name: 'Not right now' })).toBeVisible()
+    expect(screen.getByRole('radio', { name: 'I’d like to involve someone' })).toBeVisible()
+    expect(screen.getByRole('radio', { name: 'I’m not sure who to involve yet' })).toBeVisible()
+    expect(screen.getByText('StayLong only shares information when invited.')).toBeVisible()
+    expect(screen.queryByRole('textbox', { name: /consent/i })).not.toBeInTheDocument()
+  })
+
   it('explains that the plan is being prepared while the start request is pending', async () => {
     const user = userEvent.setup()
     let resolveRequest: ((value: unknown) => void) | undefined
