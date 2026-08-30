@@ -8,13 +8,13 @@
 | Concern | Decision |
 | --- | --- |
 | Agent runtime | Google ADK for Python |
-| Model | A competition-eligible Gemini 3.5+ model on Vertex AI |
+| Model | Gemini 3.6 Flash on Vertex AI; Gemma 4 MaaS is a separate fail-closed privacy guard |
 | API and workflow service | Python 3.12, FastAPI and Pydantic |
 | Web experience | React, TypeScript, Vite and Tailwind; built static assets served with the FastAPI service |
 | Persistent case state | Firestore: household, consent, approval, case and immutable audit-event records |
 | Autonomous work | Cloud Tasks for delayed reminders/retries and Pub/Sub for domain-event routing |
-| Approved real-world action | Google Calendar API creates an authorised coordination event; later iterations may add Gmail notifications |
-| Runtime | One Cloud Run service in `australia-southeast1` (Sydney) |
+| Approved real-world action | Private runtime only: Google Calendar API creates an authorised coordination event; Gmail remains an unsent-draft capability. Public sandbox actions are simulations. |
+| Runtime | Two Cloud Run surfaces in `australia-southeast1`: anonymous public sandbox and IAM-protected private runtime |
 | Infrastructure | Terraform provisions all GCP resource lifecycle; GitHub Actions runs reviewed plans/applies through WIF |
 | Automation | GitHub Actions for test, lint, Terraform plan/apply and Cloud Run deployment |
 | Cloud authentication | GitHub OIDC Workload Identity Federation; no service-account JSON keys |

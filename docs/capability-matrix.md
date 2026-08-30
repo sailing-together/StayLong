@@ -8,8 +8,8 @@ This document is the **single source of truth** mapping every user-visible capab
 
 | Capability | API Route(s) | Source Module(s) | Test Suite(s) | Infrastructure / Runtime | Safety & Policy Boundary |
 |---|---|---|---|---|---|
-| **Deterministic Emergency Routing** | `POST /v1/workflows`<br>`POST /v1/public/workflows` | `staylong.policy.emergency` | `tests/policy/test_emergency.py` | Cloud Run Sydney (`australia-southeast1`) | Pure deterministic screening (000 Triple Zero advice). Never delegated to an LLM. |
-| **Gemma Privacy Guard** | `POST /v1/workflows`<br>`POST /v1/public/workflows` | `staylong.privacy.gemma` | `tests/privacy/test_gemma.py` | Vertex AI Gemma endpoint / local fallback rule | Strict redact-only contract before Firestore persistence or tool execution. |
+| **Deterministic Emergency Routing** | `POST /v1/workflows`<br>`POST /v1/public/workflows` | `staylong.policy.emergency` | `tests/policy/test_emergency.py` | Public sandbox and private Cloud Run (`australia-southeast1`) | Pure deterministic screening (000 Triple Zero advice). Never delegated to an LLM. |
+| **Gemma Privacy Guard** | `POST /v1/workflows`<br>`POST /v1/public/workflows` | `staylong.privacy.gemma` | `tests/privacy/test_gemma.py` | Vertex Model Garden MaaS `gemma-4-26b-a4b-it-maas` | Strict redact-only contract before Firestore persistence or tool execution; unavailable or malformed output fails closed. |
 | **Non-Clinical Intake & Fact Collection** | `POST /v1/workflows`<br>`POST /v1/workflows/{id}/answers`<br>`POST /v1/public/workflows/{id}/answers` | `staylong.agents.intake`<br>`staylong.agents.prompts`<br>`staylong.agents.vertex` | `tests/agents/test_intake.py`<br>`tests/agents/test_vertex_factories.py` | Google ADK Python + Vertex AI Gemini 3.6-flash (`global`) | Structured Pydantic outputs only; schema enforcement rejects prompt injection or non-conforming responses. |
 | **Home Independence Assessment Pack** | `GET /v1/workflows/{id}`<br>`GET /v1/public/workflows/{id}` | `staylong.services.home_plan`<br>`staylong.domain.models` | `tests/evaluations/test_demo_fixture.py`<br>`tests/domain/test_models.py` | Cloud Run + Firestore case document | Non-clinical preparation pack; explicitly states it is not an official AT-HM or My Aged Care funding determination. |
 | **Human Approval & Action Gate** | `POST /v1/workflows/{id}/action-decision`<br>`POST /v1/public/workflows/{id}/action-decision` | `staylong.policy.approvals`<br>`staylong.services.taskmaster` | `tests/policy/test_approvals.py`<br>`tests/services/test_taskmaster.py` | Application state machine + Firestore | Strict human-in-the-loop: external action or coordination cannot execute without explicit human approval. |
@@ -31,7 +31,7 @@ This document is the **single source of truth** mapping every user-visible capab
 ### B. Gemma Privacy Guard
 - **Rule**: All user-entered concern text is scanned for unnecessary PII (full names, phone numbers, Medicare numbers, street addresses) before durable persistence in Firestore.
 - **Configuration**: Activated via `STAYLONG_GEMMA_ENABLED=true` in Cloud Run environment.
-- **Fallback**: Built-in deterministic regex and entity scrubbing ensures privacy protection even during cold starts.
+- **Failure behaviour**: An unavailable, malformed or empty Gemma response blocks persistence and planning, then returns a safe retry response. Test fixtures inject a fake provider; the deployed workflow does not silently substitute a local redaction rule.
 
 ### C. Non-Clinical Fact Intake (ADK + Vertex AI)
 - **Model**: `gemini-3.6-flash` hosted on Vertex AI (`location: global`).
@@ -45,7 +45,7 @@ This document is the **single source of truth** mapping every user-visible capab
 
 ### E. Public Sandbox Isolation & Lifecycle
 - **Access Control**: Session cookie `staylong_public_session` establishes cryptographically signed browser ownership.
-- **Rate Limits**: Configurable max active cases per browser session (default 3).
+- **Rate Limits**: Configurable max active cases per browser session (current public-sandbox default: 10).
 - **Cleanup**: Cloud Scheduler calls `/internal/public-sandbox/cleanup` on a recurring schedule with OIDC authentication.
 
 ---
