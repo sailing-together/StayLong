@@ -8,7 +8,7 @@
 
 **Tech Stack:** Terraform >= 1.9; hashicorp/google ~> 6; cloudflare/cloudflare ~> 5; Google Cloud Load Balancing; Cloud Run; GitHub Actions; pytest; Trivy.
 
-**Spec:** `docs/architecture/public-edge-design.md`
+**Spec:** `docs/public-edge-design.md`
 
 ## Global Constraints
 

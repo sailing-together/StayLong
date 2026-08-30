@@ -46,6 +46,17 @@ flowchart LR
   CI -. deploys .-> PRIVATE
 ```
 
+## Judge-facing architecture diagram
+
+The companion diagram below presents the same public and private boundaries in
+plain language for both technical and non-technical reviewers. Solid arrows are
+live public-path calls; dashed arrows are optional, private-only integrations.
+
+![StayLong architecture: from a home concern to an assessment-ready plan](assets/architecture/staylong-architecture.svg)
+
+The editable [draw.io source](assets/architecture/staylong-architecture.drawio)
+is included for review and future updates.
+
 The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded-household.json). It exercises the normal concern → intake → draft → human approval path with synthetic identifiers only; it does not represent a real household or execute an external side effect.
 
 ## Components
@@ -116,6 +127,6 @@ Emergency handling is a static, deterministic route, not an LLM feature. A possi
 - The branded public entry point is `https://staylonghome.com`, served by a global external HTTPS Load Balancer, Google-managed TLS certificate and Serverless NEG in front of Cloud Run; direct Cloud Run domain mapping is not used. During Phase A, the existing generated `run.app` URL remains available as a rollback path. Phase B can restrict direct Cloud Run access only after branded-domain TLS, smoke tests and evidence have passed.
 
 The detailed boundary, lifecycle controls and DNS-token handling are in the
-[public-edge design](architecture/public-edge-design.md). The public edge is
+[public-edge design](public-edge-design.md). The public edge is
 still a temporary-data sandbox: it does not provide real Calendar, Gmail, SMS,
 provider, payment, MyGov or government-account actions.

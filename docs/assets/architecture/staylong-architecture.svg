@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1200" viewBox="0 0 1920 1200" role="img" aria-labelledby="title desc">
+  <title id="title">StayLong architecture</title>
+  <desc id="desc">A judge-friendly view of StayLong's approval-safe ageing-in-place coordination architecture, from the older person's web experience through the public demo, bounded agentic coordination core, approval boundary and Google Cloud delivery controls.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#1A73E8"/></marker>
+    <marker id="arrowGray" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#5F6368"/></marker>
+    <style>
+      .heading { font-family: Arial, Helvetica, sans-serif; fill: #1F2937; font-size: 30px; font-weight: 700; }
+      .subheading { font-family: Arial, Helvetica, sans-serif; fill: #5F6368; font-size: 15px; }
+      .lane { font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+      .cardTitle { font-family: Arial, Helvetica, sans-serif; fill: #1F2937; font-size: 16px; font-weight: 700; }
+      .cardDetail { font-family: Arial, Helvetica, sans-serif; fill: #4B5563; font-size: 12px; }
+      .noteTitle { font-family: Arial, Helvetica, sans-serif; fill: #174EA6; font-size: 14px; font-weight: 700; }
+      .note { font-family: Arial, Helvetica, sans-serif; fill: #374151; font-size: 13px; }
+      .arrowLabel { font-family: Arial, Helvetica, sans-serif; fill: #4B5563; font-size: 11px; text-anchor: middle; }
+    </style>
+  </defs>
+  <rect width="1920" height="1200" fill="#F7F9FC"/>
+  <text x="58" y="60" class="heading">StayLong <tspan fill="#5F6368" font-weight="400">| Approval-safe ageing-in-place coordination</tspan></text>
+  <text x="58" y="91" class="subheading">From a home concern to an assessment-ready plan — with the older person in control of every external action.</text>
+  <rect x="1512" y="32" width="330" height="40" rx="20" fill="#E8F0FE" stroke="#AECBFA"/>
+  <text x="1677" y="58" text-anchor="middle" class="noteTitle">Built and operated on Google Cloud</text>
+  <line x1="56" y1="110" x2="1844" y2="110" stroke="#D7DEE8"/>
+
+  <rect x="40" y="140" width="370" height="650" rx="18" fill="#F4FBF6" stroke="#B7D7BE" stroke-width="2"/>
+  <rect x="40" y="140" width="370" height="44" rx="18" fill="#E4F3E8"/><rect x="40" y="166" width="370" height="18" fill="#E4F3E8"/>
+  <text x="60" y="169" class="lane" fill="#137333">1 · YOUR EXPERIENCE</text>
+  <rect x="430" y="140" width="410" height="650" rx="18" fill="#F4F8FF" stroke="#B6CCF7" stroke-width="2"/>
+  <rect x="430" y="140" width="410" height="44" rx="18" fill="#E8F0FE"/><rect x="430" y="166" width="410" height="18" fill="#E8F0FE"/>
+  <text x="450" y="169" class="lane" fill="#185ABC">2 · PUBLIC DEMO — SAFE BY DESIGN</text>
+  <rect x="860" y="140" width="600" height="650" rx="18" fill="#FAF6FF" stroke="#D5B8F3" stroke-width="2"/>
+  <rect x="860" y="140" width="600" height="44" rx="18" fill="#F1E6FF"/><rect x="860" y="166" width="600" height="18" fill="#F1E6FF"/>
+  <text x="880" y="169" class="lane" fill="#6B21A8">3 · AGENTIC COORDINATION CORE</text>
+  <rect x="1480" y="140" width="400" height="650" rx="18" fill="#FFF9F0" stroke="#F0C889" stroke-width="2"/>
+  <rect x="1480" y="140" width="400" height="44" rx="18" fill="#FFF0D7"/><rect x="1480" y="166" width="400" height="18" fill="#FFF0D7"/>
+  <text x="1500" y="169" class="lane" fill="#B45309">4 · YOU STAY IN CONTROL</text>
+
+
+  <path d="M 205 335 L 205 500" fill="none" stroke="#188038" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <path d="M 345 335 L 300 500" fill="none" stroke="#7BAA84" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrowGray)"/>
+  <text x="322.5" y="409.5" class="arrowLabel">invited</text>
+
+  <path d="M 378 542 L 462 273" fill="none" stroke="#1A73E8" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <path d="M 634 308 L 634 342" fill="none" stroke="#1A73E8" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <path d="M 634 412 L 634 446" fill="none" stroke="#1A73E8" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <path d="M 806 483 L 892 267" fill="none" stroke="#1A73E8" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <path d="M 1137 267 L 1148 267" fill="none" stroke="#7E57C2" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <path d="M 1287 302 L 1159 342" fill="none" stroke="#7E57C2" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <path d="M 1065 412 L 1017 464" fill="none" stroke="#7E57C2" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <path d="M 1300 412 L 1300 464" fill="none" stroke="#7E57C2" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <path d="M 1426 377 L 1592 288" fill="none" stroke="#E37400" stroke-width="3"  marker-end="url(#arrow)"/>
+  <text x="1509" y="324.5" class="arrowLabel">proposal</text>
+
+  <path d="M 1677 344 L 1677 424" fill="none" stroke="#E37400" stroke-width="3"  marker-end="url(#arrow)"/>
+  <text x="1677" y="376" class="arrowLabel">public demo</text>
+
+  <path d="M 1677 344 L 1677 540" fill="none" stroke="#5F6368" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrowGray)"/>
+  <text x="1677" y="434" class="arrowLabel">optional private OAuth</text>
+
+  <path d="M 1735 344 L 1735 634" fill="none" stroke="#5F6368" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrowGray)"/>
+  <text x="1735" y="481" class="arrowLabel">private draft</text>
+
+  <g>
+    <circle cx="155" cy="260" r="38" fill="#DFF2E3" stroke="#188038" stroke-width="2"/><circle cx="155" cy="246" r="11" fill="#188038"/><path d="M132 285 Q155 265 178 285" fill="none" stroke="#188038" stroke-width="8" stroke-linecap="round"/>
+    <text x="155" y="322" text-anchor="middle" class="cardTitle">Older person</text><text x="155" y="341" text-anchor="middle" class="cardDetail">Living independently at home</text>
+    <circle cx="295" cy="260" r="38" fill="#FFF" stroke="#7BAA84" stroke-width="2"/><circle cx="295" cy="246" r="11" fill="#7BAA84"/><path d="M272 285 Q295 265 318 285" fill="none" stroke="#7BAA84" stroke-width="8" stroke-linecap="round"/>
+    <text x="295" y="322" text-anchor="middle" class="cardTitle">Trusted supporter</text><text x="295" y="341" text-anchor="middle" class="cardDetail">Optional, only when invited</text>
+  </g>
+  <rect x="72" y="500" width="306" height="84" rx="14" fill="#FFF" stroke="#8EC59A" stroke-width="2"/>
+  <text x="225" y="532" text-anchor="middle" class="cardTitle">StayLong web experience</text><text x="225" y="555" text-anchor="middle" class="cardDetail">Accessible, guided intake and plan</text>
+  <rect x="72" y="645" width="306" height="78" rx="14" fill="#E7F5EA" stroke="#B7D7BE"/>
+  <text x="88" y="676" class="noteTitle" fill="#245B32">VALUE</text><text x="88" y="700" class="note">Turns an everyday concern into clear,</text><text x="88" y="718" class="note">assessment-ready information.</text>
+
+
+  <g>
+    <rect x="462" y="238" width="344" height="70" rx="14" fill="#FFFFFF" stroke="#B6CCF7" stroke-width="2"/>
+    <image href="https://icons.diagrams.net/assets/font-awesome/1/Cloudflare_brand.svg" x="480" y="258" width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+    <text x="530" y="269" class="cardTitle">Cloudflare DNS</text>
+    <text x="530" y="291" class="cardDetail">staylonghome.com</text>
+  </g>
+
+  <g>
+    <rect x="462" y="342" width="344" height="70" rx="14" fill="#FFFFFF" stroke="#B6CCF7" stroke-width="2"/>
+    <image href="data:image/svg+xml,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnY9Imh0dHBzOi8vdmVjdGEuaW8vbmFubyIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiB2aWV3Qm94PSIwIDAgMjAgMjAiPiYjeGE7CTxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+JiN4YTsJLnN0MHtmaWxsOiM0Mjg1ZjQ7fSYjeGE7CS5zdDF7ZmlsbDojNjY5ZGY2O30mI3hhOwkuc3Qye2ZpbGw6I2FlY2JmYTt9JiN4YTsJPC9zdHlsZT4mI3hhOwk8cGF0aCBjbGFzcz0ic3QxIiBkPSJNMTYgMTBoMnY0aC0yem0tNyAwaDJ2NEg5em0tNyAwaDJ2NEgyeiIvPiYjeGE7CTxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik05IDVoMnY0SDl6Ii8+JiN4YTsJPHBhdGggY2xhc3M9InN0MSIgZD0iTTIgOWgxNnYySDJ6Ii8+JiN4YTsJPHBhdGggY2xhc3M9InN0MiIgZD0iTTQgMGgxMnY1SDR6Ii8+JiN4YTsJPHBhdGggY2xhc3M9InN0MSIgZD0iTTEwIDBoNnY1aC02eiIvPiYjeGE7CTxwYXRoIGNsYXNzPSJzdDIiIGQ9Ik0xNCAxNGg2djZoLTZ6TTAgMTRoNnY2SDB6Ii8+JiN4YTsJPHBhdGggY2xhc3M9InN0MSIgZD0iTTMgMTRoM3Y2SDN6Ii8+JiN4YTsJPHBhdGggY2xhc3M9InN0MiIgZD0iTTcgMTRoNnY2SDd6Ii8+JiN4YTsJPHBhdGggY2xhc3M9InN0MSIgZD0iTTEwIDE0aDN2NmgtM3ptNyAwaDN2NmgtM3oiLz4mI3hhOzwvc3ZnPg==" x="480" y="362" width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+    <text x="530" y="373" class="cardTitle">Global HTTPS load balancer</text>
+    <text x="530" y="395" class="cardDetail">Google-managed TLS · Serverless NEG</text>
+  </g>
+
+  <g>
+    <rect x="462" y="446" width="344" height="74" rx="14" fill="#FFFFFF" stroke="#B6CCF7" stroke-width="2"/>
+    <image href="data:image/svg+xml,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnY9Imh0dHBzOi8vdmVjdGEuaW8vbmFubyIgd2lkdGg9IjM2NS40NjQ5OTY3NzA0MjQ5MyIgaGVpZ2h0PSIzNzkuMjIyOTk0NDYzNTc3OTUiIHZpZXdCb3g9IjAgMCA5Ni42OTU5OTkxNDU1MDc4MSAxMDAuMzM1OTk4NTM1MTU2MjUiPiYjeGE7PHN0eWxlIHR5cGU9InRleHQvY3NzIj4mI3hhOwkuc3Qwe2ZpbGw6IzQyODVmNDt9JiN4YTsJLnN0MXtmaWxsOiNhZWNiZmE7fSYjeGE7PC9zdHlsZT4mI3hhOwk8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMjkuNzk0IDEwMC4zMzZMNDYuOTIgNTAuMTY4aDQ5Ljc3NnpNMCA5OS42NzFsMTIuOTc2LTQ5LjUwMkgyOS4yMkwxNi44OTcgOTIuMDU0eiIvPiYjeGE7CTxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik0yOS43OTQgMEw0Ni45MiA1MC4xNjhoNDkuNzc2ek0wIC42NjZsMTIuOTc2IDQ5LjUwMkgyOS4yMkwxNi44OTcgOC4yODN6Ii8+JiN4YTs8L3N2Zz4=" x="480" y="466" width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+    <text x="530" y="477" class="cardTitle">Cloud Run · public sandbox</text>
+    <text x="530" y="499" class="cardDetail">Anonymous sessions · synthetic data</text>
+  </g>
+  <rect x="462" y="600" width="344" height="94" rx="14" fill="#E8F0FE" stroke="#AECBFA"/>
+  <text x="480" y="631" class="noteTitle">PUBLIC MEANS SAFE TO TRY</text><text x="480" y="655" class="note">No real MyGov, provider, payment, Calendar,</text><text x="480" y="675" class="note">Gmail or SMS action.</text>
+
+
+  <g>
+    <rect x="892" y="232" width="245" height="70" rx="14" fill="#FFFFFF" stroke="#D5B8F3" stroke-width="2"/>
+
+    <text x="910" y="263" class="cardTitle">Deterministic safety route</text>
+    <text x="910" y="285" class="cardDetail">Bounded inputs and policy checks</text>
+  </g>
+  <polygon points="1188,242 1216,259 1216,293 1188,310 1160,293 1160,259" fill="#E7D7FF" stroke="#7E57C2" stroke-width="2"/><text x="1188" y="281" text-anchor="middle" font-family="Arial" font-weight="700" font-size="20" fill="#5B21B6">G</text>
+  <rect x="1148" y="232" width="278" height="70" rx="14" fill="#FFF" stroke="#D5B8F3" stroke-width="2"/>
+  <text x="1230" y="263" class="cardTitle">Gemma 4 privacy guard</text><text x="1230" y="285" class="cardDetail">Vertex Model Garden MaaS · fail closed</text>
+  <circle cx="928" cy="377" r="23" fill="#EADCFB" stroke="#7E57C2" stroke-width="2"/><text x="928" y="382" text-anchor="middle" font-family="Arial" font-size="13" font-weight="700" fill="#5B21B6">AI</text>
+  <rect x="892" y="342" width="534" height="70" rx="14" fill="#FFF" stroke="#D5B8F3" stroke-width="2"/>
+  <text x="967" y="373" class="cardTitle">Google ADK coordinator</text><text x="967" y="395" class="cardDetail">Gemini 3.6 Flash prepares a bounded plan</text>
+
+  <g>
+    <rect x="892" y="464" width="250" height="70" rx="14" fill="#FFFFFF" stroke="#D5B8F3" stroke-width="2"/>
+    <image href="data:image/svg+xml,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnY9Imh0dHBzOi8vdmVjdGEuaW8vbmFubyIgd2lkdGg9IjMyMy45MDU2MTAzOTg2NzUxNSIgaGVpZ2h0PSIzNzYuNDIyMjk0OTYzNjg0MDciIHZpZXdCb3g9Ii0wLjA5NzAwMDAwMjg2MTAyMjk1IDAuMjg3OTk5OTg3NjAyMjMzOSA4NS42OTk5OTY5NDgyNDIxOSA5OS41OTUwMDEyMjA3MDMxMiI+JiN4YTs8c3R5bGUgdHlwZT0idGV4dC9jc3MiPiYjeGE7CS5zdDB7ZmlsbDojYWVjYmZhO30mI3hhOwkuc3Qxe2ZpbGw6IzY2OWRmNjt9JiN4YTsJLnN0MntmaWxsOiM0Mjg1ZjQ7fSYjeGE7PC9zdHlsZT4mI3hhOwk8cGF0aCBjbGFzcz0ic3QwIiBkPSJNLS4wOTcgNzUuODE1VjU1Ljg3NGw0Mi44NS0yMC4xODN2MTkuMDd6bTAtMzUuNDAzVjIwLjQ3MUw0Mi43NTMuMjg4djE5LjA3eiIvPiYjeGE7CTxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik04NS42MDMgNzUuODE1VjU1Ljg3NGwtNDIuODUtMjAuMTgzdjE5LjA3em0wLTM1LjQwM1YyMC40NzFMNDIuNzUzLjI4OHYxOS4wN3oiLz4mI3hhOwk8cGF0aCBjbGFzcz0ic3QyIiBkPSJNNDIuNzUzIDgwLjMxNGwxNi4yMTctNy41MjUgMjEuMDg0IDkuNzE3LTM3LjMwMSAxNy4zNzd6Ii8+JiN4YTs8L3N2Zz4=" x="910" y="484" width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+    <text x="960" y="495" class="cardTitle">Firestore case state</text>
+    <text x="960" y="517" class="cardDetail">Plan, approvals and audit timeline</text>
+  </g>
+
+  <g>
+    <rect x="1176" y="464" width="250" height="70" rx="14" fill="#FFFFFF" stroke="#D5B8F3" stroke-width="2"/>
+    <image href="data:image/svg+xml,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnY9Imh0dHBzOi8vdmVjdGEuaW8vbmFubyIgd2lkdGg9IjM3Ni4zNDk5ODYzODk2NDkzNiIgaGVpZ2h0PSIzMDcuNjg0MDE3OTkzMzY5MjUiIHZpZXdCb3g9IjAgMCA5OS41NzU5OTYzOTg5MjU3OCA4MS40MDgwMDQ3NjA3NDIxOSI+JiN4YTs8c3R5bGUgdHlwZT0idGV4dC9jc3MiPiYjeGE7CS5zdDB7ZmlsbDojNjY5ZGY2O30mI3hhOwkuc3Qxe2ZpbGw6IzQyODVmNDt9JiN4YTs8L3N0eWxlPiYjeGE7CTxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0wIDB2NDAuODc1aDEwVjB6bTIyLjM5NCAwdjQwLjg3NWgxMFYwem0yMi4zOTQgMHY0MC44NzVoMTBWMHptMjIuMzk0IDB2NDAuODc1aDEwVjB6bTIyLjM5NCAwdjQwLjg3NWgxMFYweiIvPiYjeGE7CTxwYXRoIGNsYXNzPSJzdDEiIGQ9Ik04OS41NzYgNDAuODc1djQwLjUzM2gxMFY0MC44NzV6bS0yMi4zOTQgMHY0MC41MzNoMTBWNDAuODc1em0tMjIuMzk0IDB2NDAuNTMzaDEwVjQwLjg3NXptLTIyLjM5NCAwdjQwLjUzM2gxMFY0MC44NzV6TTAgNDAuODc1djQwLjUzM2gxMFY0MC44NzV6Ii8+JiN4YTs8L3N2Zz4=" x="1194" y="484" width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+    <text x="1244" y="495" class="cardTitle">Cloud Tasks / Pub/Sub</text>
+    <text x="1244" y="517" class="cardDetail">Approved work and follow-through</text>
+  </g>
+  <image href="data:image/svg+xml,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnY9Imh0dHBzOi8vdmVjdGEuaW8vbmFubyIgd2lkdGg9IjE4LjMxOTk5OTY5NDgyNDIyIiBoZWlnaHQ9IjIwLjAwMDAwMTkwNzM0ODYzMyIgdmlld0JveD0iMCAwIDE4LjMxOTk5OTY5NDgyNDIyIDIwLjAwMDAwMTkwNzM0ODYzMyI+JiN4YTsJPHN0eWxlIHR5cGU9InRleHQvY3NzIj4mI3hhOwkuc3Qwe2ZpbGw6IzY2OWRmNjt9JiN4YTsJLnN0MXtmaWxsOiM0Mjg1ZjQ7fSYjeGE7CS5zdDJ7ZmlsbDojYWVjYmZhO30mI3hhOwk8L3N0eWxlPiYjeGE7CTxkZWZzPiYjeGE7CQk8ZmlsdGVyIGlkPSJBIiB4PSI0LjY0IiB5PSI0LjE5IiB3aWR0aD0iMTQuNzMiIGhlaWdodD0iMTIuNzYiIGZpbHRlclVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJzUkdCIj4mI3hhOwkJCTxmZUZsb29kIGZsb29kLWNvbG9yPSIjZmZmIi8+JiN4YTsJCQk8ZmVCbGVuZCBpbj0iU291cmNlR3JhcGhpYyIvPiYjeGE7CQk8L2ZpbHRlcj4mI3hhOwkJPG1hc2sgaWQ9IkIiIHg9IjQuNjQiIHk9IjQuMTkiIHdpZHRoPSIxNC43MyIgaGVpZ2h0PSIxMi43NiIgbWFza1VuaXRzPSJ1c2VyU3BhY2VPblVzZSI+JiN4YTsJCQk8Y2lyY2xlIGN4PSIxMiIgY3k9IjEyLjIzIiByPSIzLjU4IiBmaWx0ZXI9InVybCgjQSkiLz4mI3hhOwkJPC9tYXNrPiYjeGE7CTwvZGVmcz4mI3hhOwk8ZyBjbGFzcz0ic3QwIj4mI3hhOwkJPGNpcmNsZSBjeD0iMTYuMTMiIGN5PSI2LjIxIiByPSIxLjcyIi8+JiN4YTsJCTxjaXJjbGUgY3g9IjIuMTkiIGN5PSI2LjIxIiByPSIxLjcyIi8+JiN4YTsJCTxjaXJjbGUgY3g9IjkuMTYiIGN5PSIxOC4yOCIgcj0iMS43MiIvPiYjeGE7CTwvZz4mI3hhOwk8ZyBtYXNrPSJ1cmwoI0IpIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMi44NCAtMikiPiYjeGE7CQk8cGF0aCB0cmFuc2Zvcm09Im1hdHJpeCguNSAtLjg3IC44NyAuNSAtNC41OSAyMC41MykiIGQ9Ik0xNC42OSAxMC4yMmgxLjU5djguMDRoLTEuNTl6IiBjbGFzcz0ic3QxIi8+JiN4YTsJCTxwYXRoIHRyYW5zZm9ybT0icm90YXRlKDMzMCA4LjUyMyAxNC4yNDQpIiBkPSJNNC40OSAxMy40NWg4LjA0djEuNTlINC40OXoiIGNsYXNzPSJzdDEiLz4mI3hhOwkJPHBhdGggZD0iTTExLjIgNC4xOWgxLjU5djguMDRIMTEuMnoiIGNsYXNzPSJzdDEiLz4mI3hhOwk8L2c+JiN4YTsJPGcgY2xhc3M9InN0MiI+JiN4YTsJCTxjaXJjbGUgY3g9IjkuMTYiIGN5PSIxMC4yMyIgcj0iMi43OCIvPiYjeGE7CQk8Y2lyY2xlIGN4PSIyLjE5IiBjeT0iMTQuMjUiIHI9IjIuMTkiLz4mI3hhOwkJPGNpcmNsZSBjeD0iMTYuMTMiIGN5PSIxNC4yNSIgcj0iMi4xOSIvPiYjeGE7CQk8Y2lyY2xlIGN4PSI5LjE2IiBjeT0iMi4xOSIgcj0iMi4xOSIvPiYjeGE7CTwvZz4mI3hhOzwvc3ZnPg==" x="1200" y="482" width="20" height="20"/>
+  <rect x="892" y="610" width="534" height="84" rx="14" fill="#F1E6FF" stroke="#D5B8F3"/>
+  <text x="910" y="641" class="noteTitle" fill="#5B21B6">A COORDINATION LAYER — NOT A DECISION MAKER</text><text x="910" y="665" class="note">Does not determine eligibility, choose providers, prescribe changes or make payments.</text>
+
+  <polygon points="1677,225 1762,288 1677,351 1592,288" fill="#FFF0D7" stroke="#E37400" stroke-width="2.5"/>
+  <text x="1677" y="282" text-anchor="middle" class="cardTitle" fill="#7C2D12">Approval gate</text><text x="1677" y="302" text-anchor="middle" class="cardDetail">You choose before anything</text><text x="1677" y="318" text-anchor="middle" class="cardDetail">external happens</text>
+
+  <g>
+    <rect x="1520" y="424" width="314" height="70" rx="14" fill="#FFFFFF" stroke="#F0C889" stroke-width="2"/>
+
+    <text x="1538" y="455" class="cardTitle">Public sandbox action</text>
+    <text x="1538" y="477" class="cardDetail">Recorded simulation only</text>
+  </g>
+
+  <g>
+    <rect x="1520" y="540" width="314" height="70" rx="14" fill="#FFFFFF" stroke="#F0C889" stroke-width="2"/>
+    <image href="https://icons.diagrams.net/assets/google/1/calendar.svg" x="1538" y="560" width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+    <text x="1588" y="571" class="cardTitle">Private runtime · optional OAuth</text>
+    <text x="1588" y="593" class="cardDetail">Google Calendar · create only after approval</text>
+  </g>
+
+  <g>
+    <rect x="1520" y="634" width="314" height="70" rx="14" fill="#FFFFFF" stroke="#F0C889" stroke-width="2"/>
+
+    <text x="1538" y="665" class="cardTitle">Private contact draft</text>
+    <text x="1538" y="687" class="cardDetail">Gmail draft only · never sent automatically</text>
+  </g>
+
+  <rect x="40" y="835" width="1840" height="278" rx="18" fill="#FFF" stroke="#D7DEE8" stroke-width="2"/>
+  <text x="72" y="875" class="heading" font-size="20">Built, delivered and observed on Google Cloud</text>
+  <text x="72" y="902" class="subheading">Infrastructure is declared in code, deployed without long-lived cloud keys, and monitored with privacy-safe timing logs.</text>
+
+  <path d="M 366 988 L 440 988" fill="none" stroke="#5F6368" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <path d="M 740 988 L 814 988" fill="none" stroke="#5F6368" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <path d="M 1094 988 L 1168 988" fill="none" stroke="#5F6368" stroke-width="3"  marker-end="url(#arrow)"/>
+
+
+  <g>
+    <rect x="86" y="950" width="280" height="76" rx="14" fill="#FFFFFF" stroke="#D7DEE8" stroke-width="2"/>
+    <image href="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" x="104" y="970" width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+    <text x="154" y="981" class="cardTitle">GitHub Actions</text>
+    <text x="154" y="1003" class="cardDetail">Checks and deployment workflows</text>
+  </g>
+
+  <g>
+    <rect x="440" y="950" width="300" height="76" rx="14" fill="#FFFFFF" stroke="#AECBFA" stroke-width="2"/>
+
+    <text x="458" y="981" class="cardTitle">Workload Identity Federation</text>
+    <text x="458" y="1003" class="cardDetail">No long-lived service-account keys</text>
+  </g>
+
+  <g>
+    <rect x="814" y="950" width="280" height="76" rx="14" fill="#FFFFFF" stroke="#D5B8F3" stroke-width="2"/>
+    <image href="https://icons.diagrams.net/assets/apps-and-system-logos/1/Terraform.svg" x="832" y="970" width="34" height="34" preserveAspectRatio="xMidYMid meet"/>
+    <text x="882" y="981" class="cardTitle">Terraform</text>
+    <text x="882" y="1003" class="cardDetail">Cloud Run, routing and policies as code</text>
+  </g>
+
+  <g>
+    <rect x="1168" y="950" width="290" height="76" rx="14" fill="#FFFFFF" stroke="#AECBFA" stroke-width="2"/>
+
+    <text x="1186" y="981" class="cardTitle">Cloud Logging</text>
+    <text x="1186" y="1003" class="cardDetail">Privacy-safe workflow timing evidence</text>
+  </g>
+  <rect x="1492" y="950" width="342" height="76" rx="14" fill="#FFF9F0" stroke="#F0C889"/>
+  <text x="1663" y="977" text-anchor="middle" class="cardTitle">Legend</text><text x="1512" y="1004" class="cardDetail" fill="#1A73E8">━━ actual flow</text><text x="1620" y="1004" class="cardDetail" fill="#5F6368">┄┄ optional private</text><text x="1760" y="1004" class="cardDetail" fill="#E37400">◆ approval</text>
+  <text x="960" y="1080" text-anchor="middle" class="subheading">Public demo: anonymous sessions, synthetic data and sandbox actions. Private runtime: IAM access and user-approved OAuth only.</text>
+</svg>
