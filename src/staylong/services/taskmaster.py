@@ -440,10 +440,12 @@ class TaskmasterWorkflow:
                     subject=f"Assessment preparation — {summary_text}",
                     body=(
                         f"Hello,\n\n"
-                        f"I am preparing for a My Aged Care assessment to discuss staying independent at home.\n\n"
+                        f"I am preparing for a My Aged Care assessment to discuss "
+                        f"staying independent at home.\n\n"
                         f"What I noticed:\n{difficulty_text}\n\n"
                         f"Topics to discuss:\n{topics_text}\n\n"
-                        f"This draft was prepared by StayLong for your review. It has not been sent."
+                        f"This draft was prepared by StayLong for your review. "
+                        f"It has not been sent."
                     ),
                 ),
             )
