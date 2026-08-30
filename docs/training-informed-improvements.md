@@ -90,6 +90,6 @@ The self-evolving course shows that a model can game a weak metric. In StayLong,
 
 ## Resulting product narrative
 
-"When a family member raises a non-emergency concern, StayLong collects only the needed information, produces an assessment-preparation pack, waits for explicit approval, creates one authorised coordination event, and then follows up on schedule—even if the service restarts. Every decision, approval and action is visible in the timeline."
+"When an older person raises a non-emergency concern, StayLong collects only the needed information, produces an assessment-preparation pack, waits for explicit approval, records a sandbox-safe coordination action, and then follows up on schedule—even if the service restarts. Every decision, approval and action is visible in the timeline."
 
 This is a stronger Taskmaster demonstration than a generic care chatbot because the agent performs a bounded, real workflow autonomously over time and proves it did so safely.

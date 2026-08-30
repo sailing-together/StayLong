@@ -1,34 +1,63 @@
 # StayLong
 
-See the [product brief](docs/product-brief.md) for policy context, MVP workflow and safety boundaries.
+> StayLong is an ageing-in-place coordination agent that helps older Australians who live alone remain independent at home for longer.
 
-> Help older Australians live independently at home for longer.
+StayLong turns a non-emergency home-living concern into an assessment-ready Home Independence Plan, keeps proposed next steps pending until the person approves them, and records follow-through over time.
 
-StayLong is a consent-governed, event-driven coordination layer for older Australians living alone. It turns a home-living concern into an accountable, assessment-ready plan, coordinates approved next steps, and follows up until every approved action is complete. The older person can work independently or invite an authorised supporter for a specific task.
+StayLong prepares and coordinates approved steps; it does not deliver care, determine eligibility, access MyGov, select providers, prescribe modifications or make payments.
+
+## What it does
+
+- Captures a non-emergency concern in plain language, such as difficulty reaching the bathroom safely at night.
+- Uses deterministic safety routing before any model-assisted planning.
+- Prepares an assessment-ready summary and practical notes for the person to review.
+- Proposes bounded next steps and keeps them waiting until the person approves.
+- Records approved follow-through, reminders and outcomes in an auditable case timeline.
+- Shows a visible plan, approval status and outcome timeline.
+
+## Product principles
+
+- **The older person stays in control.** Consent to involve someone is separate from approval to take an external action.
+- **One clear step at a time.** The experience reduces coordination burden without pressuring the person to disclose more than needed.
+- **Public means safe to try.** The public demonstration uses anonymous sessions, synthetic data and sandbox actions only.
+- **Approval is an action boundary.** StayLong does not send information, create a booking or use an external account without recorded approval.
+- **Privacy is bounded by design.** A Gemma privacy guard removes unnecessary personal information before persistence or planning, and fails closed if its response is invalid.
+- **Official pathways remain with the person.** StayLong prepares and coordinates; it does not access MyGov, determine eligibility, select providers, prescribe modifications or make payments.
+
+## Architecture at a glance
+
+![StayLong approval-safe ageing-in-place architecture](docs/assets/architecture/staylong-architecture-diagram.drawio.png)
+
+StayLong runs on Google Cloud with Google ADK, Gemini 3.6 Flash and a Gemma 4 privacy guard. An explicit approval gate separates a proposed step from any external action. The public demonstration cannot create real Calendar, Gmail, provider, payment, My Aged Care or MyGov actions; private Calendar OAuth and Gmail draft preparation are available only in the authenticated private runtime after user approval. See the complete [architecture and boundary documentation](docs/architecture.md).
+
+## Public demonstration
+
+The long-lived demonstration is available at [staylonghome.com](https://staylonghome.com). It is a temporary-data demonstration, not a production care service. The generated Cloud Run URL remains available as a rollback path; only an explicitly reviewed `public_edge_lockdown_enabled=true` configuration restricts Cloud Run traffic to the managed load balancer and branded URL.
+
+## Privacy and safety boundaries
 
 The public-sandbox runtime passes concern text through Vertex Model Garden MaaS `gemma-4-26b-a4b-it-maas` before persistence or tool actions. Gemini 3.6 Flash remains the primary ADK coordinator; Gemma returns only a strict privacy contract and cannot change safety, consent or approval transitions. If the privacy guard is unavailable or returns invalid output, the workflow fails closed without persisting the concern or starting a plan.
 
-## Public demonstration URL
-
-The long-lived judge-facing experience is available at `https://staylonghome.com`.
-It is a temporary-data demonstration, not a production care service: it does
-not connect to real Gmail, Calendar, provider, payment, My Aged Care, or MyGov
-accounts. The generated Cloud Run URL remains available as a rollback path.
-Only an explicitly reviewed
-`public_edge_lockdown_enabled=true` configuration switches Cloud Run to accept
-traffic through the managed load balancer and branded URL.
-
 ## What it is—and is not
 
-StayLong helps older people and their chosen supporters prepare, coordinate and track. It sits between family care apps, provider operations software and My Aged Care: it does **not** deliver care, diagnose health conditions, prescribe home modifications, determine AT-HM eligibility, submit government forms, select a provider, or make payments. For acute emergencies or immediate danger, StayLong immediately halts workflow progression and directs users to call Triple Zero (000). Human confirmation is required before every external action or information disclosure.
+StayLong helps an older person prepare, coordinate and track approved next steps. It sits between family care apps, provider operations software and My Aged Care: it does **not** deliver care, diagnose health conditions, prescribe home modifications, determine AT-HM eligibility, submit government forms, select a provider, or make payments. For acute emergencies or immediate danger, StayLong immediately halts workflow progression and directs users to call Triple Zero (000). Human confirmation is required before every external action or information disclosure.
 
-## Competition fit
+## Technology stack
 
-StayLong is designed for the **Taskmaster** track of the All Things Agentic Hackathon. It uses Gemini 3.6 Flash through Vertex AI, Google ADK, and Google Cloud services (Cloud Run, Firestore, Cloud Tasks and Pub/Sub).
+- **Application:** Python, FastAPI and an accessible browser experience.
+- **Agentic AI:** Google ADK with Gemini 3.6 Flash on Vertex AI; Gemma 4 through Vertex Model Garden MaaS as a schema-validated, fail-closed privacy guard.
+- **Google Cloud runtime:** Cloud Run, Firestore, Cloud Tasks, Pub/Sub and Cloud Logging.
+- **Public edge:** Cloudflare DNS, Google-managed TLS, Global HTTPS Load Balancing and a Serverless NEG.
+- **Private integrations:** user-approved Google Calendar OAuth and review-only Gmail draft preparation.
+- **Infrastructure and delivery:** Terraform, GitHub Actions and Workload Identity Federation—no long-lived Google Cloud service-account keys in GitHub.
 
-See [competition references](docs/competition-references.md) and the public [architecture](docs/architecture.md).
+## Documentation
+
+See the [product brief](docs/product-brief.md) for policy context, MVP workflow and safety boundaries; the public [architecture](docs/architecture.md) explains the runtime, approval and deployment boundaries.
+
+Competition requirements and evidence are recorded in [competition references](docs/competition-references.md) and [submission readiness](docs/devpost-submission-readiness.md).
+
 The single source-of-truth capability mapping is in the [capability matrix](docs/capability-matrix.md).
-The complete Devpost requirements and bonus evidence plan are in [submission readiness](docs/devpost-submission-readiness.md).
 The locked stack and live-submission compliance checklist are in [technology and compliance](docs/technology-and-compliance.md).
 The additional Gemma privacy integration is documented in [Gemma privacy guard](docs/gemma-privacy.md).
 Task documentation, human-action gates and pull-request practice follow the [delivery standards](docs/delivery-standards.md).
