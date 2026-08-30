@@ -38,7 +38,7 @@ This checklist is based on the [official Devpost overview](https://allthingsagen
 
 ### Additional Google AI model
 
-- [x] Integrate Vertex AI Gemma as a real PII redaction guard before persistence or tool actions.
+- [ ] Deploy Vertex Model Garden MaaS `gemma-4-26b-a4b-it-maas` as the real PII redaction guard before persistence or tool actions.
 - [x] Validate its strict response contract and reject malformed/empty output.
 - [ ] Add model/version, invocation path, tests and cost boundary to the final evidence and demo.
 
@@ -50,4 +50,3 @@ This checklist is based on the [official Devpost overview](https://allthingsagen
 - [ ] Architecture diagram, public demo video, technical article and social-post URLs.
 - [ ] Gemma implementation and test evidence.
 - [ ] Final Devpost preview checked before submission.
-

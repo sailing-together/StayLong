@@ -69,7 +69,7 @@ class VertexGemmaJsonProvider:
         *,
         project_id: str,
         location: str = "global",
-        model_id: str = "gemma-3-27b-it",
+        model_id: str = "gemma-4-26b-a4b-it-maas",
     ) -> None:
         if not project_id.strip():
             raise ValueError("project_id must be configured for Gemma.")
@@ -106,14 +106,13 @@ def build_vertex_gemma_privacy_guard(
 ) -> GemmaPrivacyGuard:
     """Build the privacy guard with the configured Vertex-hosted model.
 
-    Gemma remains the default model. Environments that do not have access to
-    the Gemma publisher model can explicitly select another approved Vertex
-    model (for example ``gemini-2.5-flash``) via ``STAYLONG_PRIVACY_MODEL``.
+    Gemma MaaS remains the default model. Deployments may explicitly select a
+    different approved Gemma model through ``STAYLONG_PRIVACY_MODEL``.
     """
     return GemmaPrivacyGuard(
         provider=VertexGemmaJsonProvider(
             project_id=project_id,
             location=location,
-            model_id=os.getenv("STAYLONG_PRIVACY_MODEL", "gemma-3-27b-it"),
+            model_id=os.getenv("STAYLONG_PRIVACY_MODEL", "gemma-4-26b-a4b-it-maas"),
         )
     )

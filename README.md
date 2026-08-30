@@ -6,7 +6,7 @@ See the [product brief](docs/product-brief.md) for policy context, MVP workflow 
 
 StayLong is a consent-governed, event-driven coordination layer for older Australians living alone. It turns a home-living concern into an accountable, assessment-ready plan, coordinates approved next steps, and follows up until every approved action is complete. The older person can work independently or invite an authorised supporter for a specific task.
 
-The public-sandbox runtime can pass concern text through a Vertex AI-hosted Gemma redaction guard before persistence or tool actions. Gemini 3.5+ remains the primary ADK coordinator; Gemma returns only a strict privacy contract and cannot change safety, consent or approval transitions.
+The public-sandbox runtime passes concern text through Vertex Model Garden MaaS `gemma-4-26b-a4b-it-maas` before persistence or tool actions. Gemini 3.6 Flash remains the primary ADK coordinator; Gemma returns only a strict privacy contract and cannot change safety, consent or approval transitions. If the privacy guard is unavailable or returns invalid output, the workflow fails closed without persisting the concern or starting a plan.
 
 ## Public demonstration URL
 
