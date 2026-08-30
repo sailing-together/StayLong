@@ -35,8 +35,11 @@ INTAKE_PROMPT = """Convert the supplied concern into this JSON-compatible struct
 The only permitted missing-fact keys are assessment_status, housing_tenure,
 support_contacts, household_availability, home_access and information_sharing_consent.
 
-Do not infer medical facts or recommend a specific modification. A photo can describe
-visible features only; it cannot prove safety, eligibility or clinical need."""
+Make assessment_preparation_topics concrete and useful: include small actions the person
+can complete before a conversation (for example, noting when the difficulty happens,
+walking the route in daylight to notice obstacles, or asking a trusted supporter to help
+remember details). Do not infer medical facts or recommend a specific modification. A
+photo can describe visible features only; it cannot prove safety, eligibility or clinical need."""
 
 COORDINATION_PROMPT = """Given the household policy, case state and approved contacts,
 determine the next reversible coordination step. Prefer preparing a draft, requesting

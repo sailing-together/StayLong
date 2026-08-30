@@ -241,7 +241,7 @@ def test_each_concern_links_official_my_aged_care_guidance(scenario: dict) -> No
 
     assert prepared.plan is not None
     assert prepared.plan.official_pathway == "https://www.myagedcare.gov.au/"
-    assert prepared.plan.tasks[0].title == "Arrange a My Aged Care assessment"
+    assert prepared.plan.tasks[0].title == "Prepare to arrange a My Aged Care assessment"
 
 
 @pytest.mark.parametrize("scenario", CONCERN_SCENARIOS, ids=lambda s: s["id"])

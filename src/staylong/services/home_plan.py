@@ -120,9 +120,10 @@ def build_home_independence_plan(
         tasks=(
             PlanTask(
                 task_id="arrange-assessment",
-                title="Arrange a My Aged Care assessment",
+                title="Prepare to arrange a My Aged Care assessment",
                 description=(
-                    "Use the official pathway when you are ready to discuss support at home."
+                    "Open the official pathway, keep your summary nearby, and use it "
+                    "when you are ready to discuss support at home."
                 ),
                 owner="You",
                 due_at=now + timedelta(days=2),
@@ -140,7 +141,8 @@ def build_home_independence_plan(
                 task_id="confirm-home-access",
                 title="Confirm home access or permission",
                 description=(
-                    "Check any access, tenancy, or permission details needed before changes."
+                    "Check whether a landlord, building manager, or trusted supporter "
+                    "needs to be involved before any home change is discussed."
                 ),
                 owner="You",
                 due_at=now + timedelta(days=3),
