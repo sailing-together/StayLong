@@ -3,7 +3,7 @@
 import os
 
 from staylong.agents.intake import IntakeAgent
-from staylong.api.app import create_app
+from staylong.api.app import configure_runtime_logging, create_app
 from staylong.api.runtime import (
     build_calendar_oauth,
     build_public_sandbox_config,
@@ -81,6 +81,7 @@ def _runtime_components() -> tuple[TaskmasterWorkflow, object | None, object | N
     )
 
 
+configure_runtime_logging()
 _workflow, _calendar_oauth, _public_sandbox = _runtime_components()
 app = create_app(
     api_token=runtime_token(os.environ),
