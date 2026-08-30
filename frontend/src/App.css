@@ -188,9 +188,94 @@ textarea:focus, input:focus { border-color: var(--terracotta); }
 .completion-card .flow-actions { align-items: center; }
 .link-action { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .pack-card:focus { outline: 3px solid var(--terracotta); outline-offset: 5px; }
-.timeline-card { background: color-mix(in srgb, var(--oat) 72%, var(--sand)); }
-.timeline-card ol { display: grid; gap: 9px; margin: 0; padding-left: 22px; }
-.timeline-card li { padding-left: 5px; font-size: .94rem; }
+.timeline-card li { padding-left: 5px; font-size: .94rem; line-height: 1.45; }
+
+.follow-through-banner {
+  border-left: 7px solid var(--moss);
+  border-radius: 24px;
+  padding: clamp(22px, 3vw, 32px);
+  background: color-mix(in srgb, var(--sage) 88%, var(--sand));
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--moss) 8%, transparent);
+}
+.follow-through-banner h2 {
+  margin-bottom: 8px;
+  font-size: 1.35rem;
+  color: var(--moss);
+}
+.follow-through-banner p:last-child {
+  margin-bottom: 0;
+  line-height: 1.5;
+}
+
+.status-completed {
+  color: var(--moss) !important;
+  font-weight: 800;
+}
+
+.action-card.deferred {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--clay) 60%, transparent);
+  background: color-mix(in srgb, var(--sand) 60%, var(--oat));
+}
+
+.draft-preview-box {
+  margin-top: 16px;
+  border: 1px solid color-mix(in srgb, var(--moss) 20%, transparent);
+  border-radius: 14px;
+  padding: 16px 18px;
+  background: var(--sand);
+}
+
+.draft-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+
+.draft-preview-header .eyebrow {
+  margin: 0;
+}
+
+.draft-copy-btn {
+  min-height: 38px;
+  padding: 6px 16px;
+  font-size: 0.84rem;
+}
+
+.draft-subject {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.draft-body-content {
+  margin: 0 0 10px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--oat) 35%, white);
+  border: 1px solid color-mix(in srgb, var(--moss) 12%, transparent);
+  font-family: inherit;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--moss);
+}
+
+.draft-safety-note {
+  display: block;
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--moss) 70%, transparent);
+}
+
+.event-type-tag {
+  margin-left: 8px;
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--terracotta) 80%, transparent);
+  font-weight: 500;
+}
 
 @media (max-width: 840px) {
   .workspace { grid-template-columns: 1fr; gap: 22px; }

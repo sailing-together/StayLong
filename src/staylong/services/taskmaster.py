@@ -272,7 +272,7 @@ class TaskmasterWorkflow:
         candidate_pack = snapshot._candidate_pack
         if candidate_pack is None:
             raise RuntimeError("The intake pack is unavailable for this workflow.")
-        plan = build_home_independence_plan(candidate_pack, now=now)
+        plan = build_home_independence_plan(candidate_pack, answers=dict(answers), now=now)
         cal_title, draft_title = _proposal_titles(candidate_pack)
         proposal = ProposedAction(
             action_type=CalendarDemoAdapter.action_type,
@@ -339,10 +339,14 @@ class TaskmasterWorkflow:
         )
         if existing_result is not None:
             return snapshot
-        if snapshot.stage not in {WorkflowStage.AWAITING_APPROVAL, WorkflowStage.FOLLOW_THROUGH}:
+        if snapshot.stage not in {
+            WorkflowStage.AWAITING_APPROVAL,
+            WorkflowStage.FOLLOW_THROUGH,
+            WorkflowStage.DECLINED,
+        }:
             raise ValueError("There is no pending action for this workflow.")
         if not approve:
-            return self._save_with_event(
+            saved = self._save_with_event(
                 WorkflowSnapshot(
                     case_id=snapshot.case_id,
                     concern=snapshot.concern,
@@ -360,6 +364,17 @@ class TaskmasterWorkflow:
                 now=now,
                 details={"action_type": selected_type, "action_revision": str(action_revision)},
             )
+            declined_types = {
+                event.details.get("action_type")
+                for event in saved.timeline
+                if event.event_type == "approval.declined"
+            }
+            approved_types = {result.action_type for result in saved.action_results}
+            all_action_types = {a.action_type for a in saved.proposed_actions} or {selected_type}
+            if all_action_types.issubset(declined_types) and not approved_types:
+                saved = replace(saved, stage=WorkflowStage.DECLINED)
+                self._repository.save(saved)
+            return saved
 
         approval = ActionApproval(
             case_id=case_id,
@@ -395,6 +410,26 @@ class TaskmasterWorkflow:
             )
             event_type = "calendar.action.recorded"
         else:
+            pack_topics = (
+                approved.pack.assessment_discussion_topics
+                if approved.pack and approved.pack.assessment_discussion_topics
+                else ()
+            )
+            topics_text = (
+                "\n".join(f"- {topic}" for topic in pack_topics)
+                if pack_topics
+                else "- Discuss practical support and safety at home."
+            )
+            difficulty_text = (
+                approved.pack.reported_difficulty
+                if approved.pack
+                else approved.concern
+            )
+            summary_text = (
+                approved.pack.concern_summary
+                if approved.pack
+                else "Home independence notes"
+            )
             result = self.contact_drafts.create_draft(
                 case_id=case_id,
                 revision=action_revision,
@@ -402,18 +437,35 @@ class TaskmasterWorkflow:
                 now=now,
                 details=MessageDetails(
                     recipient="",
-                    subject="Assessment preparation",
-                    body="A StayLong draft is ready for your review; it has not been sent.",
+                    subject=f"Assessment preparation — {summary_text}",
+                    body=(
+                        f"Hello,\n\n"
+                        f"I am preparing for a My Aged Care assessment to discuss staying independent at home.\n\n"
+                        f"What I noticed:\n{difficulty_text}\n\n"
+                        f"Topics to discuss:\n{topics_text}\n\n"
+                        f"This draft was prepared by StayLong for your review. It has not been sent."
+                    ),
                 ),
             )
             reminder = approved.reminder
             event_type = "contact_draft.created"
+
+        updated_plan = approved.plan
+        if approved.plan is not None and selected_type == CalendarDemoAdapter.action_type:
+            updated_plan = replace(
+                approved.plan,
+                tasks=tuple(
+                    replace(t, status="completed") if t.task_id == "prepare-notes" else t
+                    for t in approved.plan.tasks
+                ),
+            )
+
         completed = WorkflowSnapshot(
             case_id=approved.case_id,
             concern=approved.concern,
             stage=WorkflowStage.FOLLOW_THROUGH,
             pack=approved.pack,
-            plan=approved.plan,
+            plan=updated_plan,
             proposed_action=approved.proposed_action,
             proposed_actions=approved.proposed_actions,
             action_result=result,

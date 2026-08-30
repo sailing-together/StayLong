@@ -108,8 +108,72 @@ def _prepare_notes_description(pack: AssessmentPreparationPack) -> str:
     )
 
 
+def _plan_task1_description(pack: AssessmentPreparationPack) -> str:
+    """Build practical, non-clinical My Aged Care task description tailored to the concern."""
+    area = getattr(pack, "home_area", "other")
+    difficulty = pack.reported_difficulty.lower()
+
+    if area == "bathroom":
+        if "shower" in difficulty:
+            return (
+                "Use the official pathway when you are ready to discuss bathroom and shower safety support at home."
+            )
+        return (
+            "Use the official pathway when you are ready to discuss night-time bathroom safety support at home."
+        )
+    if area == "entry":
+        return (
+            "Use the official pathway when you are ready to discuss front step and entry access support at home."
+        )
+    if area == "bedroom":
+        return (
+            "Use the official pathway when you are ready to discuss bedroom movement and safety support at home."
+        )
+    if area == "kitchen":
+        return (
+            "Use the official pathway when you are ready to discuss kitchen safety and meal preparation support at home."
+        )
+    if "shower" in difficulty:
+        return (
+            "Use the official pathway when you are ready to discuss bathroom and shower safety support at home."
+        )
+    if any(k in difficulty for k in ("step", "stair", "door", "entry")):
+        return (
+            "Use the official pathway when you are ready to discuss front step and entry access support at home."
+        )
+    if any(k in difficulty for k in ("bathroom", "toilet", "night")):
+        return (
+            "Use the official pathway when you are ready to discuss night-time bathroom safety support at home."
+        )
+    return "Use the official pathway when you are ready to discuss support at home."
+
+
+def _plan_task3_description(
+    pack: AssessmentPreparationPack, answers: dict[str, str] | None = None
+) -> str:
+    """Build practical permission/access guidance tailored to housing tenure and concern."""
+    del pack
+    if answers:
+        tenure = answers.get("housing_tenure", "").lower()
+        if any(k in tenure for k in ("rent", "tenant", "lease", "landlord")):
+            return (
+                "Confirm whether landlord or property manager permission is needed before any home changes."
+            )
+        if any(k in tenure for k in ("own", "owner", "mortgage", "freehold")):
+            return (
+                "Confirm access requirements and family or tradesperson permissions for your home."
+            )
+    return (
+        "Check whether a landlord, building manager, or trusted supporter "
+        "needs to be involved before any home change is discussed."
+    )
+
+
 def build_home_independence_plan(
-    pack: AssessmentPreparationPack, *, now: datetime
+    pack: AssessmentPreparationPack,
+    *,
+    now: datetime,
+    answers: dict[str, str] | None = None,
 ) -> HomeIndependencePlan:
     """Create the small, useful first plan from a validated intake pack."""
     return HomeIndependencePlan(
@@ -121,10 +185,7 @@ def build_home_independence_plan(
             PlanTask(
                 task_id="arrange-assessment",
                 title="Prepare to arrange a My Aged Care assessment",
-                description=(
-                    "Open the official pathway, keep your summary nearby, and use it "
-                    "when you are ready to discuss support at home."
-                ),
+                description=_plan_task1_description(pack),
                 owner="You",
                 due_at=now + timedelta(days=2),
                 status="ready",
@@ -140,13 +201,12 @@ def build_home_independence_plan(
             PlanTask(
                 task_id="confirm-home-access",
                 title="Confirm home access or permission",
-                description=(
-                    "Check whether a landlord, building manager, or trusted supporter "
-                    "needs to be involved before any home change is discussed."
-                ),
+                description=_plan_task3_description(pack, answers),
                 owner="You",
                 due_at=now + timedelta(days=3),
                 status="ready",
             ),
         ),
     )
+
+
