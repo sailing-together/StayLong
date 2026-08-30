@@ -1,6 +1,6 @@
 # StayLong Devpost submission readiness
 
-This checklist is based on the [official Devpost overview](https://allthingsagentichackathon.devpost.com/) and [official rules](https://allthingsagentichackathon.devpost.com/rules), checked on 27 August 2026. Devpost currently shows a submission deadline of **31 August 2026 at 5:00 PM Pacific Time**.
+This checklist is based on the [official Devpost overview](https://allthingsagentichackathon.devpost.com/) and [official rules](https://allthingsagentichackathon.devpost.com/rules), checked on 30 August 2026. Devpost currently shows a submission deadline of **31 August 2026 at 5:00 PM Pacific Time**.
 
 ## Required
 
@@ -9,9 +9,9 @@ This checklist is based on the [official Devpost overview](https://allthingsagen
 - [ ] Show Gemini 3.5+, Google ADK, and Google Cloud services in the description and repository.
 - [ ] Link `https://github.com/sailing-together/StayLong` and verify it in an incognito window.
 - [ ] Keep README spin-up instructions reproducible for local testing and Terraform deployment.
-- [ ] Upload an architecture diagram showing frontend, ADK/Gemini, Cloud Run, Firestore and async services.
-- [ ] Provide a public English (or English-subtitled) video of about four minutes or less.
-- [ ] Video covers problem, value, working demo, approved action and Google Cloud proof.
+- [ ] Upload an architecture diagram showing the public sandbox, private runtime boundary, Gemma privacy guard, ADK/Gemini, Cloud Run, Firestore and asynchronous services.
+- [ ] Provide a public English (or English-subtitled) YouTube or Vimeo video of **four minutes or less**.
+- [ ] Video covers the problem, customer, solution, working demo, approved action and visible Google Cloud proof in one live, unedited flow.
 - [ ] Add the hosted public-sandbox URL after deployment is verified; never submit the private Sydney v2 URL as the product entry.
 
 ## Eligibility and disclosure
@@ -38,9 +38,9 @@ This checklist is based on the [official Devpost overview](https://allthingsagen
 
 ### Additional Google AI model
 
-- [ ] Deploy Vertex Model Garden MaaS `gemma-4-26b-a4b-it-maas` as the real PII redaction guard before persistence or tool actions.
+- [x] Deploy-configure Vertex Model Garden MaaS `gemma-4-26b-a4b-it-maas` as the real PII redaction guard before persistence or tool actions.
 - [x] Validate its strict response contract and reject malformed/empty output.
-- [ ] Add model/version, invocation path, tests and cost boundary to the final evidence and demo.
+- [ ] Add the model/version, invocation path, test evidence, request-based cost boundary and a deployed synthetic-data proof to the final evidence and demo.
 
 ## Evidence bundle
 

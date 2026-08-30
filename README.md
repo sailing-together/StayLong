@@ -10,11 +10,11 @@ The public-sandbox runtime passes concern text through Vertex Model Garden MaaS 
 
 ## Public demonstration URL
 
-The long-lived judge-facing experience is designed for `https://staylonghome.com`.
+The long-lived judge-facing experience is available at `https://staylonghome.com`.
 It is a temporary-data demonstration, not a production care service: it does
 not connect to real Gmail, Calendar, provider, payment, My Aged Care, or MyGov
-accounts. During Phase A, the generated Cloud Run URL remains available while
-Google-managed TLS is provisioned. Only an explicitly reviewed
+accounts. The generated Cloud Run URL remains available as a rollback path.
+Only an explicitly reviewed
 `public_edge_lockdown_enabled=true` configuration switches Cloud Run to accept
 traffic through the managed load balancer and branded URL.
 
@@ -24,7 +24,7 @@ StayLong helps older people and their chosen supporters prepare, coordinate and 
 
 ## Competition fit
 
-StayLong is designed for the **Taskmaster** track of the All Things Agentic Hackathon. It will use Gemini 3.5+ through Vertex AI, Google ADK, and Google Cloud services (Cloud Run, Firestore, Cloud Tasks and Pub/Sub).
+StayLong is designed for the **Taskmaster** track of the All Things Agentic Hackathon. It uses Gemini 3.6 Flash through Vertex AI, Google ADK, and Google Cloud services (Cloud Run, Firestore, Cloud Tasks and Pub/Sub).
 
 See [competition references](docs/competition-references.md) and the public [architecture](docs/architecture.md).
 The single source-of-truth capability mapping is in the [capability matrix](docs/capability-matrix.md).
@@ -61,13 +61,15 @@ python -m uvicorn staylong.api.main:app --port 8080
 
 The Cloud Run image is built from [`Dockerfile`](Dockerfile) and starts
 `staylong.api.main:app` on the platform-provided `PORT` (default `8080`). The
-runtime requires the `STAYLONG_API_TOKEN` environment variable; it is never
-checked into the repository or printed by the smoke test. Pull requests build
-the image and run [`tools/cloudrun_smoke.py`](tools/cloudrun_smoke.py)
-against a local container, while the deployment workflow runs the same health
-and authenticated case-flow checks against the deployed URL. Configure
-`STAYLONG_API_TOKEN` as a masked `sandbox` GitHub Environment secret before
-using the deployment workflow.
+**private** runtime requires the `STAYLONG_API_TOKEN` environment variable; it
+is never checked into the repository or printed by the smoke test. The
+**public sandbox** intentionally has no shared API token and accepts only its
+scoped cookie-session routes. Pull requests build the image and run
+[`tools/cloudrun_smoke.py`](tools/cloudrun_smoke.py) against a local container,
+while the private deployment workflow runs health and authenticated case-flow
+checks against the deployed URL. Configure `STAYLONG_API_TOKEN` as a masked
+`sandbox` GitHub Environment secret only for the private-runtime deployment
+path.
 
 The repeatable UI/API workflow contract lives in
 [`tests/api/test_ui_workflow.py`](tests/api/test_ui_workflow.py). It loads the

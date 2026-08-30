@@ -16,23 +16,25 @@ flowchart LR
   end
   subgraph PUBLIC["Long-lived public sandbox Cloud Run"]
     PW["Public React experience"] --> PS["/v1/public/* session API"]
-    PS --> SA["Sandbox adapters only"]
+    PS --> SA["Sandbox adapters only\n(no real external action)"]
   end
   W --> DNS
   NEG --> PW
-  subgraph PRIVATE["Private Cloud Run service"]
-    W --> API["Authenticated FastAPI API"]
-    API --> R["Deterministic safety route"]
-    R --> ADK["Google ADK intake / coordinator"]
-    API --> O["Google Calendar OAuth routes"]
+  subgraph CORE["Bounded coordination core used by both runtime surfaces"]
+    R["Deterministic safety route"] --> G["Vertex Model Garden MaaS\nGemma 4 privacy guard"]
+    G --> ADK["Google ADK intake / coordinator"]
+    ADK --> V["Vertex AI Gemini 3.6 Flash"]
+    ADK --> F[("Firestore case state")]
+    ADK --> Q["Cloud Tasks / Pub/Sub"]
+    Q --> ADK
+    ADK --> P["Approval policy"]
   end
-  ADK --> V["Vertex AI Gemini 3.6 Flash"]
-  API --> G["Vertex Model Garden MaaS\nGemma 4 privacy guard"]
-  ADK --> F[("Firestore case state")]
-  ADK --> Q["Cloud Tasks / Pub/Sub"]
-  Q --> ADK
-  ADK --> P["Approval policy"]
-  P --> T["Approval-gated adapters"]
+  PS --> R
+  subgraph PRIVATE["Private Cloud Run service"]
+    API["IAM-authenticated FastAPI API"] --> R
+    API --> O["Optional Google Calendar OAuth routes"]
+  end
+  P --> T["Private approval-gated adapters"]
   T --> C["Approved external action"]
   O --> GT["Google Calendar API"]
   GT --> C

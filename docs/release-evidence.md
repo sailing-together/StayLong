@@ -1,6 +1,6 @@
-# Release evidence and security checklist
+# Release evidence and public-demo checklist
 
-This document is the release evidence packet for the private StayLong Sydney sandbox service. It records reproducible repository checks and the verified Google Cloud deployment.
+This document is the release evidence packet for both StayLong Cloud Run surfaces: the IAM-protected Sydney runtime and the judge-facing public sandbox. It records reproducible repository checks, verified Google Cloud deployments and the public-demo safety boundary.
 
 ## Release candidate checks
 
@@ -35,7 +35,7 @@ The earlier `/healthz` smoke failure was caused by a Cloud Run reserved URL path
 
 - [x] WIF is used for GitHub-to-Google authentication; no JSON service-account key is stored.
 - [x] Terraform lifecycle is restricted to the `sandbox` environment and requires an explicit destroy confirmation.
-- [x] Cloud Run starts as a non-root user and requires `STAYLONG_API_TOKEN` at runtime.
+- [x] The private Cloud Run runtime starts as a non-root user and requires `STAYLONG_API_TOKEN`; the public sandbox intentionally has no shared API token.
 - [x] The Cloud Run service is private; both health and case-flow requests require Cloud Run IAM, while case creation and concern retrieval additionally require Bearer authentication.
 - [x] External actions remain approval-gated and the emergency route is deterministic.
 - [x] Synthetic demo data is schema-validated and contains no real personal data or credentials.
