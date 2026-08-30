@@ -98,15 +98,115 @@ function App() {
 
 function PlanBoard({ plan, pack, actions, results, timeline, busy, integrationMode, onBackToAssessment, onDecision }: { plan: Plan; pack: Pack; actions: Proposal[]; results: ActionResult[]; timeline: Timeline[]; busy: boolean; integrationMode: string; onBackToAssessment: () => void; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {
   const integrationLabel = integrationMode === 'google_oauth' ? 'Connected Google actions' : 'Actions you control'
-  return <section className="plan-board"><div className="plan-heading"><p className="eyebrow">A plan you control</p><h1>{plan.title}</h1><p>{plan.goal}</p></div><section className="concern-card"><p className="eyebrow">What StayLong heard</p><p>{plan.stated_difficulty}</p></section><section className="task-list"><h2>Your practical next steps</h2>{plan.tasks.map((task, index) => <article className="plan-task" key={task.task_id}><span>{index + 1}</span><div><h3>{task.title}</h3><p>{task.description}</p><small>{task.status === 'ready' ? 'Ready when you are' : task.status}</small></div></article>)}</section><section className="pack-card"><h2>Assessment preparation</h2><p>{pack.reported_difficulty}</p><a href={pack.official_pathways[0] ?? plan.official_pathway}>Open My Aged Care</a></section><section className="action-area"><p className="eyebrow">{integrationLabel}</p><h2>Actions waiting for you</h2>{actions.map((action) => <ActionCard action={action} busy={busy} key={action.action_type} onDecision={onDecision} result={results.find((item) => item.action_type === action.action_type && item.action_revision === action.revision)} />)}</section><div className="flow-actions plan-navigation"><button className="secondary-action" onClick={onBackToAssessment} type="button">Back to assessment</button></div>{timeline.length > 0 && <section className="timeline-card"><h2>Plan record</h2><ol aria-label="Plan timeline">{timeline.map((event) => <li key={event.event_id}>{event.event_type}</li>)}</ol></section>}</section>
+  return (
+    <section className="plan-board">
+      <div className="plan-heading">
+        <p className="eyebrow">A plan you control</p>
+        <h1>{plan.title}</h1>
+        <p>{plan.goal}</p>
+      </div>
+      <section className="concern-card">
+        <p className="eyebrow">What StayLong heard</p>
+        <p>{plan.stated_difficulty}</p>
+      </section>
+      <section className="task-list">
+        <h2>Your practical next steps</h2>
+        {plan.tasks.map((task, index) => (
+          <article className="plan-task" key={task.task_id}>
+            <span>{index + 1}</span>
+            <div>
+              <h3>{task.title}</h3>
+              <p>{task.description}</p>
+              <small>{task.status === 'ready' ? 'Ready when you are' : task.status}</small>
+            </div>
+          </article>
+        ))}
+      </section>
+      <section className="pack-card">
+        <h2>Assessment preparation</h2>
+        <p>{pack.reported_difficulty}</p>
+        {pack.assessment_discussion_topics && pack.assessment_discussion_topics.length > 0 && (
+          <div className="prep-checklist">
+            <h3>Topics to discuss with your assessor</h3>
+            <ol>
+              {pack.assessment_discussion_topics.map((topic, index) => (
+                <li key={index}>{topic}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+        <a href={pack.official_pathways[0] ?? plan.official_pathway}>Open My Aged Care</a>
+      </section>
+      <section className="action-area">
+        <p className="eyebrow">{integrationLabel}</p>
+        <h2>Actions waiting for you</h2>
+        {actions.map((action) => (
+          <ActionCard
+            action={action}
+            busy={busy}
+            key={action.action_type}
+            onDecision={onDecision}
+            result={results.find((item) => item.action_type === action.action_type && item.action_revision === action.revision)}
+          />
+        ))}
+      </section>
+      <div className="flow-actions plan-navigation">
+        <button className="secondary-action" onClick={onBackToAssessment} type="button">Back to assessment</button>
+      </div>
+      {timeline.length > 0 && (
+        <section className="timeline-card">
+          <h2>Plan record</h2>
+          <ol aria-label="Plan timeline">
+            {timeline.map((event) => (
+              <li key={event.event_id}>{event.event_type}</li>
+            ))}
+          </ol>
+        </section>
+      )}
+    </section>
+  )
 }
 
 function ActionCard({ action, result, busy, onDecision }: { action: Proposal; result?: ActionResult; busy: boolean; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {
-  if (result) return <article className="action-card completed"><h3>{action.title}</h3><p>{resultMessage(result)}</p></article>
+  if (result) {
+    return (
+      <article className="action-card completed">
+        <h3>{action.title}</h3>
+        <p className="action-result">{resultMessage(result)}</p>
+        <p className="action-next-step">{resultNextStep(result)}</p>
+      </article>
+    )
+  }
   const calendar = action.action_type === 'calendar.create'
-  return <article className="action-card"><h3>{action.title}</h3><p>You choose before anything happens.</p><p className="action-state">{calendar ? 'Calendar reminder waiting for approval' : 'Contact draft waiting for approval'}</p><div className="action-buttons"><button className="primary-action" disabled={busy} onClick={() => onDecision(action, 'approve')}>{calendar ? 'Add assessment reminder to calendar' : 'Create contact draft for review'}</button><button aria-label={`Keep ${action.title} for later`} className="secondary-action" disabled={busy} onClick={() => onDecision(action, 'decline')}>Not now</button></div></article>
+  return (
+    <article className="action-card">
+      <h3>{action.title}</h3>
+      <p>You choose before anything happens.</p>
+      <p className="action-state">{calendar ? 'Calendar reminder waiting for approval' : 'Contact draft waiting for approval'}</p>
+      <div className="action-buttons">
+        <button className="primary-action" disabled={busy} onClick={() => onDecision(action, 'approve')}>
+          {calendar ? 'Add assessment reminder to calendar' : 'Create contact draft for review'}
+        </button>
+        <button aria-label={`Keep ${action.title} for later`} className="secondary-action" disabled={busy} onClick={() => onDecision(action, 'decline')}>
+          Not now
+        </button>
+      </div>
+    </article>
+  )
 }
 
-function resultMessage(result: ActionResult) { return result.action_type === 'calendar.create' ? result.channel === 'google_calendar' ? 'Calendar event created' : 'Reminder added to your plan' : 'Contact draft created for your review — it has not been sent.' }
+function resultMessage(result: ActionResult) {
+  return result.action_type === 'calendar.create'
+    ? result.channel === 'google_calendar'
+      ? 'Calendar event created'
+      : 'Reminder added to your plan'
+    : 'Contact draft created for your review — it has not been sent.'
+}
+
+function resultNextStep(result: ActionResult) {
+  return result.action_type === 'calendar.create'
+    ? 'You can use your assessment notes during your My Aged Care discussion.'
+    : 'You can review and share the draft when you are ready.'
+}
 
 export default App

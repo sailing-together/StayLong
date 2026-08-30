@@ -140,6 +140,8 @@ describe('StayLong Continuous Home Path', () => {
     expect(screen.getByText('Prepare your assessment notes')).toBeVisible()
     expect(screen.getByText('Confirm home access or permission')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Open My Aged Care' })).toHaveAttribute('href', 'https://www.myagedcare.gov.au/')
+    expect(screen.getByText('Topics to discuss with your assessor')).toBeVisible()
+    expect(screen.getByText('Describe the night-time bathroom route.')).toBeVisible()
     expect(screen.getAllByText('You choose before anything happens.')).toHaveLength(2)
     expect(screen.getByRole('button', { name: 'Add assessment reminder to calendar' })).toBeEnabled()
     expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
@@ -160,6 +162,7 @@ describe('StayLong Continuous Home Path', () => {
     await user.click(await screen.findByRole('button', { name: 'Add assessment reminder to calendar' }))
 
     expect(await screen.findByText('Reminder added to your plan')).toBeVisible()
+    expect(screen.getByText('You can use your assessment notes during your My Aged Care discussion.')).toBeVisible()
     expect(screen.getByText('Contact draft waiting for approval')).toBeVisible()
     const timeline = screen.getByRole('list', { name: 'Plan timeline' })
     expect(within(timeline).getByText('approval.granted')).toBeVisible()

@@ -112,11 +112,16 @@ textarea:focus, input:focus { border-color: var(--terracotta); }
 .pack-card { background: var(--oat); }
 .pack-card p { line-height: 1.5; }
 .pack-card a { color: var(--terracotta); font-weight: 800; }
+.prep-checklist { margin: 16px 0; border-top: 1px solid color-mix(in srgb, var(--moss) 25%, transparent); padding-top: 14px; }
+.prep-checklist h3 { margin: 0 0 10px; font-size: 1rem; color: var(--moss); }
+.prep-checklist ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.prep-checklist li { line-height: 1.45; }
 .action-area { background: var(--sage); }
 .action-area > .eyebrow { margin-bottom: 8px; }
 .action-card { margin-top: 14px; border: 2px solid color-mix(in srgb, var(--moss) 32%, transparent); border-radius: 18px; padding: 20px; background: var(--sand); }
 .action-card p { line-height: 1.5; }
 .action-card.completed { border-color: var(--moss); background: color-mix(in srgb, var(--sand) 75%, var(--sage)); }
+.action-next-step { margin-top: 6px; font-size: .92rem; color: color-mix(in srgb, var(--moss) 80%, black); }
 .action-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .timeline-card { background: color-mix(in srgb, var(--oat) 72%, var(--sand)); }
 .timeline-card ol { display: grid; gap: 9px; margin: 0; padding-left: 22px; }

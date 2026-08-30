@@ -160,6 +160,7 @@ class AssessmentPreparationPack:
     official_pathways: tuple[str, ...]
     proposed_next_step: NextStep
     boundary_note: str
+    home_area: HomeArea = "other"
 
 
 def _assessment_pack(output: IntakeOutput) -> AssessmentPreparationPack:
@@ -174,6 +175,7 @@ def _assessment_pack(output: IntakeOutput) -> AssessmentPreparationPack:
             "StayLong prepares and coordinates information only; it does not determine "
             "eligibility, diagnose needs, submit applications or choose providers."
         ),
+        home_area=output.home_area,
     )
 
 

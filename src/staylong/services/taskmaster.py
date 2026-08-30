@@ -131,6 +131,56 @@ class FirestoreWorkflowRepository:
         return self._client.collection("taskmaster_workflows")
 
 
+
+def _proposal_titles(pack: AssessmentPreparationPack) -> tuple[str, str]:
+    area = getattr(pack, "home_area", "other")
+    difficulty = pack.reported_difficulty.lower()
+    if area == "bathroom":
+        if "shower" in difficulty:
+            return (
+                "Review your shower safety preparation pack",
+                "Review your shower safety contact draft",
+            )
+        return (
+            "Review your night-time bathroom preparation pack",
+            "Review your night-time bathroom contact draft",
+        )
+    if area == "entry":
+        return (
+            "Review your front steps and entry preparation pack",
+            "Review your front steps and entry contact draft",
+        )
+    if area == "bedroom":
+        return (
+            "Review your bedroom safety preparation pack",
+            "Review your bedroom safety contact draft",
+        )
+    if area == "kitchen":
+        return (
+            "Review your kitchen safety preparation pack",
+            "Review your kitchen safety contact draft",
+        )
+    if "shower" in difficulty:
+        return (
+            "Review your shower safety preparation pack",
+            "Review your shower safety contact draft",
+        )
+    if any(k in difficulty for k in ("step", "stair", "door", "entry")):
+        return (
+            "Review your front steps and entry preparation pack",
+            "Review your front steps and entry contact draft",
+        )
+    if any(k in difficulty for k in ("bathroom", "toilet", "night")):
+        return (
+            "Review your night-time bathroom preparation pack",
+            "Review your night-time bathroom contact draft",
+        )
+    return (
+        "Review your assessment preparation pack",
+        "Review your assessment contact draft",
+    )
+
+
 class TaskmasterWorkflow:
     """Create, prepare, approve and follow through on one safe sandbox action."""
 
@@ -223,10 +273,11 @@ class TaskmasterWorkflow:
         if candidate_pack is None:
             raise RuntimeError("The intake pack is unavailable for this workflow.")
         plan = build_home_independence_plan(candidate_pack, now=now)
+        cal_title, draft_title = _proposal_titles(candidate_pack)
         proposal = ProposedAction(
             action_type=CalendarDemoAdapter.action_type,
             revision=1,
-            title="Review your assessment preparation pack",
+            title=cal_title,
             starts_at=(now + timedelta(days=1)).isoformat(),
             ends_at=(now + timedelta(days=1, minutes=30)).isoformat(),
             boundary_note="Sandbox action — no real calendar, provider or contact will be used.",
@@ -234,7 +285,7 @@ class TaskmasterWorkflow:
         contact_draft_proposal = ProposedAction(
             action_type=ContactDraftDemoAdapter.action_type,
             revision=1,
-            title="Review your assessment contact draft",
+            title=draft_title,
             starts_at="",
             ends_at="",
             boundary_note="Sandbox draft — it will not be sent without a separate approval.",
@@ -527,6 +578,7 @@ def _pack_document(pack: AssessmentPreparationPack | None) -> dict[str, Any] | N
     return {
         "concern_summary": pack.concern_summary,
         "reported_difficulty": pack.reported_difficulty,
+        "home_area": getattr(pack, "home_area", "other"),
         "information_to_confirm": [
             _missing_fact_document(item) for item in pack.information_to_confirm
         ],
@@ -543,6 +595,7 @@ def _pack_from_document(data: Mapping[str, Any] | None) -> AssessmentPreparation
     return AssessmentPreparationPack(
         concern_summary=data["concern_summary"],
         reported_difficulty=data["reported_difficulty"],
+        home_area=data.get("home_area", "other"),
         information_to_confirm=tuple(
             _missing_fact_from_document(item) for item in data["information_to_confirm"]
         ),
