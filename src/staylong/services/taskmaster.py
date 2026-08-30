@@ -1,9 +1,11 @@
 """Consent-governed orchestration for StayLong's single Taskmaster workflow."""
 
-from collections.abc import Mapping
+import logging
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from enum import StrEnum
+from time import perf_counter
 from typing import Any, Protocol
 from uuid import uuid4
 
@@ -30,6 +32,13 @@ from staylong.services.home_plan import (
     build_home_independence_plan,
 )
 from staylong.services.reminders import Reminder, ReminderService, ReminderStatus
+
+logger = logging.getLogger(__name__)
+
+
+def _milliseconds(duration_seconds: float) -> int:
+    """Round a monotonic duration for compact, content-free operational logs."""
+    return round(duration_seconds * 1_000)
 
 
 class PrivacyGuard(Protocol):
@@ -194,6 +203,7 @@ class TaskmasterWorkflow:
         contact_drafts: ContactDraftDemoAdapter | None = None,
         reminders: ReminderService | None = None,
         privacy_guard: PrivacyGuard | None = None,
+        monotonic_clock: Callable[[], float] = perf_counter,
     ) -> None:
         self._intake_agent = intake_agent
         self._repository = repository
@@ -203,6 +213,7 @@ class TaskmasterWorkflow:
         self.integration_mode = calendar.integration_mode
         self._reminders = reminders or ReminderService()
         self._privacy_guard = privacy_guard
+        self._monotonic_clock = monotonic_clock
 
     @property
     def repository(self) -> WorkflowRepository:
@@ -217,10 +228,12 @@ class TaskmasterWorkflow:
     def start(self, *, concern: str, now: datetime) -> WorkflowSnapshot:
         """Route danger before model use, otherwise begin the facts-only intake."""
         case_id = uuid4().hex
+        started_at = self._monotonic_clock()
         # Emergency detection must remain deterministic and must never wait for a model.
         protected_concern = concern
         if self._privacy_guard is not None and route_concern(concern) != EMERGENCY_ROUTE:
             protected_concern = self._privacy_guard.redact(concern).redacted_text
+        privacy_finished_at = self._monotonic_clock()
         try:
             candidate_pack = self._intake_agent.prepare_assessment_pack(protected_concern)
         except EmergencyRouteRequired:
@@ -230,6 +243,7 @@ class TaskmasterWorkflow:
                 stage=WorkflowStage.EMERGENCY,
             )
             return self._save(snapshot)
+        intake_finished_at = self._monotonic_clock()
 
         snapshot = WorkflowSnapshot(
             case_id=case_id,
@@ -238,12 +252,21 @@ class TaskmasterWorkflow:
             questions=candidate_pack.information_to_confirm,
             _candidate_pack=candidate_pack,
         )
-        return self._save_with_event(
+        saved = self._save_with_event(
             snapshot,
             event_type="concern.created",
             now=now,
             details={"source": "older-person"},
         )
+        persistence_finished_at = self._monotonic_clock()
+        logger.info(
+            "workflow.start.timing privacy_ms=%d intake_ms=%d persistence_ms=%d total_ms=%d",
+            _milliseconds(privacy_finished_at - started_at),
+            _milliseconds(intake_finished_at - privacy_finished_at),
+            _milliseconds(persistence_finished_at - intake_finished_at),
+            _milliseconds(persistence_finished_at - started_at),
+        )
+        return saved
 
     def answer_intake(
         self, *, case_id: str, answers: Mapping[str, str], now: datetime
