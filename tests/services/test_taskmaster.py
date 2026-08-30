@@ -1,5 +1,6 @@
 """Behaviour-first tests for the consent-governed StayLong Taskmaster flow."""
 
+import logging
 from datetime import UTC, datetime
 
 import pytest
@@ -130,6 +131,33 @@ def test_workflow_redacts_concern_before_model_and_persistence() -> None:
 
     assert "0412 345 678" not in started.concern
     assert "[PHONE REDACTED]" in started.concern
+
+
+def test_start_logs_only_stage_timings_without_concern_content(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    from staylong.services.taskmaster import InMemoryWorkflowRepository, TaskmasterWorkflow
+
+    ticks = iter((10.0, 10.11, 10.33, 10.66))
+    workflow = TaskmasterWorkflow(
+        intake_agent=IntakeAgent(provider=StaticProvider()),
+        repository=InMemoryWorkflowRepository(),
+        event_repository=InMemoryEventRepository(),
+        calendar=CalendarDemoAdapter(),
+        privacy_guard=StaticPrivacyGuard(),
+        monotonic_clock=lambda: next(ticks),
+    )
+
+    with caplog.at_level(logging.INFO, logger="staylong.services.taskmaster"):
+        workflow.start(
+            concern="Call 0412 345 678 about the dark hallway.",
+            now=NOW,
+        )
+
+    assert caplog.messages == [
+        "workflow.start.timing privacy_ms=110 intake_ms=220 persistence_ms=330 total_ms=660"
+    ]
+    assert "0412 345 678" not in caplog.text
 
 
 def test_emergency_route_skips_gemma_privacy_call() -> None:
