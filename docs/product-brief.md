@@ -18,7 +18,7 @@ Possible emergencies route immediately to Triple Zero (000), without a model cal
 
 ## Hackathon fit
 
-**Taskmaster:** a long-running, event-driven workflow with explicit approval boundaries, persistent state and a real approved coordination action. The implementation uses Gemini 3.5+ on Vertex AI, Google ADK, Cloud Run, Firestore, Cloud Tasks and Pub/Sub.
+**Taskmaster:** a long-running, event-driven workflow with explicit approval boundaries, persistent state and a real approved coordination action. The implementation uses Gemini 3.6 Flash on Vertex AI (meeting the Gemini 3.5+ requirement), Google ADK, Cloud Run, Firestore, Cloud Tasks and Pub/Sub.
 
 ## Differentiation
 

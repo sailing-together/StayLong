@@ -10,7 +10,7 @@ Build a small, demonstrable Taskmaster that persists a household coordination pl
 
 This visual overview complements the executable Mermaid flow below; it does not replace it. The diagram is designed to make four boundaries immediately clear:
 
-1. **Your experience** — an older person can prepare a plan independently and invite a trusted supporter only when they choose.
+1. **Your experience** — an older person can prepare a plan independently. The current demo records whether they would like to involve someone, but does not create supporter invitations, notifications or information sharing; consent-based supporter collaboration is a later extension.
 2. **Public demo, safe by design** — the public Cloud Run sandbox accepts anonymous, synthetic sessions and records simulation results only; it cannot use real MyGov, provider, payment, Calendar, Gmail or SMS accounts.
 3. **Agentic coordination core** — deterministic safety routing runs before the Gemma privacy guard and Google ADK/Gemini coordinator. Firestore holds case state and approvals; Cloud Tasks and Pub/Sub support approved follow-through.
 4. **You stay in control** — an explicit approval gate separates proposals from action. Google Calendar OAuth and a review-only Gmail draft are private-runtime capabilities, shown as optional dashed paths; neither is available to the public demo or triggered automatically.
@@ -81,7 +81,7 @@ The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded
 
 ## Core event flow
 
-1. An older person living alone creates a concern independently, or an authorised supporter creates one with the person's permission.
+1. An older person living alone creates a concern independently. The public demo may record a preference to involve someone later, but does not create a supporter account, invitation, notification or disclosure.
 2. The API performs deterministic red-flag screening before invoking any model.
 3. For a non-emergency concern, Gemma redacts unnecessary PII. An unavailable or invalid privacy response fails closed before persistence or planning.
 4. The intake agent produces a typed concern summary and lists missing facts.
