@@ -97,6 +97,7 @@ it does not change the Cloud Run service lifecycle or this sandbox safety contra
 | Ready sandbox revision | `staylong-public-sandbox-00012-z6h`, 100% traffic |
 | Provision evidence | [GitHub Actions run 33223257029](https://github.com/sailing-together/StayLong/actions/runs/33223257029) — success |
 | Branded-domain smoke | PASS on 29 August 2026: HTTPS 200 and anonymous cookie-session case flow completed without a shared secret |
+| Live browser acceptance pass | PASS on 30 August 2026: automated Desktop (1280x800) and Mobile (375x667) Playwright pass completed with 0 errors (see [live browser acceptance evidence](live-browser-acceptance-evidence.md)) |
 
 The provision artifact records the canonical URL, static edge IP, active
 certificate and successful smoke result. The public route remains a

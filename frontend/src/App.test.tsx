@@ -215,6 +215,63 @@ describe('StayLong Continuous Home Path', () => {
     await user.click(screen.getByRole('button', { name: 'Return to my plan' }))
     expect(screen.getByRole('heading', { name: 'Your Home Independence Plan' })).toBeVisible()
   })
+
+  it('renders draft preview with copy button when contact draft is created', async () => {
+    const draftApprovedWorkflow = workflow('follow_through', {
+      ...prepared,
+      stage: 'follow_through',
+      action_results: [
+        {
+          case_id: 'case-123',
+          action_type: 'contact_draft.create',
+          action_revision: 1,
+          channel: 'contact_draft',
+          payload: {
+            subject: 'Assessment preparation — Night-time bathroom notes',
+            body: 'Hello,\nI am preparing for my assessment.',
+            delivery: 'draft_only',
+            sandbox: 'true',
+          },
+        },
+      ],
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => draftApprovedWorkflow }))
+    render(<App />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Start my plan' }))
+
+    expect(await screen.findByText('Your plan is underway')).toBeVisible()
+    expect(screen.getByText('Unsent draft preview')).toBeVisible()
+    expect(screen.getByText('Copy draft text')).toBeVisible()
+    expect(screen.getByText(/Hello,/)).toBeVisible()
+  })
+
+  it('shows deferred state when an action is declined', async () => {
+    const user = userEvent.setup()
+    const declinedWorkflow = workflow('awaiting_approval', {
+      ...prepared,
+      timeline: [
+        { event_id: 'event-1', event_type: 'concern.created', details: {}, occurred_at: '2026-08-23T10:00:00Z' },
+        { event_id: 'event-2', event_type: 'assessment.pack.prepared', details: {}, occurred_at: '2026-08-23T10:01:00Z' },
+        { event_id: 'event-3', event_type: 'approval.declined', details: { action_type: 'calendar.create', action_revision: '1' }, occurred_at: '2026-08-23T10:02:00Z' },
+      ],
+    })
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => workflow('intake') })
+      .mockResolvedValueOnce({ ok: true, json: async () => prepared })
+      .mockResolvedValueOnce({ ok: true, json: async () => declinedWorkflow })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Describe what is becoming difficult' }), { target: { value: concern } })
+    await user.click(screen.getByRole('button', { name: 'Start my plan' }))
+    for (const question of questions) await user.type(screen.getByRole('textbox', { name: question.question }), 'Answer')
+    await user.click(screen.getByRole('button', { name: 'Prepare my plan' }))
+    await user.click(await screen.findByRole('button', { name: 'Keep Review your assessment preparation pack for later' }))
+
+    expect(await screen.findByText('Kept for later — no action was taken.')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Reconsider and approve' })).toBeVisible()
+  })
 })
 
 describe('public sandbox mode', () => {

@@ -7,8 +7,8 @@ type Pack = { reported_difficulty: string; assessment_discussion_topics: string[
 type PlanTask = { task_id: string; title: string; description: string; status: string }
 type Plan = { title: string; stated_difficulty: string; goal: string; official_pathway: string; tasks: PlanTask[] }
 type Proposal = { action_type: string; revision: number; title: string; boundary_note: string }
-type ActionResult = { action_type: string; action_revision: number; channel: string }
-type Timeline = { event_id: string; event_type: string }
+type ActionResult = { action_type: string; action_revision: number; channel: string; payload?: Record<string, string> }
+type Timeline = { event_id: string; event_type: string; details?: Record<string, string>; occurred_at?: string }
 type Workflow = { case_id: string; stage: string; questions: Fact[]; pack: Pack | null; plan: Plan | null; proposed_action: Proposal | null; proposed_actions: Proposal[]; action_results: ActionResult[]; timeline: Timeline[]; integration_mode: string }
 type View = 'concern' | 'intake' | 'plan' | 'emergency'
 
@@ -20,6 +20,17 @@ const examples = [
 ]
 const pathSteps = ['Tell us what is difficult', 'Prepare for assessment', 'Approve next steps', 'Follow through']
 
+const timelineLabels: Record<string, string> = {
+  'concern.created': 'Your concern was recorded',
+  'assessment.pack.prepared': 'Assessment preparation pack created',
+  'approval.granted': 'You approved an action',
+  'approval.declined': 'You chose to keep an action for later',
+  'calendar.action.recorded': 'Calendar reminder recorded',
+  'contact_draft.created': 'Contact draft created for review',
+  'reminder.scheduled': 'Follow-up reminder scheduled',
+  'reminder.sent': 'Follow-up reminder completed',
+}
+
 function App() {
   const [concern, setConcern] = useState('')
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
@@ -29,7 +40,7 @@ function App() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   useEffect(() => { document.title = 'StayLong | Independent living, coordinated' }, [])
-  const step = view === 'intake' ? 2 : view === 'plan' ? workflow?.stage === 'follow_through' ? 4 : 3 : 1
+  const step = view === 'intake' ? 2 : view === 'plan' ? (workflow?.stage === 'follow_through' || (workflow?.action_results.length ?? 0) > 0) ? 4 : 3 : 1
   const actions = workflow?.proposed_actions.length ? workflow.proposed_actions : workflow?.proposed_action ? [workflow.proposed_action] : []
   const selectedExample = examples.find(([, summary]) => summary === concern)?.[0]
   const publicMode = import.meta.env.VITE_STAYLONG_API_MODE === 'public-sandbox'
@@ -60,7 +71,7 @@ function App() {
       const next = await request(`/v1/workflows/${workflow.case_id}/action-decision`, { action_type: action.action_type, action_revision: action.revision, decision })
       setWorkflow(next)
       const result = next.action_results.find((item) => item.action_type === action.action_type && item.action_revision === action.revision)
-      setMessage(result ? '' : 'This action is waiting for you.')
+      setMessage(result ? '' : 'You chose to keep this action for later. You can reconsider whenever you are ready.')
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false) }
   }
   return (
@@ -87,8 +98,8 @@ function App() {
           </section>}
           {view === 'emergency' && <section className="task-panel emergency-panel"><h1>Call Triple Zero (000) now</h1><p>If anyone may be in immediate danger, call 000. StayLong will not prepare or run a plan for an emergency.</p></section>}
           {view === 'intake' && workflow && <section className="task-panel"><p className="eyebrow">Prepare with confidence</p><h1>A few details will help prepare your plan</h1><form onSubmit={prepare}>{intakeQuestions.map((question) => <div className="input-group" key={question.key}><label htmlFor={question.key}>{question.question}</label><input id={question.key} onChange={(event) => setAnswers({ ...answers, [question.key]: event.target.value })} required value={answers[question.key] ?? ''} /><p className="field-help">{question.reason}</p></div>)}<div className="flow-actions"><button className="secondary-action" onClick={() => setView('concern')} type="button">Back to my concern</button>{workflow.stage === 'intake' ? <button className="primary-action" disabled={busy}>Prepare my plan</button> : <button className="primary-action" onClick={() => setView('plan')} type="button">Return to my plan</button>}</div></form></section>}
-          {view === 'plan' && workflow?.plan && workflow.pack && <PlanBoard actions={actions} busy={busy} integrationMode={workflow.integration_mode} onBackToAssessment={() => setView('intake')} onDecision={decide} pack={workflow.pack} plan={workflow.plan} results={workflow.action_results} timeline={workflow.timeline} />}
-          {message && <p className="global-status" role="status">{message}</p>}
+          {view === 'plan' && workflow?.plan && workflow.pack && <PlanBoard actions={actions} busy={busy} integrationMode={workflow.integration_mode} onBackToAssessment={() => setView('intake')} onDecision={decide} pack={workflow.pack} plan={workflow.plan} results={workflow.action_results} stage={workflow.stage} timeline={workflow.timeline} />}
+          {message && <p className="global-status has-message" role="status">{message}</p>}
         </div>
       </main>
       <footer className="site-footer"><p>StayLong supports preparation, coordination, and follow-through.</p><p>It does not diagnose, decide eligibility, select providers, or make payments.</p><p className="emergency-note">If there is immediate danger, call Triple Zero (000).</p></footer>
@@ -96,10 +107,27 @@ function App() {
   )
 }
 
-function PlanBoard({ plan, pack, actions, results, timeline, busy, integrationMode, onBackToAssessment, onDecision }: { plan: Plan; pack: Pack; actions: Proposal[]; results: ActionResult[]; timeline: Timeline[]; busy: boolean; integrationMode: string; onBackToAssessment: () => void; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {
+function PlanBoard({ plan, pack, actions, results, timeline, busy, integrationMode, stage, onBackToAssessment, onDecision }: { plan: Plan; pack: Pack; actions: Proposal[]; results: ActionResult[]; timeline: Timeline[]; busy: boolean; integrationMode: string; stage: string; onBackToAssessment: () => void; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {
+  const isFollowThrough = stage === 'follow_through' || results.length > 0
+  const declinedTypes = new Set(
+    timeline
+      .filter((e) => e.event_type === 'approval.declined')
+      .map((e) => e.details?.action_type)
+      .filter(Boolean),
+  )
+  const allResolved = actions.every((a) => results.some((r) => r.action_type === a.action_type) || declinedTypes.has(a.action_type))
   const integrationLabel = integrationMode === 'google_oauth' ? 'Connected Google actions' : 'Actions you control'
+  const actionSectionTitle = isFollowThrough ? (allResolved ? 'Your approved steps & records' : 'Actions and follow-through') : 'Actions waiting for you'
+
   return (
     <section className="plan-board">
+      {isFollowThrough && (
+        <div className="follow-through-banner" role="status">
+          <p className="eyebrow">Step 4 &bull; Follow through</p>
+          <h2>Your plan is underway</h2>
+          <p>Approved actions are recorded below. You retain full control &mdash; nothing is shared or booked without your explicit approval.</p>
+        </div>
+      )}
       <div className="plan-heading">
         <p className="eyebrow">A plan you control</p>
         <h1>{plan.title}</h1>
@@ -117,7 +145,11 @@ function PlanBoard({ plan, pack, actions, results, timeline, busy, integrationMo
             <div>
               <h3>{task.title}</h3>
               <p>{task.description}</p>
-              <small>{task.status === 'ready' ? 'Ready when you are' : task.status}</small>
+              {task.status === 'completed' ? (
+                <small className="status-completed">&check; Completed in plan</small>
+              ) : (
+                <small>{task.status === 'ready' ? 'Ready when you are' : task.status}</small>
+              )}
             </div>
           </article>
         ))}
@@ -139,11 +171,12 @@ function PlanBoard({ plan, pack, actions, results, timeline, busy, integrationMo
       </section>
       <section className="action-area">
         <p className="eyebrow">{integrationLabel}</p>
-        <h2>Actions waiting for you</h2>
+        <h2>{actionSectionTitle}</h2>
         {actions.map((action) => (
           <ActionCard
             action={action}
             busy={busy}
+            isDeclined={declinedTypes.has(action.action_type) && !results.some((r) => r.action_type === action.action_type)}
             key={action.action_type}
             onDecision={onDecision}
             result={results.find((item) => item.action_type === action.action_type && item.action_revision === action.revision)}
@@ -158,7 +191,10 @@ function PlanBoard({ plan, pack, actions, results, timeline, busy, integrationMo
           <h2>Plan record</h2>
           <ol aria-label="Plan timeline">
             {timeline.map((event) => (
-              <li key={event.event_id}>{event.event_type}</li>
+              <li key={event.event_id}>
+                <strong>{timelineLabels[event.event_type] ?? event.event_type}</strong>
+                <span className="event-type-tag">{event.event_type}</span>
+              </li>
             ))}
           </ol>
         </section>
@@ -167,16 +203,61 @@ function PlanBoard({ plan, pack, actions, results, timeline, busy, integrationMo
   )
 }
 
-function ActionCard({ action, result, busy, onDecision }: { action: Proposal; result?: ActionResult; busy: boolean; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {
+function ActionCard({ action, result, isDeclined, busy, onDecision }: { action: Proposal; result?: ActionResult; isDeclined?: boolean; busy: boolean; onDecision: (action: Proposal, decision: 'approve' | 'decline') => void }) {
+  const [copied, setCopied] = useState(false)
+
+  function copyDraft(text: string) {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2500)
+  }
+
   if (result) {
+    const isDraft = action.action_type === 'contact_draft.create'
+    const draftPayload = result.payload
     return (
       <article className="action-card completed">
         <h3>{action.title}</h3>
         <p className="action-result">{resultMessage(result)}</p>
         <p className="action-next-step">{resultNextStep(result)}</p>
+        {isDraft && draftPayload?.body && (
+          <div className="draft-preview-box">
+            <div className="draft-preview-header">
+              <p className="eyebrow">Unsent draft preview</p>
+              <button
+                className="secondary-action draft-copy-btn"
+                onClick={() => copyDraft(draftPayload.body ?? '')}
+                type="button"
+              >
+                {copied ? 'Copied to clipboard!' : 'Copy draft text'}
+              </button>
+            </div>
+            {draftPayload.subject && (
+              <p className="draft-subject"><strong>Subject:</strong> {draftPayload.subject}</p>
+            )}
+            <pre className="draft-body-content">{draftPayload.body}</pre>
+            <small className="draft-safety-note">Sandbox draft &mdash; ready for your review, never sent automatically.</small>
+          </div>
+        )}
       </article>
     )
   }
+
+  if (isDeclined) {
+    return (
+      <article className="action-card deferred">
+        <h3>{action.title}</h3>
+        <p className="action-state">Kept for later &mdash; no action was taken.</p>
+        <p>You can reconsider and approve this step whenever you are ready.</p>
+        <div className="action-buttons">
+          <button className="secondary-action" disabled={busy} onClick={() => onDecision(action, 'approve')}>
+            Reconsider and approve
+          </button>
+        </div>
+      </article>
+    )
+  }
+
   const calendar = action.action_type === 'calendar.create'
   return (
     <article className="action-card">
@@ -210,3 +291,4 @@ function resultNextStep(result: ActionResult) {
 }
 
 export default App
+
