@@ -6,6 +6,12 @@ See the [product brief](docs/product-brief.md) for policy context, MVP workflow 
 
 StayLong is a consent-governed, event-driven coordination layer for older Australians living alone. It turns a home-living concern into an accountable, assessment-ready plan, coordinates approved next steps, and follows up until every approved action is complete. The older person can work independently or invite an authorised supporter for a specific task.
 
+## Architecture at a glance
+
+<img src="docs/assets/architecture/staylong-architecture-diagram.drawio.png" alt="StayLong approval-safe ageing-in-place architecture" width="960" />
+
+StayLong runs on Google Cloud with Google ADK, Gemini 3.6 Flash and a Gemma 4 privacy guard. The public demonstration is an anonymous, synthetic-data sandbox and cannot create real Calendar, Gmail, provider, payment, My Aged Care or MyGov actions. An explicit approval gate separates a proposed step from any external action; private Calendar OAuth and Gmail draft preparation are available only in the authenticated private runtime after user approval. See the complete [architecture and boundary documentation](docs/architecture.md).
+
 The public-sandbox runtime passes concern text through Vertex Model Garden MaaS `gemma-4-26b-a4b-it-maas` before persistence or tool actions. Gemini 3.6 Flash remains the primary ADK coordinator; Gemma returns only a strict privacy contract and cannot change safety, consent or approval transitions. If the privacy guard is unavailable or returns invalid output, the workflow fails closed without persisting the concern or starting a plan.
 
 ## Public demonstration URL

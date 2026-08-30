@@ -4,6 +4,23 @@
 
 Build a small, demonstrable Taskmaster that persists a household coordination plan, reacts to events, seeks approval for consequential actions, and records an auditable result. See the [capability matrix](capability-matrix.md) for the exhaustive mapping from user capabilities to API endpoints, code modules, test suites, and infrastructure components.
 
+## Architecture overview
+
+![StayLong approval-safe ageing-in-place architecture](assets/architecture/staylong-architecture-diagram.drawio.png)
+
+This visual overview complements the executable Mermaid flow below; it does not replace it. The diagram is designed to make four boundaries immediately clear:
+
+1. **Your experience** — an older person can prepare a plan independently and invite a trusted supporter only when they choose.
+2. **Public demo, safe by design** — the public Cloud Run sandbox accepts anonymous, synthetic sessions and records simulation results only; it cannot use real MyGov, provider, payment, Calendar, Gmail or SMS accounts.
+3. **Agentic coordination core** — deterministic safety routing runs before the Gemma privacy guard and Google ADK/Gemini coordinator. Firestore holds case state and approvals; Cloud Tasks and Pub/Sub support approved follow-through.
+4. **You stay in control** — an explicit approval gate separates proposals from action. Google Calendar OAuth and a review-only Gmail draft are private-runtime capabilities, shown as optional dashed paths; neither is available to the public demo or triggered automatically.
+
+GitHub Actions uses Workload Identity Federation to authenticate without long-lived cloud keys. Terraform provisions the Google Cloud infrastructure and policies; it does not deploy models or grant an automatic right to call external Google APIs. Cloud Logging records privacy-safe workflow timing evidence.
+
+The editable source is [`assets/architecture/staylong-architecture-diagram.drawio`](assets/architecture/staylong-architecture-diagram.drawio), with an [SVG version](assets/architecture/staylong-architecture-diagram.drawio.svg).
+
+## Executable system flow
+
 ```mermaid
 flowchart LR
   subgraph EXPERIENCE["Independent-living experience"]
