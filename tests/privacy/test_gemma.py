@@ -55,14 +55,14 @@ def test_gemma_rejects_empty_redacted_text() -> None:
         guard.redact("A concern")
 
 
-def test_vertex_privacy_guard_uses_explicit_environment_model(monkeypatch) -> None:
+def test_vertex_privacy_guard_defaults_to_gemma_maas_model(monkeypatch) -> None:
     captured: dict[str, str] = {}
 
     class RecordingProvider:
         def __init__(self, *, project_id: str, location: str, model_id: str) -> None:
             captured.update(project_id=project_id, location=location, model_id=model_id)
 
-    monkeypatch.setenv("STAYLONG_PRIVACY_MODEL", "gemini-2.5-flash")
+    monkeypatch.delenv("STAYLONG_PRIVACY_MODEL", raising=False)
     monkeypatch.setattr("staylong.privacy.gemma.VertexGemmaJsonProvider", RecordingProvider)
 
     build_vertex_gemma_privacy_guard(project_id="stay-long", location="global")
@@ -70,5 +70,5 @@ def test_vertex_privacy_guard_uses_explicit_environment_model(monkeypatch) -> No
     assert captured == {
         "project_id": "stay-long",
         "location": "global",
-        "model_id": "gemini-2.5-flash",
+        "model_id": "gemma-4-26b-a4b-it-maas",
     }

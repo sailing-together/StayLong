@@ -149,11 +149,11 @@ resource "google_cloud_run_v2_service" "sandbox" {
         value = "true"
       }
 
-      # The public sandbox project does not have access to the Gemma publisher
-      # model, so use an available Vertex model for the same privacy contract.
+      # Vertex Model Garden MaaS: request-based Gemma privacy redaction without
+      # a dedicated GPU endpoint. See SAI-72 for the deployment evidence.
       env {
         name  = "STAYLONG_PRIVACY_MODEL"
-        value = "gemini-2.5-flash"
+        value = "gemma-4-26b-a4b-it-maas"
       }
 
       env {

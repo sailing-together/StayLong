@@ -45,11 +45,11 @@ def test_public_sandbox_enables_vertex_ai_for_gemma_privacy_guard() -> None:
     assert 'service            = "aiplatform.googleapis.com"' in source
 
 
-def test_public_sandbox_selects_an_available_vertex_privacy_model() -> None:
+def test_public_sandbox_selects_the_gemma_maas_privacy_model() -> None:
     source = (COMPONENT / "main.tf").read_text(encoding="utf-8")
 
     assert 'name  = "STAYLONG_PRIVACY_MODEL"' in source
-    assert 'value = "gemini-2.5-flash"' in source
+    assert 'value = "gemma-4-26b-a4b-it-maas"' in source
 
 
 def test_public_sandbox_outputs_only_url_and_non_sensitive_evidence() -> None:

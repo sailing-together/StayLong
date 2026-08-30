@@ -13,7 +13,15 @@ from staylong.services.taskmaster import InMemoryWorkflowRepository, TaskmasterW
 from tests.api.test_taskmaster_api import ANSWERS, StaticProvider
 
 
-def _public_client() -> TestClient:
+class FailingPrivacyGuard:
+    def redact(self, text: str):
+        from staylong.privacy.gemma import PrivacyGuardError
+
+        del text
+        raise PrivacyGuardError("privacy provider unavailable")
+
+
+def _public_client(*, privacy_guard: object | None = None) -> TestClient:
     from staylong.api.app import PublicSandboxConfig
 
     workflow = TaskmasterWorkflow(
@@ -21,6 +29,7 @@ def _public_client() -> TestClient:
         repository=InMemoryWorkflowRepository(),
         event_repository=InMemoryEventRepository(),
         calendar=CalendarDemoAdapter(),
+        privacy_guard=privacy_guard,
     )
     return TestClient(
         create_app(
@@ -82,6 +91,20 @@ def test_private_workflow_route_still_requires_bearer_authentication() -> None:
     )
 
     assert response.status_code == 401
+
+
+def test_public_workflow_fails_closed_when_privacy_guard_is_unavailable() -> None:
+    """Do not persist or begin a plan if Gemma cannot protect the concern."""
+    client = _public_client(privacy_guard=FailingPrivacyGuard())
+    response = client.post(
+        "/v1/public/workflows",
+        json={"concern": "Please call 0412 345 678 about the dark hallway."},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "StayLong could not safely prepare your plan. Please try again."
+    }
 
 
 def test_public_owner_can_approve_a_sandbox_action() -> None:

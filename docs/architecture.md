@@ -26,8 +26,8 @@ flowchart LR
     R --> ADK["Google ADK intake / coordinator"]
     API --> O["Google Calendar OAuth routes"]
   end
-  ADK --> V["Vertex AI Gemini 3.5+"]
-  API --> G["Vertex AI Gemma privacy guard"]
+  ADK --> V["Vertex AI Gemini 3.6 Flash"]
+  API --> G["Vertex Model Garden MaaS\nGemma 4 privacy guard"]
   ADK --> F[("Firestore case state")]
   ADK --> Q["Cloud Tasks / Pub/Sub"]
   Q --> ADK
@@ -52,8 +52,8 @@ The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded
 |---|---|
 | Cloud Run web/API service | Authenticated web UI, API, webhook receiver and ADK entry point. |
 | Google ADK | Plans and executes a bounded workflow through typed tools. |
-| Vertex AI Gemini | Extracts structured concerns, drafts plain-language summaries and proposes next permitted actions. |
-| Vertex AI Gemma privacy guard | Detects and redacts unnecessary PII before concern text is persisted or reaches an action boundary; it cannot make workflow or safety decisions. |
+| Vertex AI Gemini 3.6 Flash | Extracts structured concerns, drafts plain-language summaries and proposes next permitted actions. |
+| Vertex Model Garden MaaS Gemma 4 privacy guard | Uses request-based `gemma-4-26b-a4b-it-maas` to redact unnecessary PII before concern text is persisted or reaches an action boundary; it cannot make workflow or safety decisions. |
 | Firestore | Stores household consent, concern records, task state, approvals, action history and idempotency keys. |
 | Cloud Tasks | Schedules due-date checks, reminder retries and escalation work. |
 | Pub/Sub | Carries event notifications such as `concern.created`, `approval.granted`, `task.overdue` and `assessment.outcome.recorded`. |
@@ -63,13 +63,14 @@ The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded
 ## Core event flow
 
 1. An older person living alone creates a concern independently, or an authorised supporter creates one with the person's permission.
-2. The API performs deterministic red-flag screening before invoking Gemini.
-3. The intake agent produces a typed concern summary and lists missing facts.
-4. The coordinator creates only allowed draft tasks, appointments or messages.
-5. A human approves each external side effect.
-6. The action tool executes once, records an idempotency key, and emits an event.
-7. A scheduled worker detects overdue work and escalates according to household rules.
-8. An assessment outcome moves the case to the next workflow stage; it never creates a clinical prescription or funding decision.
+2. The API performs deterministic red-flag screening before invoking any model.
+3. For a non-emergency concern, Gemma redacts unnecessary PII. An unavailable or invalid privacy response fails closed before persistence or planning.
+4. The intake agent produces a typed concern summary and lists missing facts.
+5. The coordinator creates only allowed draft tasks, appointments or messages.
+6. A human approves each external side effect.
+7. The action tool executes once, records an idempotency key, and emits an event.
+8. A scheduled worker detects overdue work and escalates according to household rules.
+9. An assessment outcome moves the case to the next workflow stage; it never creates a clinical prescription or funding decision.
 
 ## Workflow integrity
 
@@ -81,7 +82,7 @@ The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded
 
 The design rationale and MVP priorities are recorded in [training-informed improvements](training-informed-improvements.md).
 
-Gemma is enabled with `STAYLONG_GEMMA_ENABLED=true` in the sandbox runtime. Its response is schema-validated (`redacted_text` plus `detected_categories`); malformed or empty output is rejected before the workflow continues. The privacy layer is separate from deterministic emergency routing and the Gemini/ADK planning agent.
+Gemma is enabled with `STAYLONG_GEMMA_ENABLED=true` in the sandbox runtime and uses the request-based Vertex Model Garden MaaS model `gemma-4-26b-a4b-it-maas` at `global`; no dedicated GPU endpoint is provisioned. Its response is schema-validated (`redacted_text` plus `detected_categories`); malformed, empty or unavailable output returns a safe retry response before the workflow persists a concern or starts the Gemini/ADK planning path. The privacy layer is separate from deterministic emergency routing and the Gemini/ADK planning agent.
 
 ## Security and privacy boundaries
 

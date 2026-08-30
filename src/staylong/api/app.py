@@ -610,11 +610,17 @@ def _now() -> datetime:
 def _raise_safe_intake_error(error: Exception) -> None:
     """Map policy refusals to plain language without returning internal details."""
     from staylong.agents.intake import MedicalTriageRefusalRequired
+    from staylong.privacy.gemma import PrivacyGuardError
 
     if isinstance(error, MedicalTriageRefusalRequired):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(error),
+        ) from None
+    if isinstance(error, PrivacyGuardError):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="StayLong could not safely prepare your plan. Please try again.",
         ) from None
     raise error
 

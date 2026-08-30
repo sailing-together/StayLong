@@ -110,7 +110,6 @@ function App() {
       setMessage(result ? '' : 'You chose to keep this action for later. You can reconsider whenever you are ready.')
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Something went wrong.') } finally { setBusy(false); setBusyMessage('') }
   }
-
   return (
     <div className={`app-shell theme-${theme}`}>
       <a className="skip-link" href="#main-content">Skip to main content</a>
@@ -385,5 +384,3 @@ function resultNextStep(result: ActionResult) {
 }
 
 export default App
-
-
