@@ -116,34 +116,42 @@ def _plan_task1_description(pack: AssessmentPreparationPack) -> str:
     if area == "bathroom":
         if "shower" in difficulty:
             return (
-                "Use the official pathway when you are ready to discuss bathroom and shower safety support at home."
+                "Use the official pathway when you are ready to discuss bathroom and "
+                "shower safety support at home."
             )
         return (
-            "Use the official pathway when you are ready to discuss night-time bathroom safety support at home."
+            "Use the official pathway when you are ready to discuss night-time "
+            "bathroom safety support at home."
         )
     if area == "entry":
         return (
-            "Use the official pathway when you are ready to discuss front step and entry access support at home."
+            "Use the official pathway when you are ready to discuss front step and "
+            "entry access support at home."
         )
     if area == "bedroom":
         return (
-            "Use the official pathway when you are ready to discuss bedroom movement and safety support at home."
+            "Use the official pathway when you are ready to discuss bedroom movement "
+            "and safety support at home."
         )
     if area == "kitchen":
         return (
-            "Use the official pathway when you are ready to discuss kitchen safety and meal preparation support at home."
+            "Use the official pathway when you are ready to discuss kitchen safety "
+            "and meal preparation support at home."
         )
     if "shower" in difficulty:
         return (
-            "Use the official pathway when you are ready to discuss bathroom and shower safety support at home."
+            "Use the official pathway when you are ready to discuss bathroom and "
+            "shower safety support at home."
         )
     if any(k in difficulty for k in ("step", "stair", "door", "entry")):
         return (
-            "Use the official pathway when you are ready to discuss front step and entry access support at home."
+            "Use the official pathway when you are ready to discuss front step and "
+            "entry access support at home."
         )
     if any(k in difficulty for k in ("bathroom", "toilet", "night")):
         return (
-            "Use the official pathway when you are ready to discuss night-time bathroom safety support at home."
+            "Use the official pathway when you are ready to discuss night-time "
+            "bathroom safety support at home."
         )
     return "Use the official pathway when you are ready to discuss support at home."
 
@@ -157,7 +165,8 @@ def _plan_task3_description(
         tenure = answers.get("housing_tenure", "").lower()
         if any(k in tenure for k in ("rent", "tenant", "lease", "landlord")):
             return (
-                "Confirm whether landlord or property manager permission is needed before any home changes."
+                "Confirm whether landlord or property manager permission is needed "
+                "before any home changes."
             )
         if any(k in tenure for k in ("own", "owner", "mortgage", "freehold")):
             return (
@@ -208,5 +217,4 @@ def build_home_independence_plan(
             ),
         ),
     )
-
 
