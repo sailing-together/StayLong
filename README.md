@@ -1,8 +1,8 @@
 # StayLong
 
-> Approval-safe coordination for independent living at home.
+> StayLong is an ageing-in-place coordination agent that helps older Australians who live alone remain independent at home for longer.
 
-StayLong is an approval-safe coordination layer for older Australians living alone. It turns a non-emergency home-living concern into an assessment-ready Home Independence Plan, keeps proposed next steps pending until the person approves them, and records follow-through over time.
+StayLong turns a non-emergency home-living concern into an assessment-ready Home Independence Plan, keeps proposed next steps pending until the person approves them, and records follow-through over time.
 
 StayLong prepares and coordinates approved steps; it does not deliver care, determine eligibility, access MyGov, select providers, prescribe modifications or make payments.
 
