@@ -1,5 +1,6 @@
 """Authenticated FastAPI case-flow API with an injectable persistence boundary."""
 
+import logging
 import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -24,6 +25,14 @@ from staylong.services.public_sessions import (
     owner_key_for,
 )
 from staylong.services.taskmaster import TaskmasterWorkflow, WorkflowSnapshot
+
+
+def configure_runtime_logging() -> None:
+    """Allow privacy-safe application INFO logs to reach Cloud Run stdout."""
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    if not root_logger.handlers:
+        logging.basicConfig(level=logging.INFO)
 
 
 class ConcernRequest(BaseModel):
