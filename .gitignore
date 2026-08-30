@@ -19,3 +19,4 @@ tfplan
 infra/terraform/backend.hcl
 _private/
 .worktrees/
+docs/backups/
