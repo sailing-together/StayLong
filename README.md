@@ -54,6 +54,7 @@ StayLong helps an older person prepare, coordinate and track approved next steps
 ## Documentation
 
 See the [product brief](docs/product-brief.md) for policy context, MVP workflow and safety boundaries; the public [architecture](docs/architecture.md) explains the runtime, approval and deployment boundaries.
+The full [project story](docs/project-story.md) explains the problem, solution, technical approach and next steps.
 
 Competition requirements and evidence are recorded in [competition references](docs/competition-references.md) and [submission readiness](docs/devpost-submission-readiness.md).
 
