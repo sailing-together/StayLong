@@ -25,7 +25,7 @@ The editable source is [`assets/architecture/staylong-architecture-diagram.drawi
 flowchart LR
   subgraph EXPERIENCE["Independent-living experience"]
     U["Older person living alone"] --> W["Accessible web UI"]
-    S["Optional authorised supporter"] -. invited for an approved task .-> W
+    S["Future trusted-supporter extension\n(not in current demo)"] -. person-led collaboration .-> W
   end
   subgraph EDGE["Public entry point — Phase A"]
     DNS["Cloudflare DNS\nstaylonghome.com + www"] --> LB["Global external HTTPS load balancer\nGoogle-managed TLS"]
@@ -69,7 +69,7 @@ The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded
 
 | Component | Responsibility |
 |---|---|
-| Cloud Run web/API service | Authenticated web UI, API, webhook receiver and ADK entry point. |
+| Cloud Run web/API services | The public service hosts the accessible web UI and anonymous cookie-session API; the optional private runtime uses IAM-authenticated FastAPI routes. Both invoke the bounded coordination core. |
 | Google ADK | Plans and executes a bounded workflow through typed tools. |
 | Vertex AI Gemini 3.6 Flash | Extracts structured concerns, drafts plain-language summaries and proposes next permitted actions. |
 | Vertex Model Garden MaaS Gemma 4 privacy guard | Uses request-based `gemma-4-26b-a4b-it-maas` to redact unnecessary PII before concern text is persisted or reaches an action boundary; it cannot make workflow or safety decisions. |
@@ -85,7 +85,7 @@ The demo seed is [`fixtures/demo/seeded-household.json`](../fixtures/demo/seeded
 2. The API performs deterministic red-flag screening before invoking any model.
 3. For a non-emergency concern, Gemma redacts unnecessary PII. An unavailable or invalid privacy response fails closed before persistence or planning.
 4. The intake agent produces a typed concern summary and lists missing facts.
-5. The coordinator creates only allowed draft tasks, appointments or messages.
+5. The coordinator creates only bounded draft tasks and action proposals; an appointment or message remains a proposal until its matching approval gate is passed.
 6. A human approves each external side effect.
 7. The action tool executes once, records an idempotency key, and emits an event.
 8. A scheduled worker detects overdue work and escalates according to household rules.
@@ -117,7 +117,7 @@ Gemma is enabled with `STAYLONG_GEMMA_ENABLED=true` in the sandbox runtime and u
 
 ## Emergency handling
 
-Emergency handling is a static, deterministic route, not an LLM feature. A possible immediate danger shows emergency information and an authorised family alert option. In Australia, serious or urgent emergencies require calling Triple Zero (000); the product does not delay this action or attempt clinical triage.
+Emergency handling is a static, deterministic route, not an LLM feature. A possible immediate danger shows emergency information. In Australia, serious or urgent emergencies require calling Triple Zero (000); the product does not delay this action or attempt clinical triage.
 
 ## Deployment architecture
 
