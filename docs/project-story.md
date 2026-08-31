@@ -1,5 +1,9 @@
 # StayLong
 
+## Elevator pitch
+
+An approval-safe AI coordination agent that helps older Australians living alone turn home concerns into practical plans, assessment preparation, and reliable follow-through.
+
 ## Inspiration
 
 Older Australians who live alone can notice small changes at home—a dark hallway, unsafe steps or a shower concern—long before those concerns become an emergency. Finding information is not enough: they need a way to turn a non-clinical concern into assessment-ready information and clear next steps, without losing control over what happens next.
